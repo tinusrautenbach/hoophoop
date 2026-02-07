@@ -44,7 +44,7 @@
   - `POST /api/teams`: Create team.
   - `POST /api/teams/:id/members`: Add athlete to team (create membership).
   - `GET /api/teams`: List user's teams.
-- [ ] **2.5.3 UI - Team Manager**:
+- [x] **2.5.3 UI - Team Manager**:
   - A dedicated "My Teams" page.
   - Add Player form (Name + Number).
 
