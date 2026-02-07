@@ -40,7 +40,7 @@
   - `Athletes`: Global list of players.
   - `TeamMemberships`: Link athletes to teams with date ranges.
   - `GameRosters` (replaces old `players` table): Links game to athlete.
-- [ ] **2.5.2 API - Team Management**:
+- [x] **2.5.2 API - Team Management**:
   - `POST /api/teams`: Create team.
   - `POST /api/teams/:id/members`: Add athlete to team (create membership).
   - `GET /api/teams`: List user's teams.
