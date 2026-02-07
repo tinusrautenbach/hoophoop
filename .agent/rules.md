@@ -35,6 +35,7 @@ This file defines the strict rules and guidelines for this project. Antigravity 
   1.  Unit tests must pass.
   2.  Linter must pass.
   3.  **User Approval**: The agent must ask for confirmation/approval before merging a feature branch into `main`.
+  4.  **Sync**: After merging into `main`, immediately execute `git push` to keep the remote repository synchronized.
 
 ## 7. Database Management
 - **Schema as Code**: All database changes must be defined in `src/db/schema.ts` (Drizzle ORM).
