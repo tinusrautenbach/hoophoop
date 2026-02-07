@@ -1,0 +1,13 @@
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/mnt/data/skwirel/bball/drizzle.config.ts'
+Using 'postgres' driver for database querying
+[⣷] Pulling schema from database...
+[2K[1G[⣯] Pulling schema from database...
+[2K[1G[✓] Pulling schema from database...
+
+ Warning  You are about to execute current statements:
+
+ALTER TABLE "games" ADD COLUMN "total_periods" integer DEFAULT 4 NOT NULL;
+ALTER TABLE "games" ADD COLUMN "period_seconds" integer DEFAULT 600 NOT NULL;
+
+[✓] Changes applied

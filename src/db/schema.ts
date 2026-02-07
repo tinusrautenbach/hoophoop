@@ -9,6 +9,8 @@ export const eventTypeEnum = pgEnum('event_type', [
     'period_start', 'period_end', 'clock_start', 'clock_stop', 'undo'
 ]);
 export const gameStatusEnum = pgEnum('game_status', ['scheduled', 'live', 'final']);
+export const gameModeEnum = pgEnum('game_mode', ['simple', 'advanced']);
+
 
 // --- CORE ROSTER ENTITIES ---
 
@@ -55,12 +57,16 @@ export const games = pgTable('games', {
     status: gameStatusEnum('status').default('scheduled').notNull(),
 
     currentPeriod: integer('current_period').default(1).notNull(),
+    totalPeriods: integer('total_periods').default(4).notNull(),
+    periodSeconds: integer('period_seconds').default(600).notNull(),
     clockSeconds: integer('clock_seconds').default(600).notNull(),
     homeScore: integer('home_score').default(0).notNull(),
     guestScore: integer('guest_score').default(0).notNull(),
     homeFouls: integer('home_fouls').default(0).notNull(),
     guestFouls: integer('guest_fouls').default(0).notNull(),
     possession: teamEnum('possession'),
+    mode: gameModeEnum('mode').default('simple').notNull(),
+
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

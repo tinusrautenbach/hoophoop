@@ -37,7 +37,12 @@ This file defines the strict rules and guidelines for this project. Antigravity 
   3.  **User Approval**: The agent must ask for confirmation/approval before merging a feature branch into `main`.
   4.  **Sync**: After merging into `main`, immediately execute `git push` to keep the remote repository synchronized.
 
-## 7. Database Management
+## 7. Testing Policy
+- **Automated Tests**: Every new service or logic-heavy API route must have a corresponding `.test.ts` file using Vitest.
+- **Visual Verification**: After implementing UI changes, the agent MUST use the `browser_subagent` to visually verify the results (screenshots/interaction) before completing the task.
+- **Pre-Merge**: All automated tests must pass before any merge into `main`.
+
+## 8. Database Management
 - **Schema as Code**: All database changes must be defined in `src/db/schema.ts` (Drizzle ORM).
 - **Version Control**: Migration files (`drizzle/migrations/*.sql`) must be committed to Git.
 - **Workflow**:
@@ -49,3 +54,6 @@ This file defines the strict rules and guidelines for this project. Antigravity 
 ## 8. Project Management
 - **Status Tracking**: The `spec/implementation_plan.md` file must be kept up-to-date.
 - **Completion**: When a task from the plan is completed, verify it and then mark it with `[x]`.
+
+## 9. MCP Configuration
+- **Database Access**: Always use the `dbhub-bball` MCP server for database operations instead of the general `dbhub` server.

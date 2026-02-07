@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import { SignedIn, SignedOut, SignInButton } from '@/components/auth-provider';
 
 type Team = {
   id: string;
@@ -21,6 +21,10 @@ export default function LandingPage() {
   const [guestTeamName, setGuestTeamName] = useState('');
   const [mode, setMode] = useState<'simple' | 'advanced'>('simple');
   const [isCreating, setIsCreating] = useState(false);
+  const [periodSeconds, setPeriodSeconds] = useState(600); // 10 mins
+  const [customMinutes, setCustomMinutes] = useState('10');
+  const [isCustomTime, setIsCustomTime] = useState(false);
+  const [totalPeriods, setTotalPeriods] = useState(4);
 
   useEffect(() => {
     fetch('/api/teams')
@@ -44,6 +48,8 @@ export default function LandingPage() {
         homeTeamName: homeTeamId ? teams.find(t => t.id === homeTeamId)?.name : homeTeamName,
         guestTeamName: guestTeamId ? teams.find(t => t.id === guestTeamId)?.name : guestTeamName,
         mode,
+        periodSeconds: isCustomTime ? Number(customMinutes) * 60 : Number(periodSeconds),
+        totalPeriods: Number(totalPeriods),
       }),
       headers: { 'Content-Type': 'application/json' },
     });
@@ -154,6 +160,55 @@ export default function LandingPage() {
                     <div className={`font-bold ${mode === 'advanced' ? 'text-orange-500' : 'text-slate-300'}`}>Advanced</div>
                     <div className="text-[10px] text-slate-500 leading-tight mt-1">Full stats, substitution tracking, shot charting, periods.</div>
                   </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <label className="text-xs uppercase font-bold tracking-widest text-slate-400">Total Periods</label>
+                  <select
+                    value={totalPeriods}
+                    onChange={e => setTotalPeriods(Number(e.target.value))}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg"
+                  >
+                    <option value={1}>1 (Straight)</option>
+                    <option value={2}>2 Halves</option>
+                    <option value={4}>4 Quarters</option>
+                  </select>
+                </div>
+                <div className="space-y-4">
+                  <label className="text-xs uppercase font-bold tracking-widest text-slate-400">Time per Period</label>
+                  <select
+                    value={isCustomTime ? 'custom' : periodSeconds}
+                    onChange={e => {
+                      if (e.target.value === 'custom') {
+                        setIsCustomTime(true);
+                      } else {
+                        setIsCustomTime(false);
+                        setPeriodSeconds(Number(e.target.value));
+                      }
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg"
+                  >
+                    <option value={300}>5 Mins</option>
+                    <option value={480}>8 Mins</option>
+                    <option value={600}>10 Mins</option>
+                    <option value={720}>12 Mins</option>
+                    <option value="custom">Custom...</option>
+                  </select>
+                  {isCustomTime && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="number"
+                        placeholder="Minutes"
+                        value={customMinutes}
+                        onChange={e => setCustomMinutes(e.target.value)}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                        min="1"
+                      />
+                      <span className="text-[10px] uppercase font-bold text-slate-500">Mins</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

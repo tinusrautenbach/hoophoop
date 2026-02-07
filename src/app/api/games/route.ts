@@ -1,8 +1,31 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { games, teamMemberships, gameRosters } from '@/db/schema';
-import { auth } from '@clerk/nextjs/server';
-import { eq } from 'drizzle-orm';
+import { auth } from '@/lib/auth-server';
+import { eq, desc } from 'drizzle-orm';
+
+export async function GET() {
+    const { userId } = await auth();
+
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+        const userGames = await db.query.games.findMany({
+            where: eq(games.ownerId, userId),
+            orderBy: [desc(games.createdAt)],
+            with: {
+                rosters: true,
+            }
+        });
+
+        return NextResponse.json(userGames);
+    } catch (error) {
+        console.error('Error fetching games:', error);
+        return NextResponse.json({ error: 'Failed to fetch games' }, { status: 500 });
+    }
+}
 
 export async function POST(request: Request) {
     const { userId } = await auth();
@@ -13,7 +36,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { homeTeamId, guestTeamId, homeTeamName, guestTeamName } = body;
+        const { homeTeamId, guestTeamId, homeTeamName, guestTeamName, mode, periodSeconds, totalPeriods } = body;
 
         const [newGame] = await db.insert(games).values({
             ownerId: userId,
@@ -22,6 +45,10 @@ export async function POST(request: Request) {
             homeTeamName: homeTeamName || 'Home',
             guestTeamName: guestTeamName || 'Guest',
             status: 'scheduled',
+            mode: mode || 'simple',
+            periodSeconds: periodSeconds || 600,
+            clockSeconds: periodSeconds || 600,
+            totalPeriods: totalPeriods || 4,
         }).returning();
 
         // If homeTeamId is provided, seed the roster

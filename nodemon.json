@@ -3,5 +3,5 @@
         "server.ts"
     ],
     "ext": "ts",
-    "exec": "ts-node server.ts"
+    "exec": "tsx"
 }

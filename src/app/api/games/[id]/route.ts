@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { games, gameRosters } from '@/db/schema';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth-server';
 import { eq } from 'drizzle-orm';
 
 export async function GET(
