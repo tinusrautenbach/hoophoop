@@ -34,13 +34,19 @@
   - Add `<ClerkProvider>` to root layout.
   - Add `<SignIn />` and `<UserButton />` components to the UI.
 
-## Phase 2.5: Team & Roster Management
-- [ ] **2.5.1 Data Model & API**:
-  - Update schema for `Teams` (if separate table) or just JSON columns in Game? (Stick to simplistic `Players` table linked to Game).
-  - API `POST /api/games/:id/players`: Bulk add/update.
-- [ ] **2.5.2 Roster UI**:
-  - `RosterEditor`: Text area for bulk paste + list view for individual edits.
-  - `PlayerCard`: Visual component showing Name, Number, Foul count.
+## Phase 2.5: Team & Roster Management (Global Registry)
+- [ ] **2.5.1 New Tables (Migration)**:
+  - `Teams`: Name, short code, owner.
+  - `Athletes`: Global list of players.
+  - `TeamMemberships`: Link athletes to teams with date ranges.
+  - `GameRosters` (replaces old `players` table): Links game to athlete.
+- [ ] **2.5.2 API - Team Management**:
+  - `POST /api/teams`: Create team.
+  - `POST /api/teams/:id/members`: Add athlete to team (create membership).
+  - `GET /api/teams`: List user's teams.
+- [ ] **2.5.3 UI - Team Manager**:
+  - A dedicated "My Teams" page.
+  - Add Player form (Name + Number).
 
 ## Phase 3: Frontend Core (Scorer Views)
 - [ ] **3.1 Layout & Mobile Design**:

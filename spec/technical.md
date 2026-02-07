@@ -65,7 +65,47 @@ This document outlines the **optimal technical stack** to build a high-performan
 - We do **not** persist users in our DB manually. We use the `auth()` helper to get the `userId` in API routes and store that string in our `Games` table (`owner_id`).
 - *Optional*: Webhooks can sync Clerk users to a local `users` table if complex relational queries are needed later, but for MVP we store the `clerk_user_id` directly on records.
 
-### 5.2 The "Event Stream" Pattern
+### 5.2 Database Schema (PostgreSQL + Drizzle)
+
+#### Core Entities
+- **Teams**
+  - `id`: UUID
+  - `owner_id`: String (Clerk ID)
+  - `name`: String
+  - `short_code`: String (3 chars)
+  - `color`: String (Hex)
+
+- **Athletes** (Global Player Registry)
+  - `id`: UUID
+  - `owner_id`: String
+  - `name`: String
+
+- **TeamMemberships** (Player History)
+  - `id`: UUID
+  - `team_id`: UUID (FK Teams)
+  - `athlete_id`: UUID (FK Athletes)
+  - `number`: String (Jersey #)
+  - `start_date`: Date
+  - `end_date`: Date (Nullable)
+  - `is_active`: Boolean
+
+#### Game Entities
+- **Games**
+  - `id`: UUID
+  - `home_team_id`: UUID (FK Teams, Nullable)
+  - `guest_team_id`: UUID (FK Teams, Nullable)
+  - `home_score`, `guest_score`, `status`...
+
+- **GameRosters** (Snapshot for a specific game)
+  - `id`: UUID
+  - `game_id`: UUID
+  - `team_side`: Enum (Home/Guest)
+  - `athlete_id`: UUID (FK Athletes, Nullable for ad-hoc)
+  - `name`: String (Snapshot)
+  - `number`: String (Snapshot)
+  - `stats`: JSONB (Points, Fouls, etc.)
+
+### 5.3 The "Event Stream" Pattern
 Instead of just storing the current score, we store an append-only log of **GameEvents**.
 - **Table**: `game_events`
 - **Fields**: `id`, `game_id`, `type` (SCORE, FOUL, SUB), `payload` (JSON), `timestamp`.
