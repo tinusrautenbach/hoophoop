@@ -85,12 +85,19 @@
 - [ ] **5.4 Intentional Breaking**:
   - Verify error handling (e.g., submitting score to finalized game).
 
-## Phase 6: Polish & Refine
-- [ ] **5.1 Styling**: Apply a "Varsity" or "Pro" aesthetic (e.g., dark mode, high contrast colors).
-- [ ] **5.2 User Feedback**: Add toast notifications for key actions (e.g., "Timeout Home", "Foul Away").
-- [ ] **5.3 Deployment Prep**: Ensure build works with custom server logic.
+## Phase 6: Post-Game & Export
+- [ ] **6.1 Finalize Game Logic**:
+  - API endpoint to close game (`status: 'final'`).
+- [ ] **6.2 HTML Export**:
+  - Create utility to render current game state (Box Score, Log) into a standalone HTML string.
+  - Implement `navigator.share` with a constructed `File` object for WhatsApp/Email sharing on mobile.
 
-## Phase 6: Incremental Improvements
-- [ ] Player Rosters & Substitutions.
-- [ ] Detailed Game Log.
-- [ ] Shot Chart Input.
+## Phase 7: Polish & Refine
+- [ ] **7.1 Styling**: Apply a "Varsity" or "Pro" aesthetic (e.g., dark mode, high contrast colors).
+- [ ] **7.2 User Feedback**: Add toast notifications for key actions (e.g., "Timeout Home", "Foul Away").
+- [ ] **7.3 Deployment Prep**: Ensure build works with custom server logic.
+
+## Phase 8: Incremental Improvements
+- [ ] **8.1**: Player Rosters & Substitutions.
+- [ ] **8.2**: Detailed Game Log.
+- [ ] **8.3**: Shot Chart Input.

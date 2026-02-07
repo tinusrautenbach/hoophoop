@@ -106,6 +106,12 @@ A clean, high-visibility display of the current game state, optimized for mobile
     - App automatically calculates "Minutes Played" based on substitution events and game clock running time.
     - Scorer can see current time-on-court for active players.
 
+### 3.5 Post-Game & Export
+- **End Game Action**: Confirms final score and changes status to 'Final'.
+- **Share Report**:
+  - **Export as HTML**: Button to generate a standalone `.html` file (containing Box Score + Play-by-Play).
+  - **Native Share**: Triggers mobile share sheet to send this file via WhatsApp, Email, etc.
+
 ## 4. Non-Functional Requirements
 - **Responsiveness**: Must work on typical laptop screens (scorers) and mobile phones (spectators).
 - **Latency**: Updates from Scorer to Spectator should be near real-time (< 1 second).
