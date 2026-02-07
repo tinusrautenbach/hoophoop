@@ -2,31 +2,31 @@
 
 ## Phase 1: Project Setup (Docker & Next.js)
 **Git Workflow**: Create branch `feature/setup-project` for this phase.
-- [ ] **1.1 Initialize Next.js App**: `npx create-next-app@latest . --typescript --tailwind --eslint`.
-- [ ] **1.2 Docker Environment**:
+- [x] **1.1 Initialize Next.js App**: `npx create-next-app@latest . --typescript --tailwind --eslint`.
+- [x] **1.2 Docker Environment**:
   - Create `Dockerfile` (Node.js multi-stage build).
   - Create `docker-compose.yml` defining services:
     - `app` (Next.js custom server).
     - `db` (PostgreSQL 16).
   - Configure `.env` for database connection string.
-- [ ] **1.3 Install Dependencies**:
+- [x] **1.3 Install Dependencies**:
   - App: `@clerk/nextjs`, `socket.io`, `socket.io-client`, `clsx`, `tailwind-merge`, `lucide-react`, `zustand`, `framer-motion`, `@dnd-kit/core`, `react-qr-code`.
   - Dev: `ts-node`, `nodemon` (for custom server dev), `drizzle-orm`, `drizzle-kit`, `postgres`.
 
 ## Phase 2: Backend & Database
-- [ ] **2.1 Database Setup (Prisma)**:
+- [x] **2.1 Database Setup (Prisma)**:
   - Initialize Prisma: `npx prisma init`
   - Define Schema in `prisma/schema.prisma`: `Game`, `Team`, `Player`, `GameEvent`.
   - Migrate DB: `npx prisma migrate dev --name init`
-- [ ] **2.2 Custom Server Setup**:
+- [x] **2.2 Custom Server Setup**:
   - Create `server.ts` or `server.js` to serve Next.js and attach Socket.IO.
   - Configure `nodemon` (or `ts-node-dev`) for development hot-reloading of the backend.
-- [ ] **2.3 API Routes**:
+- [x] **2.3 API Routes**:
   - `POST /api/games`: Create a game (Protected, requires Auth).
   - `GET /api/games/[id]`: Retrieve game state.
   - `socket.on('join-game')`: Handle room joining.
   - `socket.on('update-game')`: Handle game state updates (validation layer).
-- [ ] **2.4 Authentication Setup (Clerk)**:
+- [x] **2.4 Authentication Setup (Clerk)**:
   - Install `@clerk/nextjs`.
   - Set up Clerk Application in Dashboard.
   - Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` to `.env`.

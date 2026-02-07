@@ -44,3 +44,7 @@ This file defines the strict rules and guidelines for this project. Antigravity 
   2.  Run `npx drizzle-kit generate` to create the migration file.
   3.  Commit both the schema change and the new SQL migration file.
   4.  Never manually edit the database schema in production.
+
+## 8. Project Management
+- **Status Tracking**: The `spec/implementation_plan.md` file must be kept up-to-date.
+- **Completion**: When a task from the plan is completed, verify it and then mark it with `[x]`.
