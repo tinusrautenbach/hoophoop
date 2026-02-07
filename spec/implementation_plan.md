@@ -34,6 +34,14 @@
   - Add `<ClerkProvider>` to root layout.
   - Add `<SignIn />` and `<UserButton />` components to the UI.
 
+## Phase 2.5: Team & Roster Management
+- [ ] **2.5.1 Data Model & API**:
+  - Update schema for `Teams` (if separate table) or just JSON columns in Game? (Stick to simplistic `Players` table linked to Game).
+  - API `POST /api/games/:id/players`: Bulk add/update.
+- [ ] **2.5.2 Roster UI**:
+  - `RosterEditor`: Text area for bulk paste + list view for individual edits.
+  - `PlayerCard`: Visual component showing Name, Number, Foul count.
+
 ## Phase 3: Frontend Core (Scorer Views)
 - [ ] **3.1 Layout & Mobile Design**:
   - Implement a `MobileLayout` vs `DesktopLayout` utility.
@@ -45,7 +53,8 @@
   - **Game Clock**: Standard controls.
 - [ ] **3.1.2 Mode B: Advanced Scorer**:
   - **Slick Sub Interface**:
-    - Build a "Bench" vs "Court" dnd-kit implementation.
+    - **Visual Bench**: Drag-and-drop (`dnd-kit`) players from Bench list to On-Court slots.
+    - **Time Tracking**: Service to calculate time-on-court based on `sub` events and current game clock.
     - Implementing "Tap-to-Swap" logic for mobile speed.
   - Action Palette: Assist, Steal, Block, Rebound, Turnover.
   - Interactive Court: Click-to-plot Shot Chart.

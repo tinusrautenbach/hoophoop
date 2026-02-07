@@ -92,6 +92,20 @@ A clean, high-visibility display of the current game state, optimized for mobile
   - **Guest Team**: Total score (and players if tracked).
   - Ability to toggle between active players and full roster.
 
+### 3.4 Team & Roster Management
+- **Add Team**:
+  - Simple form: Team Name, Short Code (3 letters), Color.
+  - Ability to save teams for future games (if logged in).
+- **Add Players**:
+  - **Quick Entry**: "Name, Number" pairs.
+  - **Bulk Paste**: Paste a list like "23 Jordan, 33 Pippen" to auto-parse.
+  - **Edit/Delete**: Long press to edit player details or remove from roster.
+- **On-Court Management**:
+  - **Visual Court**: Drag players from "Bench" list to "Court" list.
+  - **Time Tracking**: 
+    - App automatically calculates "Minutes Played" based on substitution events and game clock running time.
+    - Scorer can see current time-on-court for active players.
+
 ## 4. Non-Functional Requirements
 - **Responsiveness**: Must work on typical laptop screens (scorers) and mobile phones (spectators).
 - **Latency**: Updates from Scorer to Spectator should be near real-time (< 1 second).
