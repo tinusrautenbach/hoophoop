@@ -22,6 +22,14 @@ app.prepare().then(() => {
             console.log(`Socket ${socket.id} joined game-${gameId}`);
         });
 
+        socket.on("update-game", ({ gameId, updates }) => {
+            // Broadcast to everyone in the room except sender (or including sender? Let's do everyone for sync)
+            socket.to(`game-${gameId}`).emit("game-updated", updates);
+            console.log(`Game ${gameId} updated`, updates);
+
+            // Note: Real implementation would save to DB here as well
+        });
+
         socket.on("disconnect", () => {
             console.log("Client disconnected", socket.id);
         });
