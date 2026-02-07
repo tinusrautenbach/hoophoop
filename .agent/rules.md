@@ -35,3 +35,12 @@ This file defines the strict rules and guidelines for this project. Antigravity 
   1.  Unit tests must pass.
   2.  Linter must pass.
   3.  **User Approval**: The agent must ask for confirmation/approval before merging a feature branch into `main`.
+
+## 7. Database Management
+- **Schema as Code**: All database changes must be defined in `src/db/schema.ts` (Drizzle ORM).
+- **Version Control**: Migration files (`drizzle/migrations/*.sql`) must be committed to Git.
+- **Workflow**:
+  1.  Modify `schema.ts`.
+  2.  Run `npx drizzle-kit generate` to create the migration file.
+  3.  Commit both the schema change and the new SQL migration file.
+  4.  Never manually edit the database schema in production.
