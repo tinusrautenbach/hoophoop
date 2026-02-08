@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         const body = await request.json();
         console.log('Create game body:', JSON.stringify(body, null, 2));
         
-        const { homeTeamId, guestTeamId, homeTeamName, guestTeamName, mode, periodSeconds, totalPeriods, totalTimeouts } = body;
+        const { homeTeamId, guestTeamId, homeTeamName, guestTeamName, mode, periodSeconds, totalPeriods, totalTimeouts, name, scheduledDate } = body;
 
         // Ensure team IDs are proper UUIDs or null (not 'adhoc' string)
         const safeHomeTeamId = homeTeamId && homeTeamId !== 'adhoc' ? homeTeamId : null;
@@ -51,6 +51,8 @@ export async function POST(request: Request) {
             guestTeamId: safeGuestTeamId,
             homeTeamName: homeTeamName || 'Home',
             guestTeamName: guestTeamName || 'Guest',
+            name: name || null,
+            scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
             status: 'scheduled',
             mode: mode || 'simple',
             periodSeconds: periodSeconds || 600,

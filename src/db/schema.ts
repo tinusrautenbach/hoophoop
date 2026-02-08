@@ -18,6 +18,18 @@ export const communityRoleEnum = pgEnum('community_role', ['admin', 'scorer', 'v
 export const inviteStatusEnum = pgEnum('invite_status', ['pending', 'accepted', 'expired']);
 
 
+// --- USER ENTITIES ---
+
+export const users = pgTable('users', {
+    id: text('id').primaryKey(), // Clerk User ID
+    email: text('email').notNull(),
+    firstName: text('first_name'),
+    lastName: text('last_name'),
+    imageUrl: text('image_url'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // --- COMMUNITY ENTITIES ---
 
 export const communities = pgTable('communities', {
@@ -115,6 +127,10 @@ export const games = pgTable('games', {
     ownerId: text('owner_id').notNull(),
     communityId: uuid('community_id').references(() => communities.id), // Optional link to community
 
+    // Optional user-defined game name and date
+    name: text('name'), 
+    scheduledDate: timestamp('scheduled_date'),
+
     // Teams (FKs) - Nullable for ad-hoc/guest teams that aren't in the system
     homeTeamId: uuid('home_team_id').references(() => teams.id),
     guestTeamId: uuid('guest_team_id').references(() => teams.id),
@@ -197,7 +213,16 @@ export const gameScorers = pgTable('game_scorers', {
 
 // --- RELATIONS ---
 
-export const communitiesRelations = relations(communities, ({ many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
+    memberships: many(communityMembers),
+    logs: many(userActivityLogs),
+    ownedCommunities: many(communities),
+    ownedTeams: many(teams),
+    ownedGames: many(games),
+}));
+
+export const communitiesRelations = relations(communities, ({ one, many }) => ({
+    owner: one(users, { fields: [communities.ownerId], references: [users.id] }),
     members: many(communityMembers),
     invites: many(communityInvites),
     teams: many(teams),

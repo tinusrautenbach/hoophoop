@@ -23,6 +23,10 @@ export const SignInButton = ({ children }: { children: React.ReactNode }) => {
     return <>{children}</>;
 };
 
+export const SignOutButton = ({ children }: { children: React.ReactNode }) => {
+    return <div onClick={() => alert('Mock: Signed Out')}>{children}</div>;
+};
+
 export const ClerkProvider = ({ children }: { children: React.ReactNode }) => {
     return <>{children}</>;
 };

@@ -171,8 +171,10 @@ export default function BoxScorePage() {
 
         // Process events to build detailed player stats
         events.forEach(event => {
-            const playerName = event.player;
-            if (!playerName) return;
+            // If player is null (e.g. for team stats or simple mode), use the team name as fallback
+            // This ensures stats are captured and aggregated even if not assigned to a specific player
+            const teamName = team === 'home' ? game.homeTeamName : game.guestTeamName;
+            const playerName = event.player || teamName;
 
             // Ensure player exists in stats (for adhoc players not in roster)
             if (!playerStats[playerName]) {

@@ -123,7 +123,7 @@ Designed for official games, requiring detailed stat tracking.
 #### Common Scorer Features
 - **Possession Arrow**: Toggle.
 - **Game Log**:
-  - Scrollable play-by-play.
+  - Scrollable play-by-play (showing last 10 entries on main view).
   - **Editable Actions**: Recent actions must be expandable.
   - **Modification**: Ability to change the player, the points value, or delete an action entirely.
   - **History**: Full track record of changes to ensure data integrity.
@@ -234,6 +234,7 @@ Players are global entities that can belong to multiple teams over time, with fu
 - **My Communities**: List of communities the user belongs to.
 - **Pending Invites**: Ability to accept/decline community invitations.
 - **Activity History**: Personal log of recent actions.
+- **Logout**: Ability to securely sign out of the application.
 
 ## 4A. Implementation Plan: Player Profiles & Team History
 

@@ -25,6 +25,8 @@ export default function LandingPage() {
   const [guestTeamId, setGuestTeamId] = useState('');
   const [homeTeamName, setHomeTeamName] = useState('');
   const [guestTeamName, setGuestTeamName] = useState('');
+  const [gameName, setGameName] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('');
   const [mode, setMode] = useState<'simple' | 'advanced'>('simple');
   const [isCreating, setIsCreating] = useState(false);
   const [periodSeconds, setPeriodSeconds] = useState(600); // 10 mins
@@ -35,6 +37,9 @@ export default function LandingPage() {
 
   useEffect(() => {
     setMounted(true);
+    // Set default date to today in YYYY-MM-DD format
+    setScheduledDate(new Date().toISOString().split('T')[0]);
+    
     fetch('/api/teams')
       .then(res => res.json())
       .then(data => {
@@ -73,6 +78,8 @@ export default function LandingPage() {
         guestTeamId: guestTeamId && guestTeamId !== 'adhoc' ? guestTeamId : null,
         homeTeamName: (homeTeamId && homeTeamId !== 'adhoc' ? teams.find(t => t.id === homeTeamId)?.name : homeTeamName) || 'Home',
         guestTeamName: (guestTeamId && guestTeamId !== 'adhoc' ? teams.find(t => t.id === guestTeamId)?.name : guestTeamName) || 'Guest',
+        name: gameName,
+        scheduledDate,
         mode,
         periodSeconds: isCustomTime ? Number(customMinutes) * 60 : Number(periodSeconds),
         totalPeriods: Number(totalPeriods),
@@ -129,6 +136,28 @@ export default function LandingPage() {
               </div>
             ) : (
             <form onSubmit={handleCreateGame} className="space-y-8 text-left">
+              <div className="grid sm:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <label className="text-xs uppercase font-bold tracking-widest text-slate-400">Game Name (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Championship Final"
+                    value={gameName}
+                    onChange={e => setGameName(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                  />
+                </div>
+                <div className="space-y-4">
+                  <label className="text-xs uppercase font-bold tracking-widest text-slate-400">Date</label>
+                  <input
+                    type="date"
+                    value={scheduledDate}
+                    onChange={e => setScheduledDate(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-white"
+                  />
+                </div>
+              </div>
+
               <div className="grid sm:grid-cols-2 gap-8">
                 {/* Home Team Selection */}
                 <div className="space-y-4">

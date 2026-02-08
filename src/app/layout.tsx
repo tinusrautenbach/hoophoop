@@ -14,17 +14,21 @@ const geistMono = Geist_Mono({
 
 import { AuthProvider, SignedIn, SignedOut, UserButton, SignInButton } from '@/components/auth-provider'
 import Link from 'next/link'
+import { syncUser } from "@/lib/auth-server";
 
 export const metadata: Metadata = {
   title: "Basketball Scorer",
   description: "Real-time basketball scoring app",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Sync user info with database on every layout load if authenticated
+  await syncUser();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -41,6 +45,7 @@ export default function RootLayout({
                   <Link href="/teams" className="text-sm font-medium hover:text-orange-500 transition-colors">Teams</Link>
                   <Link href="/games" className="text-sm font-medium hover:text-orange-500 transition-colors">Games</Link>
                   <Link href="/communities" className="text-sm font-medium hover:text-orange-500 transition-colors">Communities</Link>
+                  <Link href="/profile" className="text-sm font-medium hover:text-orange-500 transition-colors">Profile</Link>
                   <UserButton />
                 </SignedIn>
               <SignedOut>
