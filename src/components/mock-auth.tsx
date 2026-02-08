@@ -4,11 +4,11 @@ import React from 'react';
 
 export const SignedIn = ({ children }: { children: React.ReactNode }) => {
     // In demo mode, we're always signed in
-    return <>{children}</>;
+    return <div suppressHydrationWarning>{children}</div>;
 };
 
 export const SignedOut = ({ children }: { children: React.ReactNode }) => {
-    return null;
+    return <div suppressHydrationWarning style={{ display: 'none' }}>{children}</div>;
 };
 
 export const UserButton = () => {

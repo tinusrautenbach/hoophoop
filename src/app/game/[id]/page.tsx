@@ -360,21 +360,25 @@ export default function SpectatorPage() {
                 </div>
             </div>
 
-            {/* Bottom Section - Actions & Lineup */}
             <div className="bg-slate-950/80 border-t border-white/5 p-2 sm:p-4 md:p-6 backdrop-blur-xl relative z-10 shrink-0">
                 <div className={cn(
                     "max-w-7xl mx-auto grid gap-2 sm:gap-4 md:gap-6 lg:gap-8",
-                    "h-[120px] sm:h-[140px] md:h-[180px] lg:h-[200px] xl:h-[220px]",
+                    "h-[200px] sm:h-[250px] md:h-[300px] lg:h-[350px] xl:h-[400px]",
                     "grid-cols-1 md:grid-cols-2"
                 )}>
                     {/* Game Log - Now Scrolling */}
                     <div className="flex flex-col h-full overflow-hidden">
                         <div className="flex items-center justify-between mb-1 sm:mb-2 md:mb-4 px-1 sm:px-2">
-                            <h3 className={cn(
-                                "font-black uppercase text-slate-500",
-                                "text-[6px] sm:text-[8px] md:text-[10px]",
-                                "tracking-[0.15em] sm:tracking-[0.2em]"
-                            )}>Live Play-by-Play</h3>
+                            <h3 
+                                onClick={() => router.push(`/game/${id}/log`)}
+                                className={cn(
+                                    "font-black uppercase text-slate-500 hover:text-orange-500 cursor-pointer transition-all active:scale-95",
+                                    "text-[6px] sm:text-[8px] md:text-[10px]",
+                                    "tracking-[0.15em] sm:tracking-[0.2em]"
+                                )}
+                            >
+                                Live Play-by-Play
+                            </h3>
                             <div className="flex items-center gap-2 sm:gap-3">
                                 <button
                                     onClick={() => router.push(`/game/${id}/box-score`)}
@@ -393,7 +397,11 @@ export default function SpectatorPage() {
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar">
-                            <GameLog events={events} />
+                            <GameLog 
+                                events={events} 
+                                limit={10}
+                                hideHeader={true}
+                            />
                         </div>
                     </div>
 

@@ -41,10 +41,14 @@ export async function POST(request: Request) {
         
         const { homeTeamId, guestTeamId, homeTeamName, guestTeamName, mode, periodSeconds, totalPeriods, totalTimeouts } = body;
 
+        // Ensure team IDs are proper UUIDs or null (not 'adhoc' string)
+        const safeHomeTeamId = homeTeamId && homeTeamId !== 'adhoc' ? homeTeamId : null;
+        const safeGuestTeamId = guestTeamId && guestTeamId !== 'adhoc' ? guestTeamId : null;
+
         const [newGame] = await db.insert(games).values({
             ownerId: userId,
-            homeTeamId: homeTeamId || null,
-            guestTeamId: guestTeamId || null,
+            homeTeamId: safeHomeTeamId,
+            guestTeamId: safeGuestTeamId,
             homeTeamName: homeTeamName || 'Home',
             guestTeamName: guestTeamName || 'Guest',
             status: 'scheduled',

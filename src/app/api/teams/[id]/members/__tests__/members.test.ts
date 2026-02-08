@@ -20,6 +20,13 @@ vi.mock('@/db', () => ({
                 returning: vi.fn().mockResolvedValue([]),
             }),
         })),
+        update: vi.fn(() => ({
+            set: vi.fn(() => ({
+                where: vi.fn().mockResolvedValue({
+                    returning: vi.fn().mockResolvedValue([]),
+                }),
+            })),
+        })),
     },
 }));
 
@@ -88,7 +95,7 @@ describe('Team Members API Route', () => {
             const response = await POST(request, { params: Promise.resolve({ id: 't1' }) });
 
             expect(response.status).toBe(200);
-            expect(db.insert).toHaveBeenCalledTimes(2);
+            expect(db.insert).toHaveBeenCalledTimes(3);
         });
 
         it('should return 409 if player already on team', async () => {

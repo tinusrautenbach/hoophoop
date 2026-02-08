@@ -361,12 +361,15 @@ export default function ScorerPage() {
         const player = game.rosters.find(r => r.id === rosterEntryId);
         if (!player) return;
 
+        const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
+
         if (scoringFor.isMiss) {
             addEvent({
                 type: 'miss',
                 team: player.team,
                 player: player.name,
                 value: scoringFor.points,
+                metadata: { shotType },
                 description: `${player.name} Missed ${scoringFor.points === 1 ? 'Free Throw' : scoringFor.points === 3 ? '3PT' : 'FG'}`
             });
             setScoringFor(null);
@@ -391,6 +394,7 @@ export default function ScorerPage() {
             team: player.team,
             player: player.name,
             value: scoringFor.points,
+            metadata: { shotType, points: scoringFor.points },
         });
 
         setScoringFor(null);
@@ -777,7 +781,7 @@ export default function ScorerPage() {
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-1">
                             <GameLog
                                 events={events}
-                                limit={5}
+                                limit={10}
                                 onHeaderClick={() => router.push(`/game/${id}/scorer/log`)}
                                 onDelete={deleteEvent}
                                 onEdit={(id) => setEditingEvent(events.find(e => e.id === id) || null)}
@@ -786,9 +790,9 @@ export default function ScorerPage() {
                     </div>
 
                     {/* RIGHT THIRD: FOULS / SUBS / TIMER */}
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 h-full">
                         {/* Fouls Split */}
-                        <div className="grid grid-cols-2 gap-2 h-16">
+                        <div className="grid grid-cols-2 gap-2 flex-1">
                             <button
                                 onClick={() => handleFoul('home')}
                                 className="bg-red-950/20 border border-red-500/20 rounded-xl flex flex-col items-center justify-center hover:bg-red-900/40 active:scale-95 transition-all"
@@ -806,7 +810,7 @@ export default function ScorerPage() {
                         </div>
 
                         {/* Sub & Timeout */}
-                        <div className="grid grid-cols-2 gap-2 h-14">
+                        <div className="grid grid-cols-2 gap-2 flex-1">
                             <button
                                 onClick={handleSub}
                                 className="bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all"
@@ -842,7 +846,7 @@ export default function ScorerPage() {
                         {/* Box Score Button */}
                         <button
                             onClick={() => router.push(`/game/${id}/box-score`)}
-                            className="h-14 rounded-xl flex flex-col items-center justify-center bg-slate-900 border border-slate-800 hover:bg-slate-800 transition-all active:scale-95"
+                            className="flex-1 rounded-xl flex flex-col items-center justify-center bg-slate-900 border border-slate-800 hover:bg-slate-800 transition-all active:scale-95"
                         >
                             <Table size={16} className="text-slate-400 mb-0.5" />
                             <span className="text-[8px] font-black tracking-widest uppercase text-slate-500">Box Score</span>
@@ -972,31 +976,89 @@ export default function ScorerPage() {
                             </button>
                         </div>
 
-                        {/* If no rosters, show simple team selection */}
-                        {(!game.rosters || game.rosters.length === 0) ? (
+                        {/* If no rosters for home, show simple team selection for home */}
+                        {(!game.rosters || game.rosters.filter(r => r.team === 'home' && r.isActive).length === 0) ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <button
                                     onClick={() => {
-                                        updateGame({ homeScore: game.homeScore + scoringFor.points });
-                                        addEvent({ type: 'score', team: 'home', value: scoringFor.points });
+                                        const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
+                                        if (scoringFor.isMiss) {
+                                            addEvent({ 
+                                                type: 'miss', 
+                                                team: 'home', 
+                                                value: scoringFor.points,
+                                                metadata: { shotType }, 
+                                                description: `${game.homeTeamName} Miss (Team)` 
+                                            });
+                                        } else {
+                                            updateGame({ homeScore: game.homeScore + scoringFor.points });
+                                            addEvent({ 
+                                                type: 'score', 
+                                                team: 'home', 
+                                                value: scoringFor.points, 
+                                                metadata: { shotType, points: scoringFor.points },
+                                                player: game.homeTeamName, 
+                                                description: `${game.homeTeamName} (Team)` 
+                                            });
+                                        }
                                         setScoringFor(null);
                                     }}
-                                    className="bg-gradient-to-br from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 active:scale-95 transition-all rounded-3xl p-12 flex flex-col items-center justify-center gap-4 shadow-[0_0_40px_rgba(234,88,12,0.3)]"
+                                    className={cn(
+                                        "bg-gradient-to-br active:scale-95 transition-all rounded-3xl p-12 flex flex-col items-center justify-center gap-4",
+                                        scoringFor.isMiss
+                                            ? "from-slate-800 to-slate-900 border-2 border-dashed border-orange-500/50 shadow-none"
+                                            : "from-orange-600 to-orange-700 shadow-[0_0_40px_rgba(234,88,12,0.3)]"
+                                    )}
                                 >
-                                    <div className="text-6xl font-black">+{scoringFor.points}</div>
+                                    <div className={cn("text-6xl font-black", scoringFor.isMiss ? "text-orange-500/50" : "text-white")}>
+                                        {scoringFor.isMiss ? '-' : '+'}{scoringFor.points}
+                                    </div>
                                     <div className="text-2xl font-black uppercase tracking-wider">{game.homeTeamName}</div>
+                                    <div className="text-xs text-orange-300 font-bold uppercase tracking-widest">
+                                        {scoringFor.isMiss ? 'Team Miss' : 'Team Score'}
+                                    </div>
                                 </button>
+                                {(!scoringFor.side || scoringFor.side === 'guest') && game.rosters && game.rosters.filter(r => r.team === 'guest' && r.isActive).length > 0 ? null : (
                                 <button
-                                    onClick={() => {
-                                        updateGame({ guestScore: game.guestScore + scoringFor.points });
-                                        addEvent({ type: 'score', team: 'guest', value: scoringFor.points });
-                                        setScoringFor(null);
-                                    }}
-                                    className="bg-gradient-to-br from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 active:scale-95 transition-all rounded-3xl p-12 flex flex-col items-center justify-center gap-4 shadow-[0_0_40px_rgba(100,116,139,0.3)]"
-                                >
-                                    <div className="text-6xl font-black">+{scoringFor.points}</div>
-                                    <div className="text-2xl font-black uppercase tracking-wider text-slate-300">{game.guestTeamName}</div>
-                                </button>
+                                        onClick={() => {
+                                            const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
+                                            if (scoringFor.isMiss) {
+                                                addEvent({ 
+                                                    type: 'miss', 
+                                                    team: 'guest', 
+                                                    value: scoringFor.points,
+                                                    metadata: { shotType },
+                                                    description: `${game.guestTeamName} Miss (Team)` 
+                                                });
+                                            } else {
+                                                updateGame({ guestScore: game.guestScore + scoringFor.points });
+                                                addEvent({ 
+                                                    type: 'score', 
+                                                    team: 'guest', 
+                                                    value: scoringFor.points,
+                                                    metadata: { shotType, points: scoringFor.points },
+                                                    player: game.guestTeamName, 
+                                                    description: `${game.guestTeamName} (Team)` 
+                                                });
+                                            }
+                                            setScoringFor(null);
+                                        }}
+                                        className={cn(
+                                            "bg-gradient-to-br active:scale-95 transition-all rounded-3xl p-12 flex flex-col items-center justify-center gap-4",
+                                            scoringFor.isMiss
+                                                ? "from-slate-800 to-slate-900 border-2 border-dashed border-slate-700 shadow-none"
+                                                : "from-slate-700 to-slate-800 shadow-[0_0_40px_rgba(100,116,139,0.3)]"
+                                        )}
+                                    >
+                                        <div className={cn("text-6xl font-black", scoringFor.isMiss ? "text-slate-600" : "text-white")}>
+                                            {scoringFor.isMiss ? '-' : '+'}{scoringFor.points}
+                                        </div>
+                                        <div className="text-2xl font-black uppercase tracking-wider text-slate-300">{game.guestTeamName}</div>
+                                        <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+                                            {scoringFor.isMiss ? 'Team Miss' : 'Team Score'}
+                                        </div>
+                                    </button>
+                                )}
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto pb-12">
@@ -1023,11 +1085,13 @@ export default function ScorerPage() {
                                             {scoringFor.isMiss ? (
                                                 <button
                                                     onClick={() => {
+                                                        const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
                                                         addEvent({
                                                             type: 'miss',
-                                                            team: 'guest',
-                                                            description: 'Home Team Miss (Team)',
-                                                            value: scoringFor.points
+                                                            team: 'home',
+                                                            description: `${game.homeTeamName} Miss (Team)`,
+                                                            value: scoringFor.points,
+                                                            metadata: { shotType }
                                                         });
                                                         setScoringFor(null);
                                                     }}
@@ -1046,37 +1110,81 @@ export default function ScorerPage() {
                                         <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest px-2">
                                             {game.guestTeamName}
                                         </h4>
-                                        <div className={cn("grid gap-2", scoringFor.isMiss ? "grid-cols-2" : "grid-cols-3")}>
-                                            {game.rosters
-                                                .filter(r => r.team === 'guest' && r.isActive)
-                                                .slice(0, scoringFor.isMiss ? 5 : 99)
-                                                .map(entry => (
+                                        {game.rosters && game.rosters.filter(r => r.team === 'guest' && r.isActive).length > 0 ? (
+                                            <div className={cn("grid gap-2", scoringFor.isMiss ? "grid-cols-2" : "grid-cols-3")}>
+                                                {game.rosters
+                                                    .filter(r => r.team === 'guest' && r.isActive)
+                                                    .slice(0, scoringFor.isMiss ? 5 : 99)
+                                                    .map(entry => (
+                                                        <button
+                                                            key={entry.id}
+                                                            onClick={() => handlePlayerScore(entry.id)}
+                                                            className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center hover:border-white transition-all active:scale-95 group"
+                                                        >
+                                                            <div className="text-2xl font-black text-slate-500 group-hover:text-white mb-1">{entry.number}</div>
+                                                            <div className="text-[10px] font-bold truncate w-full text-center">{entry.name}</div>
+                                                        </button>
+                                                    ))}
+                                                {scoringFor.isMiss ? (
                                                     <button
-                                                        key={entry.id}
-                                                        onClick={() => handlePlayerScore(entry.id)}
-                                                        className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center hover:border-white transition-all active:scale-95 group"
+                                                        onClick={() => {
+                                                            const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
+                                                            addEvent({
+                                                                type: 'miss',
+                                                                team: 'guest',
+                                                                description: `${game.guestTeamName} Miss (Team)`,
+                                                                value: scoringFor.points,
+                                                                metadata: { shotType }
+                                                            });
+                                                            setScoringFor(null);
+                                                        }}
+                                                        className="bg-slate-900/50 border border-slate-800 border-dashed p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-500 text-xs"
                                                     >
-                                                        <div className="text-2xl font-black text-slate-500 group-hover:text-white mb-1">{entry.number}</div>
-                                                        <div className="text-[10px] font-bold truncate w-full text-center">{entry.name}</div>
+                                                        Team Miss
                                                     </button>
-                                                ))}
-                                            {scoringFor.isMiss ? (
-                                                <button
-                                                    onClick={() => {
-                                                        addEvent({
-                                                            type: 'miss',
-                                                            team: 'guest',
-                                                            description: 'Guest Team Miss (Team)',
-                                                            value: scoringFor.points
+                                                ) : null}
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
+                                                    if (scoringFor.isMiss) {
+                                                        addEvent({ 
+                                                            type: 'miss', 
+                                                            team: 'guest', 
+                                                            value: scoringFor.points,
+                                                            metadata: { shotType },
+                                                            description: `${game.guestTeamName} Miss (Team)` 
                                                         });
-                                                        setScoringFor(null);
-                                                    }}
-                                                    className="bg-slate-900/50 border border-slate-800 border-dashed p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-500 text-xs"
-                                                >
-                                                    Team Miss
-                                                </button>
-                                            ) : null}
-                                        </div>
+                                                    } else {
+                                                        updateGame({ guestScore: game.guestScore + scoringFor.points });
+                                                        addEvent({ 
+                                                            type: 'score', 
+                                                            team: 'guest', 
+                                                            value: scoringFor.points, 
+                                                            metadata: { shotType, points: scoringFor.points },
+                                                            player: game.guestTeamName, 
+                                                            description: `${game.guestTeamName} (Team)` 
+                                                        });
+                                                    }
+                                                    setScoringFor(null);
+                                                }}
+                                                className={cn(
+                                                    "bg-gradient-to-br active:scale-95 transition-all rounded-3xl p-12 flex flex-col items-center justify-center gap-4",
+                                                    scoringFor.isMiss 
+                                                        ? "from-slate-800 to-slate-900 border-2 border-dashed border-slate-700 shadow-none" 
+                                                        : "from-slate-700 to-slate-800 shadow-[0_0_40px_rgba(100,116,139,0.3)]"
+                                                )}
+                                            >
+                                                <div className={cn("text-6xl font-black", scoringFor.isMiss ? "text-slate-600" : "text-white")}>
+                                                    {scoringFor.isMiss ? '-' : '+'}{scoringFor.points}
+                                                </div>
+                                                <div className="text-2xl font-black uppercase tracking-wider text-slate-300">{game.guestTeamName}</div>
+                                                <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+                                                    {scoringFor.isMiss ? 'Team Miss' : 'Team Score'}
+                                                </div>
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -1207,43 +1315,74 @@ export default function ScorerPage() {
                                 )}>
                                     {foulingFor === 'home' ? (game?.homeTeamName || 'HOME') : (game?.guestTeamName || 'GUEST')}
                                 </h4>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    {game?.rosters
-                                        .filter(r => r.team === foulingFor && r.isActive)
-                                        .map(entry => (
-                                            <button
-                                                key={entry.id}
-                                                onClick={() => handlePlayerFoul(entry.id)}
-                                                className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col items-center hover:border-red-500 transition-all active:scale-95 group shadow-xl"
-                                            >
-                                                <div className="text-4xl font-black text-slate-500 group-hover:text-white mb-1 transition-colors">{entry.number}</div>
-                                                <div className="text-sm font-bold truncate w-full text-center group-hover:text-white transition-colors">{entry.name}</div>
-                                                <div className="mt-2 text-[10px] font-black text-slate-700 bg-slate-950 px-2 py-0.5 rounded uppercase group-hover:bg-red-500/10 group-hover:text-red-400 transition-all">
-                                                    {entry.fouls} Fouls
-                                                </div>
-                                            </button>
-                                        ))}
+                                
+                                {/* Show message if no players on team */}
+                                {(!game?.rosters || game.rosters.filter(r => r.team === foulingFor && r.isActive).length === 0) ? (
+                                    <div className="text-center py-8">
+                                        <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mb-4">No players on roster</p>
+                                        <button
+                                            onClick={() => {
+                                                if (!game || !foulingFor) return;
+                                                const updates = foulingFor === 'home'
+                                                    ? { homeFouls: game.homeFouls + 1 }
+                                                    : { guestFouls: game.guestFouls + 1 };
+                                                updateGame(updates);
+                                                addEvent({
+                                                    type: 'foul',
+                                                    team: foulingFor,
+                                                    player: game[foulingFor === 'home' ? 'homeTeamName' : 'guestTeamName'],
+                                                    description: `${game[foulingFor === 'home' ? 'homeTeamName' : 'guestTeamName']} (Team)`
+                                                });
+                                                setFoulingFor(null);
+                                            }}
+                                            className="bg-red-500/20 border border-red-500/50 hover:bg-red-500/30 hover:border-red-500 transition-all rounded-2xl p-8 flex flex-col items-center gap-2"
+                                        >
+                                            <ShieldAlert size={32} className="text-red-500" />
+                                            <div className="font-black uppercase tracking-widest text-red-500">Add Team Foul</div>
+                                            <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">{game?.[foulingFor === 'home' ? 'homeTeamName' : 'guestTeamName']}</div>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {game?.rosters
+                                            .filter(r => r.team === foulingFor && r.isActive)
+                                            .map(entry => (
+                                                <button
+                                                    key={entry.id}
+                                                    onClick={() => handlePlayerFoul(entry.id)}
+                                                    className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col items-center hover:border-red-500 transition-all active:scale-95 group shadow-xl"
+                                                >
+                                                    <div className="text-4xl font-black text-slate-500 group-hover:text-white mb-1 transition-colors">{entry.number}</div>
+                                                    <div className="text-sm font-bold truncate w-full text-center group-hover:text-white transition-colors">{entry.name}</div>
+                                                    <div className="mt-2 text-[10px] font-black text-slate-700 bg-slate-950 px-2 py-0.5 rounded uppercase group-hover:bg-red-500/10 group-hover:text-red-400 transition-all">
+                                                        {entry.fouls} Fouls
+                                                    </div>
+                                                </button>
+                                            ))}
 
-                                    <button
-                                        onClick={() => {
-                                            if (!game || !foulingFor) return;
-                                            const updates = foulingFor === 'home'
-                                                ? { homeFouls: game.homeFouls + 1 }
-                                                : { guestFouls: game.guestFouls + 1 };
-                                            updateGame(updates);
-                                            addEvent({
-                                                type: 'foul',
-                                                team: foulingFor,
-                                                description: 'Technical / Team Foul'
-                                            });
-                                            setFoulingFor(null);
-                                        }}
-                                        className="bg-slate-800 border-dashed border-2 border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-xs gap-1 hover:border-slate-500 hover:text-white transition-all active:scale-95 shadow-xl"
-                                    >
-                                        <div className="font-black uppercase">Technical</div>
-                                        <div className="opacity-50 text-[10px]">Team Foul</div>
-                                    </button>
-                                </div>
+                                        <button
+                                            onClick={() => {
+                                                if (!game || !foulingFor) return;
+                                                const updates = foulingFor === 'home'
+                                                    ? { homeFouls: game.homeFouls + 1 }
+                                                    : { guestFouls: game.guestFouls + 1 };
+                                                updateGame(updates);
+                                                addEvent({
+                                                    type: 'foul',
+                                                    team: foulingFor,
+                                                    player: game[foulingFor === 'home' ? 'homeTeamName' : 'guestTeamName'],
+                                                    description: `${game[foulingFor === 'home' ? 'homeTeamName' : 'guestTeamName']} (Team)`
+                                                });
+                                                setFoulingFor(null);
+                                            }}
+                                            className="bg-slate-800 border-dashed border-2 border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-xs gap-1 hover:border-slate-500 hover:text-white transition-all active:scale-95 shadow-xl"
+                                        >
+                                            <ShieldAlert size={20} />
+                                            <div className="font-black uppercase">Technical</div>
+                                            <div className="opacity-50 text-[10px]">Team Foul</div>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

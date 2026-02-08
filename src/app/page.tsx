@@ -69,10 +69,10 @@ export default function LandingPage() {
     const res = await fetch('/api/games', {
       method: 'POST',
       body: JSON.stringify({
-        homeTeamId: homeTeamId || null,
-        guestTeamId: guestTeamId || null,
-        homeTeamName: homeTeamId && homeTeamId !== 'adhoc' ? teams.find(t => t.id === homeTeamId)?.name : homeTeamName,
-        guestTeamName: guestTeamId && guestTeamId !== 'adhoc' ? teams.find(t => t.id === guestTeamId)?.name : guestTeamName,
+        homeTeamId: homeTeamId && homeTeamId !== 'adhoc' ? homeTeamId : null,
+        guestTeamId: guestTeamId && guestTeamId !== 'adhoc' ? guestTeamId : null,
+        homeTeamName: (homeTeamId && homeTeamId !== 'adhoc' ? teams.find(t => t.id === homeTeamId)?.name : homeTeamName) || 'Home',
+        guestTeamName: (guestTeamId && guestTeamId !== 'adhoc' ? teams.find(t => t.id === guestTeamId)?.name : guestTeamName) || 'Guest',
         mode,
         periodSeconds: isCustomTime ? Number(customMinutes) * 60 : Number(periodSeconds),
         totalPeriods: Number(totalPeriods),

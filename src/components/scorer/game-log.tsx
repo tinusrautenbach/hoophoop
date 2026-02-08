@@ -29,6 +29,7 @@ interface GameLogProps {
     onEdit?: (id: string) => void;
     limit?: number;
     onHeaderClick?: () => void;
+    hideHeader?: boolean;
 }
 
 const iconMap = {
@@ -50,37 +51,39 @@ const iconMap = {
     game_end: <Target size={14} className="text-red-500" />,
 };
 
-export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick }: GameLogProps) {
+export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick, hideHeader = false }: GameLogProps) {
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     const displayedEvents = limit ? events.slice(0, limit) : events;
 
     return (
         <div className="flex flex-col gap-1 p-2 bg-black/20 rounded-2xl border border-white/5">
-            <button
-                disabled={!onHeaderClick}
-                onClick={onHeaderClick}
-                className={cn(
-                    "flex items-center justify-between w-full px-2 py-1 transition-colors",
-                    onHeaderClick ? "hover:bg-white/5 rounded-lg text-left group" : "cursor-default"
-                )}
-            >
-                <div className="flex items-center gap-2">
-                    <h4 className="text-[10px] font-black text-slate-500 group-hover:text-slate-300 uppercase tracking-widest transition-colors">
-                        Game Log {events.length > 0 && `(${events.length})`}
-                    </h4>
-                    {limit && events.length > limit && (
-                        <span className="text-[8px] font-bold text-orange-500/60 uppercase tracking-tighter ring-1 ring-orange-500/20 px-1.5 rounded-full">Recent</span>
+            {!hideHeader && (
+                <button
+                    disabled={!onHeaderClick}
+                    onClick={onHeaderClick}
+                    className={cn(
+                        "flex items-center justify-between w-full px-2 py-1 transition-colors",
+                        onHeaderClick ? "hover:bg-white/5 rounded-lg text-left group" : "cursor-default"
                     )}
-                </div>
-                {onHeaderClick && (
-                    <div className="text-[8px] font-black text-orange-500 group-hover:text-orange-400 uppercase tracking-widest">
-                        View Full Log
+                >
+                    <div className="flex items-center gap-2">
+                        <h4 className="text-[10px] font-black text-slate-500 group-hover:text-slate-300 uppercase tracking-widest transition-colors">
+                            Game Log {events.length > 0 && `(${events.length})`}
+                        </h4>
+                        {limit && events.length > limit && (
+                            <span className="text-[8px] font-bold text-orange-500/60 uppercase tracking-tighter ring-1 ring-orange-500/20 px-1.5 rounded-full">Recent</span>
+                        )}
                     </div>
-                )}
-            </button>
+                    {onHeaderClick && (
+                        <div className="text-[8px] font-black text-orange-500 group-hover:text-orange-400 uppercase tracking-widest">
+                            View Full Log
+                        </div>
+                    )}
+                </button>
+            )}
 
-            <div className="flex flex-col gap-1 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar pb-2">
+            <div className="flex flex-col gap-1 overflow-y-auto pr-1 custom-scrollbar pb-2">
                 <AnimatePresence initial={false}>
                     {displayedEvents.map((event) => (
                         <motion.div

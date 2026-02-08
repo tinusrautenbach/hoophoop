@@ -19,7 +19,9 @@ vi.mock('@/db', () => ({
         },
         update: vi.fn(() => ({
             set: vi.fn(() => ({
-                where: vi.fn().mockResolvedValue([{ id: 'player-1' }]),
+                where: vi.fn().mockReturnValue({
+                    returning: vi.fn().mockResolvedValue([{ id: 'player-1' }]),
+                }),
             })),
         })),
     },

@@ -25,9 +25,11 @@ vi.mock('@/db', () => ({
             },
         },
         update: vi.fn(() => ({
-            set: vi.fn().mockReturnValue({
-                where: vi.fn().mockResolvedValue([mockTeam]),
-            }),
+            set: vi.fn(() => ({
+                where: vi.fn().mockReturnValue({
+                    returning: vi.fn().mockResolvedValue([mockTeam]),
+                }),
+            })),
         })),
     },
 }));
