@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from './route';
 import { db } from '@/db';
 import { games } from '@/db/schema';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
     db: {
@@ -15,11 +15,14 @@ vi.mock('@/db', () => ({
             teamMemberships: {
                 findMany: vi.fn(),
             },
+            games: {
+                findFirst: vi.fn(),
+            },
         },
     },
 }));
 
-vi.mock('@clerk/nextjs/server', () => ({
+vi.mock('@/lib/auth-server', () => ({
     auth: vi.fn(),
 }));
 
@@ -37,6 +40,7 @@ describe('Games API Route', () => {
                 returning: vi.fn().mockResolvedValue([mockGame]),
             }),
         });
+        (db.query.games.findFirst as any).mockResolvedValue(mockGame);
 
         const request = new Request('http://localhost/api/games', {
             method: 'POST',

@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { teams, athletes, teamMemberships } from '@/db/schema';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth-server';
 import { eq, and } from 'drizzle-orm';
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const teamId = params.id;
+    const { id: teamId } = await params;
 
     try {
         const members = await db.query.teamMemberships.findMany({
@@ -30,12 +30,12 @@ export async function GET(
 
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const teamId = params.id;
+    const { id: teamId } = await params;
 
     try {
         const body = await request.json();

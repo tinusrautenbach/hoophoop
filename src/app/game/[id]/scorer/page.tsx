@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/use-socket';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Clock, Users, ArrowLeft, RotateCcw, ShieldAlert, MoreHorizontal } from 'lucide-react';
+import {
+    Trophy, Clock, Users, ArrowLeft, RotateCcw, ShieldAlert,
+    MoreHorizontal, Share2, QrCode, Copy, Check, X, Target, Move, Timer
+} from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SimpleScorer } from '@/components/scorer/simple-scorer';
 import { AdvancedScorer } from '@/components/scorer/advanced-scorer';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
+import QRCode from 'react-qr-code';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -37,6 +41,9 @@ type Game = {
     totalPeriods: number;
     periodSeconds: number;
     clockSeconds: number;
+    homeTimeouts: number;
+    guestTimeouts: number;
+    totalTimeouts: number;
     possession: 'home' | 'guest' | null;
     mode: 'simple' | 'advanced';
     rosters: RosterEntry[];
@@ -49,23 +56,45 @@ export default function ScorerPage() {
 
     const [game, setGame] = useState<Game | null>(null);
     const [loading, setLoading] = useState(true);
-    const [scoringFor, setScoringFor] = useState<{ points: number, side?: 'home' | 'guest' } | null>(null);
+    const [scoringFor, setScoringFor] = useState<{ points: number, side?: 'home' | 'guest', isMiss?: boolean } | null>(null);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
+    const [isSubsOpen, setIsSubsOpen] = useState(false);
+    const [isTimeEditing, setIsTimeEditing] = useState(false);
+    const [tempTime, setTempTime] = useState<{ min: string, sec: string }>({ min: '10', sec: '00' });
     const [events, setEvents] = useState<GameEvent[]>([]);
+    const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
+    const [foulingFor, setFoulingFor] = useState<'home' | 'guest' | null>(null);
+    const [isTimeoutOpen, setIsTimeoutOpen] = useState(false);
+    const [isShareOpen, setIsShareOpen] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         fetch(`/api/games/${id}`)
             .then(res => res.json())
             .then(data => {
                 setGame(data);
+                if (data.events) {
+                    setEvents(data.events.map((e: any) => ({
+                        ...e,
+                        timestamp: new Date(e.createdAt || e.timestamp)
+                    })));
+                }
                 setLoading(false);
             });
     }, [id]);
 
     useEffect(() => {
         if (!socket) return;
-        socket.on('game-updated', (updatedGame: Game) => {
-            setGame(updatedGame);
+        socket.on('game-updated', (updates: Partial<Game>) => {
+            setGame(prev => prev ? { ...prev, ...updates } : null);
+        });
+        socket.on('event-added', (event: GameEvent) => {
+            // Convert string timestamp back to Date if needed
+            const newEvent = {
+                ...event,
+                timestamp: new Date(event.timestamp)
+            };
+            setEvents(prev => [newEvent, ...prev]);
         });
     }, [socket]);
 
@@ -94,23 +123,134 @@ export default function ScorerPage() {
         if (!isTimerRunning && game?.clockSeconds === 0) return;
         const newRunning = !isTimerRunning;
         setIsTimerRunning(newRunning);
-        if (!newRunning && game) {
-            // Sync with server when paused
-            updateGame({ clockSeconds: game.clockSeconds });
+
+        // Sync running state and clock with server
+        if (game) {
+            updateGame({
+                clockSeconds: game.clockSeconds,
+            });
+            // We also send a special signal for timer state
+            socket?.emit('update-game', {
+                gameId: id,
+                updates: { isTimerRunning: newRunning }
+            });
         }
     };
 
-    const handleScore = (points: number, side?: 'home' | 'guest') => {
-        setScoringFor({ points, side });
+    const handleScore = (points: number, side?: 'home' | 'guest', isMiss = false) => {
+        setScoringFor({ points, side, isMiss });
     };
 
-    const addEvent = (event: Omit<GameEvent, 'id' | 'timestamp'>) => {
-        const newEvent: GameEvent = {
-            ...event,
-            id: Math.random().toString(36).substr(2, 9),
-            timestamp: new Date(),
-        };
-        setEvents(prev => [newEvent, ...prev]);
+    const addEvent = async (event: Omit<GameEvent, 'id' | 'timestamp'>) => {
+        try {
+            const res = await fetch(`/api/games/${id}/events`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    ...event,
+                    clockAt: game?.clockSeconds,
+                    period: game?.currentPeriod
+                }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (res.ok) {
+                const persistedEvent = await res.json();
+                const newEvent: GameEvent = {
+                    ...persistedEvent,
+                    timestamp: new Date(persistedEvent.createdAt)
+                };
+                setEvents(prev => [newEvent, ...prev]);
+                socket?.emit('add-event', { gameId: id, event: newEvent });
+            }
+        } catch (error) {
+            console.error('Failed to save event:', error);
+        }
+    };
+
+    const deleteEvent = async (eventId: string) => {
+        try {
+            const res = await fetch(`/api/games/${id}/events?eventId=${eventId}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                setEvents(prev => prev.filter(e => e.id !== eventId));
+                socket?.emit('update-game', {
+                    gameId: id,
+                    updates: { deleteEventId: eventId }
+                });
+            }
+        } catch (error) {
+            console.error('Failed to delete event:', error);
+        }
+    };
+
+    const handleSaveEdit = (updatedEvent: GameEvent) => {
+        if (!game || !editingEvent) return;
+
+        let { homeScore, guestScore, homeFouls, guestFouls, rosters } = game;
+
+        // 1. Revert Old Event Effects
+        if (editingEvent.type === 'score' && editingEvent.value) {
+            if (editingEvent.team === 'home') homeScore -= editingEvent.value;
+            else guestScore -= editingEvent.value;
+
+            rosters = rosters.map(r =>
+                r.name === editingEvent.player ? { ...r, points: r.points - (editingEvent.value || 0) } : r
+            );
+        } else if (editingEvent.type === 'foul') {
+            if (editingEvent.team === 'home') {
+                homeFouls = Math.max(0, homeFouls - 1);
+                rosters = rosters.map(r => r.name === editingEvent.player ? { ...r, fouls: r.fouls - 1 } : r);
+            } else {
+                guestFouls = Math.max(0, guestFouls - 1);
+                rosters = rosters.map(r => r.name === editingEvent.player ? { ...r, fouls: r.fouls - 1 } : r);
+            }
+        }
+
+        // 2. Apply New Event Effects
+        if (updatedEvent.type === 'score' && updatedEvent.value) {
+            if (updatedEvent.team === 'home') homeScore += updatedEvent.value;
+            else guestScore += updatedEvent.value;
+
+            rosters = rosters.map(r =>
+                r.name === updatedEvent.player ? { ...r, points: r.points + (updatedEvent.value || 0) } : r
+            );
+        } else if (updatedEvent.type === 'foul') {
+            if (updatedEvent.team === 'home') {
+                homeFouls += 1;
+                rosters = rosters.map(r => r.name === updatedEvent.player ? { ...r, fouls: r.fouls + 1 } : r);
+            } else {
+                guestFouls += 1;
+                rosters = rosters.map(r => r.name === updatedEvent.player ? { ...r, fouls: r.fouls + 1 } : r);
+            }
+        }
+
+        // 3. Update States
+        updateGame({
+            homeScore,
+            guestScore,
+            homeFouls,
+            guestFouls,
+            rosters
+        });
+
+        setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+
+        // Broadcast Event Update
+        socket?.emit('update-game', {
+            gameId: id,
+            updates: { updatedEvent }
+        });
+
+        // Persist Event Update to DB
+        fetch(`/api/games/${id}/events`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedEvent)
+        }).catch(err => console.error('Failed to persist event update:', err));
+
+        setEditingEvent(null);
     };
 
     const handlePlayerScore = (rosterEntryId: string) => {
@@ -118,6 +258,18 @@ export default function ScorerPage() {
 
         const player = game.rosters.find(r => r.id === rosterEntryId);
         if (!player) return;
+
+        if (scoringFor.isMiss) {
+            addEvent({
+                type: 'miss',
+                team: player.team,
+                player: player.name,
+                value: scoringFor.points,
+                description: `${player.name} Missed ${scoringFor.points === 1 ? 'Free Throw' : scoringFor.points === 3 ? '3PT' : 'FG'}`
+            });
+            setScoringFor(null);
+            return;
+        }
 
         const updatedRosters = game.rosters.map(r =>
             r.id === rosterEntryId ? { ...r, points: r.points + scoringFor.points } : r
@@ -143,27 +295,89 @@ export default function ScorerPage() {
     };
 
     const handleFoul = (side: 'home' | 'guest') => {
-        if (!game) return;
-        const updates = side === 'home'
+        setFoulingFor(side);
+    };
+
+    const handlePlayerFoul = (rosterEntryId: string) => {
+        if (!foulingFor || !game) return;
+
+        const player = game.rosters.find(r => r.id === rosterEntryId);
+        if (!player) return;
+
+        const updatedRosters = game.rosters.map(r =>
+            r.id === rosterEntryId ? { ...r, fouls: r.fouls + 1 } : r
+        );
+
+        const foulUpdate = foulingFor === 'home'
             ? { homeFouls: game.homeFouls + 1 }
             : { guestFouls: game.guestFouls + 1 };
-        updateGame(updates);
+
+        updateGame({
+            ...foulUpdate,
+            rosters: updatedRosters
+        });
+
         addEvent({
             type: 'foul',
-            team: side,
+            team: foulingFor,
+            player: player.name,
         });
+
+        setFoulingFor(null);
+    };
+
+    const handleTimeout = (side?: 'home' | 'guest') => {
+        if (!game) return;
+        if (!side) {
+            setIsTimeoutOpen(true);
+            return;
+        }
+
+        const currentAvailable = game[side === 'home' ? 'homeTimeouts' : 'guestTimeouts'];
+        if (currentAvailable <= 0) return;
+
+        const updates = side === 'home'
+            ? { homeTimeouts: game.homeTimeouts - 1 }
+            : { guestTimeouts: game.guestTimeouts - 1 };
+
+        updateGame(updates);
+        addEvent({
+            type: 'timeout',
+            team: side,
+            description: `${side === 'home' ? game.homeTeamName : game.guestTeamName} Timeout`,
+        });
+
+        // Auto-stop timer on timeout
+        if (isTimerRunning) setIsTimerRunning(false);
+        setIsTimeoutOpen(false);
+    };
+
+    const handleSub = () => {
+        setIsSubsOpen(true);
     };
 
     const nextPeriod = () => {
         if (!game) return;
-        if (game.currentPeriod >= game.totalPeriods) return; // Game over logic handled elsewhere or just stop
+        // Allow unlimited periods for OT
 
         updateGame({
             currentPeriod: game.currentPeriod + 1,
             homeFouls: 0,
             guestFouls: 0,
-            clockSeconds: game.periodSeconds,
+            clockSeconds: game.periodSeconds || 600,
         });
+
+        // Log period start event
+        addEvent({
+            type: 'period_start',
+            team: 'home', // defaulting to home for system event owner
+            player: 'System',
+            value: 0,
+            description: `Start of Period ${game.currentPeriod + 1}`,
+            period: game.currentPeriod + 1,
+            clockAt: game.periodSeconds || 600
+        });
+
         setIsTimerRunning(false);
     };
 
@@ -174,11 +388,21 @@ export default function ScorerPage() {
         });
     };
 
-    const updateGame = (updates: Partial<Game>) => {
+    const updateGame = (updates: Partial<Game> & { isTimerRunning?: boolean }) => {
         if (!socket || !game) return;
         const newState = { ...game, ...updates };
         setGame(newState);
         socket.emit('update-game', { gameId: id, updates });
+
+        // Persist to DB (extract only valid game fields)
+        const { isTimerRunning, ...persistedUpdates } = updates;
+        if (Object.keys(persistedUpdates).length > 0) {
+            fetch(`/api/games/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(persistedUpdates),
+            }).catch(err => console.error('Failed to persist game update:', err));
+        }
     };
 
     const formatTime = (seconds: number) => {
@@ -190,76 +414,360 @@ export default function ScorerPage() {
     if (loading || !game) return <div className="p-8 text-center text-slate-500 italic">Entering Arena...</div>;
 
     return (
-        <div className="fixed inset-0 bg-slate-950 flex flex-col font-sans select-none touch-none overflow-hidden">
+        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col font-sans select-none touch-none overflow-hidden">
             {/* Top Header - THE DISPLAY */}
-            <div className="bg-black/40 border-b border-slate-800 p-4 flex items-center justify-between">
-                <button onClick={() => router.back()} className="p-2 text-slate-500 hover:text-white">
+            <div className="bg-black/40 border-b border-slate-800 p-2 landscape:p-1 flex items-center justify-between shrink-0">
+                <button onClick={() => router.back()} className="p-2 text-slate-500 hover:text-white landscape:p-1">
                     <ArrowLeft size={20} />
                 </button>
 
-                <div className="flex flex-col items-center">
-                    <button
-                        onClick={nextPeriod}
-                        className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1 flex items-center gap-1 hover:text-white transition-colors"
-                    >
-                        <div className={cn("w-2 h-2 rounded-full", isConnected ? "bg-green-500" : "bg-red-500")} />
-                        Period {game.currentPeriod} / {game.totalPeriods}
-                    </button>
-                    <div className="font-mono text-4xl text-orange-500 tracking-tighter leading-none">
-                        {formatTime(game.clockSeconds)}
+                <div className="flex items-center gap-4 landscape:gap-8">
+                    {/* Home Score (Landscape only) */}
+                    <div className="hidden landscape:flex flex-col items-center">
+                        <div className="text-[8px] font-black uppercase text-orange-500/60 leading-none mb-1">{game.homeTeamName}</div>
+                        <div className="text-3xl font-black font-mono leading-none">{game.homeScore}</div>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                        <button
+                            onClick={nextPeriod}
+                            className="text-[10px] landscape:text-[8px] uppercase tracking-widest text-slate-500 font-bold mb-0.5 flex items-center gap-1 hover:text-white transition-colors"
+                        >
+                            <div className={cn("w-2 h-2 landscape:w-1.5 landscape:h-1.5 rounded-full", isConnected ? "bg-green-500" : "bg-red-500")} />
+                            P{game.currentPeriod}
+                        </button>
+                        <button
+                            onClick={() => {
+                                const mins = Math.floor(game.clockSeconds / 60);
+                                const secs = game.clockSeconds % 60;
+                                setTempTime({ min: mins.toString(), sec: secs.toString().padStart(2, '0') });
+                                setIsTimeEditing(true);
+                            }}
+                            className="font-mono text-4xl landscape:text-3xl text-orange-500 tracking-tighter leading-none hover:text-white transition-colors"
+                        >
+                            {formatTime(game.clockSeconds)}
+                        </button>
+                    </div>
+
+                    {/* Guest Score (Landscape only) */}
+                    <div className="hidden landscape:flex flex-col items-center">
+                        <div className="text-[8px] font-black uppercase text-slate-500 leading-none mb-1">{game.guestTeamName}</div>
+                        <div className="text-3xl font-black font-mono leading-none">{game.guestScore}</div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => setIsShareOpen(true)}
+                        className="p-2 text-slate-500 hover:text-orange-500 transition-colors landscape:p-1"
+                        title="Share Scoreboard"
+                    >
+                        <QrCode size={18} />
+                    </button>
                     <button
                         onClick={togglePossession}
-                        className="p-2 text-slate-500 hover:text-white"
+                        className="p-2 text-slate-500 hover:text-white landscape:p-1"
                         title="Toggle Possession"
                     >
-                        <RotateCcw size={20} className={cn(game.possession === 'home' && "text-orange-500 rotate-180", game.possession === 'guest' && "text-slate-300")} />
-                    </button>
-                    <button className="p-2 text-slate-500 hover:text-white">
-                        <MoreHorizontal size={20} />
+                        <RotateCcw size={18} className={cn(game.possession === 'home' && "text-orange-500 rotate-180", game.possession === 'guest' && "text-slate-300")} />
                     </button>
                 </div>
             </div>
 
 
-            {/* Main Scoring Area */}
-            {game.mode === 'advanced' ? (
-                <AdvancedScorer
-                    game={game}
-                    updateGame={updateGame}
-                    handleScore={handleScore}
-                />
-            ) : (
-                <SimpleScorer
-                    game={game}
-                    handleScore={handleScore}
-                    handleFoul={handleFoul}
-                />
-            )}
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col landscape:flex-row overflow-hidden">
+                {/* PORTRAIT VIEW */}
+                <div className="flex flex-col flex-1 landscape:hidden overflow-hidden">
+                    {/* Main Scoring Area */}
+                    <div className="flex-1 overflow-y-auto">
+                        {game.mode === 'advanced' ? (
+                            <AdvancedScorer
+                                game={game}
+                                updateGame={updateGame}
+                                handleScore={handleScore}
+                                addEvent={addEvent}
+                            />
+                        ) : (
+                            <SimpleScorer
+                                game={game}
+                                handleScore={handleScore}
+                                handleFoul={handleFoul}
+                            />
+                        )}
+                    </div>
 
-            {/* Game Log - Compact Feed at Bottom */}
-            <div className="px-4 py-2 border-t border-white/5 bg-slate-900/40">
-                <GameLog events={events} />
+                    {/* Game Log - Scrollable at Bottom */}
+                    <div className="px-4 py-2 border-t border-white/5 bg-slate-900/40">
+                        <GameLog
+                            events={events}
+                            limit={5}
+                            onHeaderClick={() => router.push(`/game/${id}/scorer/log`)}
+                            onDelete={deleteEvent}
+                            onEdit={(id) => setEditingEvent(events.find(e => e.id === id) || null)}
+                        />
+                    </div>
+
+                    {/* Bottom Controls (Portrait) */}
+                    <div className="h-20 bg-slate-900 border-t border-slate-800 grid grid-cols-3 gap-1 p-1 shrink-0">
+                        <button
+                            onClick={() => handleTimeout()}
+                            className="bg-slate-800/50 rounded-xl font-bold text-[10px] uppercase text-slate-400 flex flex-col items-center justify-center hover:bg-slate-800 transition-colors"
+                        >
+                            <div className="flex gap-1 mb-1">
+                                {Array.from({ length: game.totalTimeouts }).map((_, i) => (
+                                    <div key={i} className={cn("w-3 h-1 rounded-full", i < game.homeTimeouts ? "bg-orange-500" : "bg-slate-700")} />
+                                ))}
+                            </div>
+                            Timeouts
+                        </button>
+                        <button
+                            onClick={toggleTimer}
+                            className={cn(
+                                "rounded-xl font-black text-xl flex flex-col items-center justify-center transition-all",
+                                isTimerRunning ? "bg-red-600 shadow-[0_0_20px_rgba(220,38,38,0.4)]" : "bg-emerald-600 shadow-[0_0_20px_rgba(16,185,129,0.4)]"
+                            )}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Clock fill="currentColor" size={20} className={cn(isTimerRunning && "animate-pulse")} />
+                                <span className="text-sm">{isTimerRunning ? 'STOP' : 'START'}</span>
+                            </div>
+                        </button>
+                        <button
+                            onClick={handleSub}
+                            className="bg-slate-800/50 rounded-xl font-bold text-[10px] uppercase text-slate-400 flex flex-col items-center justify-center hover:bg-slate-800 transition-colors"
+                        >
+                            <Users size={16} className="mb-1" />
+                            Subs
+                        </button>
+                    </div>
+                </div>
+
+                {/* LANDSCAPE VIEW (3 Columns) */}
+                <div className="hidden landscape:grid grid-cols-[1fr_1.5fr_1fr] flex-1 overflow-hidden p-2 gap-2">
+                    {/* LEFT THIRD: SCORING */}
+                    <div className="grid grid-rows-3 gap-2 h-full">
+                        <div className="grid grid-cols-[1fr_0.6fr] gap-2">
+                            <button
+                                onClick={() => handleScore(3)}
+                                className="bg-orange-600/10 border border-orange-500/20 rounded-2xl flex flex-col items-center justify-center hover:bg-orange-600/20 active:scale-95 transition-all group"
+                            >
+                                <span className="text-4xl font-black text-orange-500 group-hover:scale-110 transition-transform">+3</span>
+                                <span className="text-[8px] uppercase font-black tracking-[0.2em] text-orange-500/50">Three Pointer</span>
+                            </button>
+                            <button
+                                onClick={() => handleScore(3, undefined, true)}
+                                className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all group opacity-60 hover:opacity-100"
+                            >
+                                <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-3</span>
+                                <span className="text-[7px] uppercase font-black tracking-widest text-slate-600">Miss</span>
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-[1fr_0.6fr] gap-2">
+                            <button
+                                onClick={() => handleScore(2)}
+                                className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all group"
+                            >
+                                <span className="text-4xl font-black text-slate-200 group-hover:scale-110 transition-transform">+2</span>
+                                <span className="text-[8px] uppercase font-black tracking-[0.2em] text-slate-500">Field Goal</span>
+                            </button>
+                            <button
+                                onClick={() => handleScore(2, undefined, true)}
+                                className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all group opacity-60 hover:opacity-100"
+                            >
+                                <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-2</span>
+                                <span className="text-[7px] uppercase font-black tracking-widest text-slate-600">Miss</span>
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-[1fr_0.6fr] gap-2">
+                            <button
+                                onClick={() => handleScore(1)}
+                                className="bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all group"
+                            >
+                                <span className="text-3xl font-black text-slate-400 group-hover:scale-110 transition-transform">+1</span>
+                                <span className="text-[8px] uppercase font-black tracking-[0.2em] text-slate-600">Free Throw</span>
+                            </button>
+                            <button
+                                onClick={() => handleScore(1, undefined, true)}
+                                className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all group opacity-60 hover:opacity-100"
+                            >
+                                <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-1</span>
+                                <span className="text-[7px] uppercase font-black tracking-widest text-slate-600">Miss</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* MIDDLE THIRD: GAME LOG */}
+                    <div className="flex flex-col h-full bg-black/20 rounded-2xl border border-white/5 overflow-hidden">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-1">
+                            <GameLog
+                                events={events}
+                                limit={5}
+                                onHeaderClick={() => router.push(`/game/${id}/scorer/log`)}
+                                onDelete={deleteEvent}
+                                onEdit={(id) => setEditingEvent(events.find(e => e.id === id) || null)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* RIGHT THIRD: FOULS / SUBS / TIMER */}
+                    <div className="flex flex-col gap-2">
+                        {/* Fouls Split */}
+                        <div className="grid grid-cols-2 gap-2 h-16">
+                            <button
+                                onClick={() => handleFoul('home')}
+                                className="bg-red-950/20 border border-red-500/20 rounded-xl flex flex-col items-center justify-center hover:bg-red-900/40 active:scale-95 transition-all"
+                            >
+                                <span className="text-[9px] font-black uppercase text-red-500">Home Foul</span>
+                                <div className="text-xs font-mono font-black text-red-400">{game.homeFouls}</div>
+                            </button>
+                            <button
+                                onClick={() => handleFoul('guest')}
+                                className="bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all"
+                            >
+                                <span className="text-[9px] font-black uppercase text-slate-500 text-center leading-tight px-1">Guest Foul</span>
+                                <div className="text-xs font-mono font-black text-slate-300">{game.guestFouls}</div>
+                            </button>
+                        </div>
+
+                        {/* Sub & Timeout */}
+                        <div className="grid grid-cols-2 gap-2 h-14">
+                            <button
+                                onClick={handleSub}
+                                className="bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all"
+                            >
+                                <Users size={14} className="text-slate-500 mb-0.5" />
+                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Subs</span>
+                            </button>
+                            <button
+                                onClick={() => handleTimeout()}
+                                className="bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all"
+                            >
+                                <div className="flex gap-0.5 mb-1">
+                                    {Array.from({ length: game.totalTimeouts }).map((_, i) => (
+                                        <div key={i} className={cn("w-2 h-0.5 rounded-full", i < game.homeTimeouts ? "bg-orange-500" : "bg-slate-700")} />
+                                    ))}
+                                </div>
+                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">TO</span>
+                            </button>
+                        </div>
+
+                        {/* Timer Control - LARGE */}
+                        <button
+                            onClick={toggleTimer}
+                            className={cn(
+                                "flex-1 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-95 shadow-xl",
+                                isTimerRunning ? "bg-red-600 shadow-red-900/20" : "bg-emerald-600 shadow-emerald-900/20"
+                            )}
+                        >
+                            <Clock size={24} className={cn("text-white mb-1", isTimerRunning && "animate-pulse")} fill="currentColor" />
+                            <span className="text-[10px] font-black tracking-widest uppercase text-white">{isTimerRunning ? 'PAUSE' : 'RESUME'}</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            {/* Bottom Controls */}
-            <div className="h-20 bg-slate-900 border-t border-slate-800 grid grid-cols-3 gap-1 p-1">
-                <button className="bg-slate-800/50 rounded-xl font-bold text-xs uppercase text-slate-400">Timeouts</button>
-                <button
-                    onClick={toggleTimer}
-                    className={cn(
-                        "rounded-xl font-black text-xl flex items-center justify-center gap-2 transition-all",
-                        isTimerRunning ? "bg-red-600 shadow-[0_0_20px_rgba(220,38,38,0.4)]" : "bg-orange-600 shadow-[0_0_20px_rgba(234,88,12,0.4)]"
-                    )}
-                >
-                    <Clock fill="currentColor" size={24} className={cn(isTimerRunning && "animate-pulse")} />
-                    {isTimerRunning ? 'STOP' : 'START'}
-                </button>
-                <button className="bg-slate-800/50 rounded-xl font-bold text-xs uppercase text-slate-400">Subs</button>
-            </div>
+            {/* Subs Overlay */}
+            <AnimatePresence>
+                {isSubsOpen && game && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl p-6 flex flex-col"
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-black uppercase tracking-tight">Substitution Manager</h3>
+                            <button onClick={() => setIsSubsOpen(false)} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-full">
+                                <ArrowLeft size={20} className="rotate-90" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-8 pb-20">
+                            {/* Home Team Subs */}
+                            <div className="space-y-4">
+                                <h4 className="text-xs font-black text-orange-500 uppercase tracking-widest px-2">{game.homeTeamName}</h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    {game.rosters.filter(r => r.team === 'home').map(player => (
+                                        <button
+                                            key={player.id}
+                                            onClick={() => {
+                                                const updatedRosters = game.rosters.map(r =>
+                                                    r.id === player.id ? { ...r, isActive: !r.isActive } : r
+                                                );
+                                                updateGame({ rosters: updatedRosters });
+                                                addEvent({
+                                                    type: 'sub',
+                                                    team: 'home',
+                                                    player: player.name,
+                                                    description: `${player.name} ${player.isActive ? 'Benched' : 'In'}`
+                                                });
+                                            }}
+                                            className={cn(
+                                                "p-3 rounded-2xl border transition-all flex flex-col items-center gap-1",
+                                                player.isActive
+                                                    ? "bg-orange-500/20 border-orange-500 text-orange-100"
+                                                    : "bg-slate-900 border-slate-800 text-slate-500"
+                                            )}
+                                        >
+                                            <div className="text-xl font-black leading-none">{player.number}</div>
+                                            <div className="text-[10px] font-bold truncate w-full text-center">{player.name}</div>
+                                            <div className="text-[8px] uppercase tracking-tighter opacity-70">
+                                                {player.isActive ? 'ACTIVE' : 'BENCH'}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Guest Team Subs */}
+                            <div className="space-y-4">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">{game.guestTeamName}</h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    {game.rosters.filter(r => r.team === 'guest').map(player => (
+                                        <button
+                                            key={player.id}
+                                            onClick={() => {
+                                                const updatedRosters = game.rosters.map(r =>
+                                                    r.id === player.id ? { ...r, isActive: !r.isActive } : r
+                                                );
+                                                updateGame({ rosters: updatedRosters });
+                                                addEvent({
+                                                    type: 'sub',
+                                                    team: 'guest',
+                                                    player: player.name,
+                                                    description: `${player.name} ${player.isActive ? 'Benched' : 'In'}`
+                                                });
+                                            }}
+                                            className={cn(
+                                                "p-3 rounded-2xl border transition-all flex flex-col items-center gap-1",
+                                                player.isActive
+                                                    ? "bg-slate-100 border-white text-slate-950"
+                                                    : "bg-slate-900 border-slate-800 text-slate-500"
+                                            )}
+                                        >
+                                            <div className="text-xl font-black leading-none">{player.number}</div>
+                                            <div className="text-[10px] font-bold truncate w-full text-center">{player.name}</div>
+                                            <div className="text-[8px] uppercase tracking-tighter opacity-70">
+                                                {player.isActive ? 'ACTIVE' : 'BENCH'}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setIsSubsOpen(false)}
+                            className="bg-orange-600 font-black py-4 rounded-2xl shadow-xl shadow-orange-600/20"
+                        >
+                            DONE
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Roster Selection Overlay (for Simple Mode Home Team or Advanced Mode Both) */}
             <AnimatePresence>
@@ -272,79 +780,529 @@ export default function ScorerPage() {
                     >
                         <div className="flex justify-between items-center mb-8">
                             <h3 className="text-3xl font-black flex items-center gap-3">
-                                <span className="text-orange-500">+{scoringFor.points}</span>
-                                WHO SCORED?
+                                <span className={cn(scoringFor.isMiss ? "text-slate-500" : "text-orange-500")}>
+                                    {scoringFor.isMiss ? '-' : '+'}{scoringFor.points}
+                                </span>
+                                {scoringFor.isMiss ? 'WHO MISSED?' : (game.rosters && game.rosters.length > 0 ? 'WHO SCORED?' : 'WHICH TEAM?')}
                             </h3>
-                            <button onClick={() => setScoringFor(null)} className="p-4 text-slate-400 hover:text-white">Cancel</button>
+                            <button onClick={() => setScoringFor(null)} className="p-4 text-slate-400 hover:text-white bg-slate-800 rounded-full transition-all active:scale-95">
+                                <X size={20} />
+                            </button>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto pb-12">
-                            {/* Home Side */}
-                            {(!scoringFor.side || scoringFor.side === 'home') && (
-                                <div className="space-y-4">
-                                    <h4 className="text-sm font-black text-orange-500 uppercase tracking-widest px-2">
-                                        {game.homeTeamName}
-                                    </h4>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {game.rosters
-                                            .filter(r => r.team === 'home')
-                                            .map(entry => (
+                        {/* If no rosters, show simple team selection */}
+                        {(!game.rosters || game.rosters.length === 0) ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <button
+                                    onClick={() => {
+                                        updateGame({ homeScore: game.homeScore + scoringFor.points });
+                                        addEvent({ type: 'score', team: 'home', value: scoringFor.points });
+                                        setScoringFor(null);
+                                    }}
+                                    className="bg-gradient-to-br from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 active:scale-95 transition-all rounded-3xl p-12 flex flex-col items-center justify-center gap-4 shadow-[0_0_40px_rgba(234,88,12,0.3)]"
+                                >
+                                    <div className="text-6xl font-black">+{scoringFor.points}</div>
+                                    <div className="text-2xl font-black uppercase tracking-wider">{game.homeTeamName}</div>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        updateGame({ guestScore: game.guestScore + scoringFor.points });
+                                        addEvent({ type: 'score', team: 'guest', value: scoringFor.points });
+                                        setScoringFor(null);
+                                    }}
+                                    className="bg-gradient-to-br from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 active:scale-95 transition-all rounded-3xl p-12 flex flex-col items-center justify-center gap-4 shadow-[0_0_40px_rgba(100,116,139,0.3)]"
+                                >
+                                    <div className="text-6xl font-black">+{scoringFor.points}</div>
+                                    <div className="text-2xl font-black uppercase tracking-wider text-slate-300">{game.guestTeamName}</div>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto pb-12">
+                                {/* Home Side */}
+                                {(!scoringFor.side || scoringFor.side === 'home') && (
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-black text-orange-500 uppercase tracking-widest px-2">
+                                            {game.homeTeamName}
+                                        </h4>
+                                        <div className={cn("grid gap-2", scoringFor.isMiss ? "grid-cols-2" : "grid-cols-3")}>
+                                            {game.rosters
+                                                .filter(r => r.team === 'home' && r.isActive)
+                                                .slice(0, scoringFor.isMiss ? 5 : 99)
+                                                .map(entry => (
+                                                    <button
+                                                        key={entry.id}
+                                                        onClick={() => handlePlayerScore(entry.id)}
+                                                        className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center hover:border-orange-500 transition-all active:scale-95 group"
+                                                    >
+                                                        <div className="text-2xl font-black text-slate-500 group-hover:text-orange-500 mb-1">{entry.number}</div>
+                                                        <div className="text-[10px] font-bold truncate w-full text-center">{entry.name}</div>
+                                                    </button>
+                                                ))}
+                                            {scoringFor.isMiss ? (
                                                 <button
-                                                    key={entry.id}
-                                                    onClick={() => handlePlayerScore(entry.id)}
-                                                    className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center hover:border-orange-500 transition-colors group"
+                                                    onClick={() => {
+                                                        addEvent({
+                                                            type: 'miss',
+                                                            team: 'guest',
+                                                            description: `${game.guestTeamName} Missed ${scoringFor.points === 1 ? 'Free Throw' : scoringFor.points === 3 ? '3PT' : 'FG'}`
+                                                        });
+                                                        setScoringFor(null);
+                                                    }}
+                                                    className="bg-slate-800 border-2 border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center text-center hover:border-white transition-all active:scale-95"
                                                 >
-                                                    <div className="text-2xl font-black text-slate-500 group-hover:text-orange-500 mb-1">{entry.number}</div>
-                                                    <div className="text-xs font-bold truncate w-full text-center">{entry.name}</div>
+                                                    <div className="text-[10px] font-black uppercase text-slate-400 leading-tight">{game.guestTeamName}</div>
+                                                    <div className="text-[8px] font-bold text-slate-600 uppercase mt-0.5">Other Team Miss</div>
                                                 </button>
-                                            ))}
-                                        <button
-                                            onClick={() => {
-                                                updateGame({ homeScore: game.homeScore + scoringFor.points });
-                                                addEvent({ type: 'score', team: 'home', value: scoringFor.points });
-                                                setScoringFor(null);
-                                            }}
-                                            className="bg-slate-800 border-dashed border-2 border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-xs"
-                                        >
-                                            Team Score
-                                        </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => {
+                                                        updateGame({ homeScore: game.homeScore + scoringFor.points });
+                                                        addEvent({ type: 'score', team: 'home', value: scoringFor.points });
+                                                        setScoringFor(null);
+                                                    }}
+                                                    className="bg-slate-800/50 border-dashed border-2 border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-[10px] hover:border-slate-500 hover:text-white transition-all active:scale-95"
+                                                >
+                                                    <div className="font-black uppercase">Team</div>
+                                                    <div className="opacity-50">Score</div>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Guest Side */}
+                                {(!scoringFor.side || scoringFor.side === 'guest') && (
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest px-2 text-right">
+                                            {game.guestTeamName}
+                                        </h4>
+                                        <div className={cn("grid gap-2", scoringFor.isMiss ? "grid-cols-2" : "grid-cols-3")}>
+                                            {game.rosters
+                                                .filter(r => r.team === 'guest' && r.isActive)
+                                                .slice(0, scoringFor.isMiss ? 5 : 99)
+                                                .map(entry => (
+                                                    <button
+                                                        key={entry.id}
+                                                        onClick={() => handlePlayerScore(entry.id)}
+                                                        className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center hover:border-white transition-all active:scale-95 group"
+                                                    >
+                                                        <div className="text-2xl font-black text-slate-500 group-hover:text-white mb-1">{entry.number}</div>
+                                                        <div className="text-[10px] font-bold truncate w-full text-center text-slate-400 group-hover:text-white">{entry.name}</div>
+                                                    </button>
+                                                ))}
+                                            {scoringFor.isMiss ? (
+                                                <button
+                                                    onClick={() => {
+                                                        addEvent({
+                                                            type: 'miss',
+                                                            team: 'home',
+                                                            description: `${game.homeTeamName} Missed ${scoringFor.points === 1 ? 'Free Throw' : scoringFor.points === 3 ? '3PT' : 'FG'}`
+                                                        });
+                                                        setScoringFor(null);
+                                                    }}
+                                                    className="bg-slate-800 border-2 border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center text-center hover:border-white transition-all active:scale-95"
+                                                >
+                                                    <div className="text-[10px] font-black uppercase text-slate-400 leading-tight">{game.homeTeamName}</div>
+                                                    <div className="text-[8px] font-bold text-slate-600 uppercase mt-0.5">Other Team Miss</div>
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => {
+                                                        updateGame({ guestScore: game.guestScore + scoringFor.points });
+                                                        addEvent({ type: 'score', team: 'guest', value: scoringFor.points });
+                                                        setScoringFor(null);
+                                                    }}
+                                                    className="bg-slate-800/50 border-dashed border-2 border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-[10px] hover:border-slate-500 hover:text-white transition-all active:scale-95"
+                                                >
+                                                    <div className="font-black uppercase text-center">Team</div>
+                                                    <div className="opacity-50">Score</div>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Event Overlay */}
+            <AnimatePresence>
+                {editingEvent && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="fixed inset-0 z-[110] bg-slate-950/95 backdrop-blur-xl p-6 flex flex-col"
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-black uppercase tracking-tight flex items-center gap-2">
+                                <Target size={24} className="text-orange-500" />
+                                Edit Action
+                            </h3>
+                            <button onClick={() => setEditingEvent(null)} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-full">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-8 pb-20">
+                            {/* Player Reassignment */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2">Assigned Player</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    {game.rosters
+                                        .filter(r => r.team === editingEvent.team)
+                                        .map(player => (
+                                            <button
+                                                key={player.id}
+                                                onClick={() => setEditingEvent({ ...editingEvent, player: player.name })}
+                                                className={cn(
+                                                    "p-3 rounded-2xl border transition-all flex flex-col items-center gap-1",
+                                                    editingEvent.player === player.name
+                                                        ? "bg-orange-500/20 border-orange-500 text-orange-100"
+                                                        : "bg-slate-900 border-slate-800 text-slate-500"
+                                                )}
+                                            >
+                                                <div className="text-xl font-black leading-none">{player.number}</div>
+                                                <div className="text-[10px] font-bold truncate w-full text-center">{player.name}</div>
+                                            </button>
+                                        ))}
+                                </div>
+                            </div>
+
+                            {/* Point Value (if score) */}
+                            {editingEvent.type === 'score' && (
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2">Points</label>
+                                    <div className="flex gap-2">
+                                        {[1, 2, 3].map(val => (
+                                            <button
+                                                key={val}
+                                                onClick={() => setEditingEvent({ ...editingEvent, value: val })}
+                                                className={cn(
+                                                    "flex-1 py-4 rounded-2xl border-2 font-black transition-all",
+                                                    editingEvent.value === val
+                                                        ? "border-orange-500 bg-orange-500 text-white"
+                                                        : "border-slate-800 bg-slate-900 text-slate-500"
+                                                )}
+                                            >
+                                                +{val}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             )}
 
-                            {/* Guest Side */}
-                            {(!scoringFor.side || scoringFor.side === 'guest') && (
-                                <div className="space-y-4">
-                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest px-2 text-right">
-                                        {game.guestTeamName}
-                                    </h4>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {game.rosters
-                                            .filter(r => r.team === 'guest')
-                                            .map(entry => (
-                                                <button
-                                                    key={entry.id}
-                                                    onClick={() => handlePlayerScore(entry.id)}
-                                                    className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center hover:border-slate-400 transition-colors group"
-                                                >
-                                                    <div className="text-2xl font-black text-slate-500 group-hover:text-white mb-1">{entry.number}</div>
-                                                    <div className="text-xs font-bold truncate w-full text-center text-slate-400">{entry.name}</div>
-                                                </button>
-                                            ))}
-                                        <button
-                                            onClick={() => {
-                                                updateGame({ guestScore: game.guestScore + scoringFor.points });
-                                                addEvent({ type: 'score', team: 'guest', value: scoringFor.points });
-                                                setScoringFor(null);
-                                            }}
-                                            className="bg-slate-800 border-dashed border-2 border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-xs"
-                                        >
-                                            Team Score
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                            {/* Description/Notes */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2">Notes</label>
+                                <input
+                                    type="text"
+                                    value={editingEvent.description || ''}
+                                    onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+                                    placeholder="Add a note (e.g. 'Fast break', 'Three pointer')"
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-4 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                />
+                            </div>
                         </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
+                                onClick={() => setEditingEvent(null)}
+                                className="bg-slate-800 text-slate-400 font-bold py-4 rounded-2xl"
+                            >
+                                CANCEL
+                            </button>
+                            <button
+                                onClick={() => handleSaveEdit(editingEvent)}
+                                className="bg-orange-600 font-black py-4 rounded-2xl shadow-xl shadow-orange-600/20"
+                            >
+                                SAVE CHANGES
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Foul Selection Overlay */}
+            <AnimatePresence>
+                {foulingFor && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="fixed inset-0 z-[110] bg-slate-950/95 backdrop-blur-xl p-8 flex flex-col"
+                    >
+                        <div className="flex justify-between items-center mb-8">
+                            <h3 className="text-3xl font-black flex items-center gap-3">
+                                <ShieldAlert size={32} className="text-red-500" />
+                                <span className="uppercase tracking-tight">WHO FOULED?</span>
+                            </h3>
+                            <button onClick={() => setFoulingFor(null)} className="p-4 text-slate-400 hover:text-white bg-slate-800 rounded-full">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto pb-12">
+                            <div className="space-y-4">
+                                <h4 className={cn(
+                                    "text-sm font-black uppercase tracking-widest px-2",
+                                    foulingFor === 'home' ? "text-orange-500" : "text-slate-400"
+                                )}>
+                                    {foulingFor === 'home' ? (game?.homeTeamName || 'HOME') : (game?.guestTeamName || 'GUEST')}
+                                </h4>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {game?.rosters
+                                        .filter(r => r.team === foulingFor && r.isActive)
+                                        .map(entry => (
+                                            <button
+                                                key={entry.id}
+                                                onClick={() => handlePlayerFoul(entry.id)}
+                                                className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col items-center hover:border-red-500 transition-all active:scale-95 group shadow-xl"
+                                            >
+                                                <div className="text-4xl font-black text-slate-500 group-hover:text-white mb-1 transition-colors">{entry.number}</div>
+                                                <div className="text-sm font-bold truncate w-full text-center group-hover:text-white transition-colors">{entry.name}</div>
+                                                <div className="mt-2 text-[10px] font-black text-slate-700 bg-slate-950 px-2 py-0.5 rounded uppercase group-hover:bg-red-500/10 group-hover:text-red-400 transition-all">
+                                                    {entry.fouls} Fouls
+                                                </div>
+                                            </button>
+                                        ))}
+
+                                    <button
+                                        onClick={() => {
+                                            if (!game || !foulingFor) return;
+                                            const updates = foulingFor === 'home'
+                                                ? { homeFouls: game.homeFouls + 1 }
+                                                : { guestFouls: game.guestFouls + 1 };
+                                            updateGame(updates);
+                                            addEvent({
+                                                type: 'foul',
+                                                team: foulingFor,
+                                                description: 'Technical / Team Foul'
+                                            });
+                                            setFoulingFor(null);
+                                        }}
+                                        className="bg-slate-800 border-dashed border-2 border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-xs gap-1 hover:border-slate-500 hover:text-white transition-all active:scale-95 shadow-xl"
+                                    >
+                                        <div className="font-black uppercase">Technical</div>
+                                        <div className="opacity-50 text-[10px]">Team Foul</div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setFoulingFor(null)}
+                            className="bg-slate-800 text-white font-black py-5 rounded-3xl shadow-lg active:scale-95 transition-all text-sm tracking-widest uppercase mb-4"
+                        >
+                            CANCEL
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Timeout Selection Overlay */}
+            <AnimatePresence>
+                {isTimeoutOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="fixed inset-0 z-[120] bg-slate-950/95 backdrop-blur-xl p-8 flex flex-col items-center justify-center"
+                    >
+                        <div className="max-w-md w-full space-y-8">
+                            <div className="text-center space-y-2">
+                                <h3 className="text-4xl font-black uppercase tracking-tighter">CALL TIMEOUT</h3>
+                                <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">Select the calling team</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4">
+                                <button
+                                    onClick={() => handleTimeout('home')}
+                                    disabled={game.homeTimeouts <= 0}
+                                    className={cn(
+                                        "p-8 rounded-[32px] border-2 flex flex-col items-center gap-2 transition-all active:scale-95",
+                                        game.homeTimeouts > 0
+                                            ? "bg-orange-600/10 border-orange-500/50 hover:bg-orange-600/20"
+                                            : "bg-slate-900/50 border-slate-800 opacity-50 grayscale cursor-not-allowed"
+                                    )}
+                                >
+                                    <div className="text-sm font-black text-orange-500 uppercase tracking-widest">{game.homeTeamName}</div>
+                                    <div className="text-5xl font-black text-white">{game.homeTimeouts}</div>
+                                    <div className="text-[10px] font-bold text-orange-500/50 uppercase tracking-[0.2em]">Available</div>
+                                </button>
+
+                                <button
+                                    onClick={() => handleTimeout('guest')}
+                                    disabled={game.guestTimeouts <= 0}
+                                    className={cn(
+                                        "p-8 rounded-[32px] border-2 flex flex-col items-center gap-2 transition-all active:scale-95",
+                                        game.guestTimeouts > 0
+                                            ? "bg-slate-900 border-white/10 hover:bg-slate-800"
+                                            : "bg-slate-900/50 border-slate-800 opacity-50 grayscale cursor-not-allowed"
+                                    )}
+                                >
+                                    <div className="text-sm font-black text-slate-400 uppercase tracking-widest">{game.guestTeamName}</div>
+                                    <div className="text-5xl font-black text-white">{game.guestTimeouts}</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Available</div>
+                                </button>
+                            </div>
+
+                            <button
+                                onClick={() => setIsTimeoutOpen(false)}
+                                className="w-full py-5 text-slate-500 font-black uppercase tracking-widest text-xs hover:text-white transition-colors"
+                            >
+                                Nevermind, Continue Play
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Share Modal */}
+            <AnimatePresence>
+                {isShareOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="bg-slate-900 border border-white/10 rounded-[32px] p-8 max-w-sm w-full relative shadow-2xl"
+                        >
+                            <button
+                                onClick={() => setIsShareOpen(false)}
+                                className="absolute top-6 right-6 p-2 text-slate-500 hover:text-white"
+                            >
+                                <X size={24} />
+                            </button>
+
+                            <div className="flex flex-col items-center">
+                                <div className="p-4 bg-white rounded-2xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                                    <QRCode
+                                        value={`${window.location.origin}/game/${id}`}
+                                        size={200}
+                                        style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                                        viewBox={`0 0 256 256`}
+                                    />
+                                </div>
+
+                                <h3 className="text-xl font-black mb-2 tracking-tight">Public Scoreboard</h3>
+                                <p className="text-sm text-slate-500 text-center mb-8">
+                                    Share this with fans to follow the live broadcast from the arena.
+                                </p>
+
+                                <div className="w-full space-y-3">
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`${window.location.origin}/game/${id}`);
+                                            setCopied(true);
+                                            setTimeout(() => setCopied(false), 2000);
+                                        }}
+                                        className="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"
+                                    >
+                                        {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+                                        {copied ? 'COPIED!' : 'COPY URL'}
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            if (navigator.share) {
+                                                navigator.share({
+                                                    title: 'Live Scoreboard',
+                                                    text: 'Follow the live action here!',
+                                                    url: `${window.location.origin}/game/${id}`,
+                                                });
+                                            }
+                                        }}
+                                        className="w-full bg-orange-600 hover:bg-orange-500 p-4 rounded-2xl flex items-center justify-center gap-2 font-black transition-all active:scale-95"
+                                    >
+                                        <Share2 size={18} />
+                                        SHARE LINK
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {isTimeEditing && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="bg-slate-900 border border-white/10 rounded-[32px] p-8 max-w-sm w-full relative shadow-2xl"
+                        >
+                            <button
+                                onClick={() => setIsTimeEditing(false)}
+                                className="absolute top-6 right-6 p-2 text-slate-500 hover:text-white"
+                            >
+                                <X size={24} />
+                            </button>
+
+                            <h3 className="text-xl font-black mb-6 tracking-tight flex items-center gap-2">
+                                <Clock size={24} className="text-orange-500" />
+                                Edit Game Clock
+                            </h3>
+
+                            <div className="flex items-center justify-center gap-4 mb-8">
+                                <div className="flex flex-col items-center gap-2">
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Minutes</label>
+                                    <input
+                                        type="number"
+                                        value={tempTime.min}
+                                        onChange={(e) => setTempTime({ ...tempTime, min: e.target.value })}
+                                        className="w-24 h-24 bg-black/40 border border-slate-700 rounded-2xl text-5xl font-mono font-black text-center focus:outline-none focus:border-orange-500 transition-colors"
+                                    />
+                                </div>
+                                <div className="text-4xl font-black text-slate-600 mb-6">:</div>
+                                <div className="flex flex-col items-center gap-2">
+                                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Seconds</label>
+                                    <input
+                                        type="number"
+                                        value={tempTime.sec}
+                                        onChange={(e) => setTempTime({ ...tempTime, sec: e.target.value })}
+                                        className="w-24 h-24 bg-black/40 border border-slate-700 rounded-2xl text-5xl font-mono font-black text-center focus:outline-none focus:border-orange-500 transition-colors"
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    const mins = parseInt(tempTime.min) || 0;
+                                    const secs = parseInt(tempTime.sec) || 0;
+                                    updateGame({ clockSeconds: (mins * 60) + secs });
+                                    setIsTimeEditing(false);
+                                }}
+                                className="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl font-bold mb-4 transition-all active:scale-95 text-white"
+                            >
+                                Update Time
+                            </button>
+
+                            <div className="h-px bg-white/5 my-6" />
+
+                            <button
+                                onClick={() => {
+                                    nextPeriod();
+                                    setIsTimeEditing(false);
+                                }}
+                                className="w-full bg-orange-600/20 hover:bg-orange-600/40 text-orange-500 border border-orange-500/20 p-4 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                Start Next Period
+                                <ArrowLeft className="rotate-180" size={16} />
+                            </button>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

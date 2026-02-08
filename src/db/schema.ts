@@ -6,7 +6,7 @@ export const teamEnum = pgEnum('team_side', ['home', 'guest']);
 export const eventTypeEnum = pgEnum('event_type', [
     'score', 'foul', 'timeout', 'sub', 'turnover',
     'block', 'steal', 'rebound_off', 'rebound_def',
-    'period_start', 'period_end', 'clock_start', 'clock_stop', 'undo'
+    'period_start', 'period_end', 'clock_start', 'clock_stop', 'undo', 'miss'
 ]);
 export const gameStatusEnum = pgEnum('game_status', ['scheduled', 'live', 'final']);
 export const gameModeEnum = pgEnum('game_mode', ['simple', 'advanced']);
@@ -64,6 +64,9 @@ export const games = pgTable('games', {
     guestScore: integer('guest_score').default(0).notNull(),
     homeFouls: integer('home_fouls').default(0).notNull(),
     guestFouls: integer('guest_fouls').default(0).notNull(),
+    homeTimeouts: integer('home_timeouts').default(3).notNull(),
+    guestTimeouts: integer('guest_timeouts').default(3).notNull(),
+    totalTimeouts: integer('total_timeouts').default(3).notNull(),
     possession: teamEnum('possession'),
     mode: gameModeEnum('mode').default('simple').notNull(),
 
@@ -97,6 +100,7 @@ export const gameEvents = pgTable('game_events', {
     period: integer('period').notNull(),
     clockAt: integer('clock_at').notNull(),
     team: teamEnum('team'),
+    player: text('player'), // Denormalized name for easier display/history
 
     // References gameRoster record, NOT athlete directly (to handle ad-hoc players)
     gameRosterId: uuid('game_roster_id').references(() => gameRosters.id),

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, POST } from '../route';
 import { db } from '@/db';
 import { athletes, teamMemberships } from '@/db/schema';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
     db: {
@@ -19,7 +19,7 @@ vi.mock('@/db', () => ({
     },
 }));
 
-vi.mock('@clerk/nextjs/server', () => ({
+vi.mock('@/lib/auth-server', () => ({
     auth: vi.fn(),
 }));
 
@@ -35,7 +35,7 @@ describe('Team Members API Route', () => {
             (db.query.teamMemberships.findMany as any).mockReturnValue(mockMembers);
 
             const request = new Request('http://localhost/api/teams/t1/members');
-            const response = await GET(request, { params: { id: 't1' } });
+            const response = await GET(request, { params: Promise.resolve({ id: 't1' }) });
             const data = await response.json();
 
             expect(response.status).toBe(200);
@@ -65,7 +65,7 @@ describe('Team Members API Route', () => {
                 body: JSON.stringify({ name: 'LeBron', number: '23' }),
             });
 
-            const response = await POST(request, { params: { id: 't1' } });
+            const response = await POST(request, { params: Promise.resolve({ id: 't1' }) });
             const data = await response.json();
 
             expect(response.status).toBe(200);

@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { homeTeamId, guestTeamId, homeTeamName, guestTeamName, mode, periodSeconds, totalPeriods } = body;
+        const { homeTeamId, guestTeamId, homeTeamName, guestTeamName, mode, periodSeconds, totalPeriods, totalTimeouts } = body;
 
         const [newGame] = await db.insert(games).values({
             ownerId: userId,
@@ -49,10 +49,13 @@ export async function POST(request: Request) {
             periodSeconds: periodSeconds || 600,
             clockSeconds: periodSeconds || 600,
             totalPeriods: totalPeriods || 4,
+            totalTimeouts: totalTimeouts || 3,
+            homeTimeouts: totalTimeouts || 3,
+            guestTimeouts: totalTimeouts || 3,
         }).returning();
 
-        // If homeTeamId is provided, seed the roster
-        if (homeTeamId) {
+        // Populate rosters for both teams if team IDs are provided
+        if (homeTeamId && homeTeamId !== 'adhoc') {
             const members = await db.query.teamMemberships.findMany({
                 where: eq(teamMemberships.teamId, homeTeamId),
                 with: { athlete: true }
@@ -71,7 +74,34 @@ export async function POST(request: Request) {
             }
         }
 
-        return NextResponse.json(newGame);
+        if (guestTeamId && guestTeamId !== 'adhoc') {
+            const members = await db.query.teamMemberships.findMany({
+                where: eq(teamMemberships.teamId, guestTeamId),
+                with: { athlete: true }
+            });
+
+            if (members.length > 0) {
+                await db.insert(gameRosters).values(
+                    members.map(m => ({
+                        gameId: newGame.id,
+                        team: 'guest' as const,
+                        athleteId: m.athleteId,
+                        name: m.athlete.name,
+                        number: m.number || '00',
+                    }))
+                );
+            }
+        }
+
+        // Fetch the complete game with rosters to return
+        const completeGame = await db.query.games.findFirst({
+            where: eq(games.id, newGame.id),
+            with: {
+                rosters: true,
+            }
+        });
+
+        return NextResponse.json(completeGame);
     } catch (error) {
         console.error('Error creating game:', error);
         return NextResponse.json({ error: 'Failed to create game' }, { status: 500 });

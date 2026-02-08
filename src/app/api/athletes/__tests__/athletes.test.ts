@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from '../route';
 import { db } from '@/db';
 import { athletes } from '@/db/schema';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
     db: {
@@ -14,7 +14,7 @@ vi.mock('@/db', () => ({
     },
 }));
 
-vi.mock('@clerk/nextjs/server', () => ({
+vi.mock('@/lib/auth-server', () => ({
     auth: vi.fn(),
 }));
 

@@ -8,6 +8,9 @@ type Team = {
   id: string;
   name: string;
   shortCode: string | null;
+  _count?: {
+    memberships: number;
+  };
 };
 
 export default function LandingPage() {
@@ -25,6 +28,7 @@ export default function LandingPage() {
   const [customMinutes, setCustomMinutes] = useState('10');
   const [isCustomTime, setIsCustomTime] = useState(false);
   const [totalPeriods, setTotalPeriods] = useState(4);
+  const [totalTimeouts, setTotalTimeouts] = useState(3);
 
   useEffect(() => {
     fetch('/api/teams')
@@ -38,6 +42,20 @@ export default function LandingPage() {
 
   const handleCreateGame = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Force roster requirement
+    const homeTeam = teams.find(t => t.id === homeTeamId);
+    if (homeTeamId && homeTeamId !== 'adhoc' && (!homeTeam?._count?.memberships || homeTeam._count.memberships === 0)) {
+      alert(`The team "${homeTeam?.name}" has no players. Please add players to the team before starting a game.`);
+      return;
+    }
+
+    const guestTeam = teams.find(t => t.id === guestTeamId);
+    if (guestTeamId && guestTeamId !== 'adhoc' && (!guestTeam?._count?.memberships || guestTeam._count.memberships === 0)) {
+      alert(`The team "${guestTeam?.name}" has no players. Please add players to the team before starting a game.`);
+      return;
+    }
+
     setIsCreating(true);
 
     const res = await fetch('/api/games', {
@@ -46,10 +64,11 @@ export default function LandingPage() {
         homeTeamId: homeTeamId || null,
         guestTeamId: guestTeamId || null,
         homeTeamName: homeTeamId ? teams.find(t => t.id === homeTeamId)?.name : homeTeamName,
-        guestTeamName: guestTeamId ? teams.find(t => t.id === guestTeamId)?.name : guestTeamName,
+        guestTeamName: guestTeamId ? (guestTeamId === 'adhoc' ? guestTeamName : teams.find(t => t.id === guestTeamId)?.name) : guestTeamName,
         mode,
         periodSeconds: isCustomTime ? Number(customMinutes) * 60 : Number(periodSeconds),
         totalPeriods: Number(totalPeriods),
+        totalTimeouts: Number(totalTimeouts),
       }),
       headers: { 'Content-Type': 'application/json' },
     });
@@ -177,6 +196,18 @@ export default function LandingPage() {
                   </select>
                 </div>
                 <div className="space-y-4">
+                  <label className="text-xs uppercase font-bold tracking-widest text-slate-400">Timeouts / Team</label>
+                  <select
+                    value={totalTimeouts}
+                    onChange={e => setTotalTimeouts(Number(e.target.value))}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7].map(num => (
+                      <option key={num} value={num}>{num}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-4 col-span-2">
                   <label className="text-xs uppercase font-bold tracking-widest text-slate-400">Time per Period</label>
                   <select
                     value={isCustomTime ? 'custom' : periodSeconds}

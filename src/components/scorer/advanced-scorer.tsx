@@ -38,10 +38,11 @@ type Game = {
 interface AdvancedScorerProps {
     game: Game;
     updateGame: (updates: Partial<Game>) => void;
-    handleScore: (points: number, side?: 'home' | 'guest') => void;
+    handleScore: (points: number, side?: 'home' | 'guest', isMiss?: boolean) => void;
+    addEvent: (event: { type: 'score' | 'rebound' | 'assist' | 'steal' | 'block' | 'turnover' | 'foul' | 'timeout' | 'sub' | 'miss', player?: string, team: 'home' | 'guest', value?: number, description?: string }) => void;
 }
 
-export function AdvancedScorer({ game, updateGame, handleScore }: AdvancedScorerProps) {
+export function AdvancedScorer({ game, updateGame, handleScore, addEvent }: AdvancedScorerProps) {
     const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
     const onCourt = game.rosters.filter(p => p.isActive);
@@ -81,10 +82,37 @@ export function AdvancedScorer({ game, updateGame, handleScore }: AdvancedScorer
                         ? { homeScore: game.homeScore + pts, rosters: updatedRosters }
                         : { guestScore: game.guestScore + pts, rosters: updatedRosters };
                     updateGame(update);
+
+                    addEvent({
+                        type: 'score',
+                        team: player.team,
+                        player: player.name,
+                        value: pts
+                    });
+                    setSelectedPlayerId(null);
                 }
             } else {
-                // Points-first: trigger overlay
                 handleScore(pts);
+            }
+            return;
+        }
+
+        if (action.startsWith('miss-')) {
+            const pts = parseInt(action.split('-')[1]);
+            if (selectedPlayerId) {
+                const player = game.rosters.find(r => r.id === selectedPlayerId);
+                if (player) {
+                    addEvent({
+                        type: 'miss',
+                        team: player.team,
+                        player: player.name,
+                        value: pts,
+                        description: `${player.name} Missed ${pts === 1 ? 'Free Throw' : pts === 3 ? '3PT' : 'FG'}`
+                    });
+                    setSelectedPlayerId(null);
+                }
+            } else {
+                handleScore(pts, undefined, true);
             }
             return;
         }
@@ -93,13 +121,28 @@ export function AdvancedScorer({ game, updateGame, handleScore }: AdvancedScorer
         const player = game.rosters.find(r => r.id === selectedPlayerId);
         if (!player) return;
 
-        console.log(`Action: ${action} for player: ${player.name}`);
-        // Here we would emit to socket and update DB
         if (action === 'Foul') {
             const updatedRosters = game.rosters.map(r =>
                 r.id === selectedPlayerId ? { ...r, fouls: r.fouls + 1 } : r
             );
-            updateGame({ rosters: updatedRosters, homeFouls: player.team === 'home' ? game.homeFouls + 1 : game.homeFouls, guestFouls: player.team === 'guest' ? game.guestFouls + 1 : game.guestFouls });
+            updateGame({
+                rosters: updatedRosters,
+                homeFouls: player.team === 'home' ? game.homeFouls + 1 : game.homeFouls,
+                guestFouls: player.team === 'guest' ? game.guestFouls + 1 : game.guestFouls
+            });
+            addEvent({
+                type: 'foul',
+                team: player.team,
+                player: player.name
+            });
+            setSelectedPlayerId(null);
+        } else if (['Rebound', 'Assist', 'Steal', 'Block', 'Turnover'].includes(action)) {
+            addEvent({
+                type: action.toLowerCase() as any,
+                team: player.team,
+                player: player.name
+            });
+            setSelectedPlayerId(null);
         }
     };
 
@@ -172,6 +215,10 @@ export function AdvancedScorer({ game, updateGame, handleScore }: AdvancedScorer
                             <ActionButton icon={<span className="text-xl font-black">+1</span>} label="FT" color="bg-orange-500" onClick={() => handleAction('score-1')} disabled={false} />
                             <ActionButton icon={<span className="text-xl font-black">+2</span>} label="2PT" color="bg-orange-600" onClick={() => handleAction('score-2')} disabled={false} />
                             <ActionButton icon={<span className="text-xl font-black">+3</span>} label="3PT" color="bg-orange-700" onClick={() => handleAction('score-3')} disabled={false} />
+
+                            <ActionButton icon={<span className="text-xl font-black text-slate-400">-1</span>} label="Miss FT" color="bg-slate-800" onClick={() => handleAction('miss-1')} disabled={false} />
+                            <ActionButton icon={<span className="text-xl font-black text-slate-400">-2</span>} label="Miss 2" color="bg-slate-800" onClick={() => handleAction('miss-2')} disabled={false} />
+                            <ActionButton icon={<span className="text-xl font-black text-slate-400">-3</span>} label="Miss 3" color="bg-slate-800" onClick={() => handleAction('miss-3')} disabled={false} />
 
                             <ActionButton icon={<Target size={18} />} label="Rebound" color="bg-blue-600" onClick={() => handleAction('Rebound')} disabled={!selectedPlayerId} />
                             <ActionButton icon={<Move size={18} />} label="Assist" color="bg-green-600" onClick={() => handleAction('Assist')} disabled={!selectedPlayerId} />

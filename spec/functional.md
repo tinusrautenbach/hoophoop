@@ -31,8 +31,9 @@ This document outlines the functional requirements for a web-based basketball sc
     - Foul limits (personal and team).
     - Timeouts per game/half.
 - **Roster Management**:
-  - Add players to each team (Name, Number).
-  - Mark active starters.
+  - **Auto-population**: When selecting a Saved Team during game creation, the app must automatically pull all team members into the specific Game Roster.
+  - **Force Roster**: A game cannot be started (transitioned to "Scheduled" or "Live") until both teams have at least 1 player in their roster (unless marked as 'adhoc').
+  - Starters: Ability to mark active players from the roster.
 
 ### 3.2 Scorer's Interface (Live Game)
 The control center handling high-frequency inputs. **Must work on Mobile.**
@@ -45,6 +46,8 @@ Designed for casual games where tracking your own team's players is desired, but
 - **Guest Team Scoring**:
   - Simple +1, +2, +3 buttons (no player assignment).
   - Team Fouls tracking only.
+- **Team Positioning**:
+  - **Our Team on Left**: The logged-in user's team (owner's team) should always be positioned on the left side (Home) of the interface for consistency.
 - **Game Clock**: Standard Start/Stop/Edit.
 - **Undo**: Global undo button.
 
@@ -66,7 +69,9 @@ Designed for official games, requiring detailed stat tracking.
 - **Possession Arrow**: Toggle.
 - **Game Log**:
   - Scrollable play-by-play.
-  - Edit/Delete functionality.
+  - **Editable Actions**: Recent actions must be expandable.
+  - **Modification**: Ability to change the player, the points value, or delete an action entirely.
+  - **History**: Full track record of changes to ensure data integrity.
 
 #### Share & Connect
 - **Game Link Sharing**:

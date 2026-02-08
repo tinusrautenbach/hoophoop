@@ -33,7 +33,7 @@ type Game = {
 
 interface SimpleScorerProps {
     game: Game;
-    handleScore: (points: number, side?: 'home' | 'guest') => void;
+    handleScore: (points: number, side?: 'home' | 'guest', isMiss?: boolean) => void;
     handleFoul: (side: 'home' | 'guest') => void;
 }
 
@@ -86,25 +86,47 @@ export function SimpleScorer({ game, handleScore, handleFoul }: SimpleScorerProp
                 <div className="grid grid-cols-2 gap-4 h-full">
                     <button
                         onClick={() => handleScore(2)}
-                        className="bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all rounded-3xl flex flex-col items-center justify-center p-8 gap-2 border-2 border-slate-700/50 group"
+                        className="bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all rounded-3xl flex flex-col items-center justify-center p-6 gap-2 border-2 border-slate-700/50 group"
                     >
-                        <span className="text-6xl font-black group-hover:scale-110 transition-transform">+2</span>
-                        <span className="text-xs uppercase font-bold text-slate-500 tracking-widest">Points</span>
+                        <span className="text-5xl font-black group-hover:scale-110 transition-transform">+2</span>
+                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Points</span>
                     </button>
                     <button
                         onClick={() => handleScore(3)}
-                        className="bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all rounded-3xl flex flex-col items-center justify-center p-8 gap-2 border-2 border-orange-500/30 group"
+                        className="bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all rounded-3xl flex flex-col items-center justify-center p-6 gap-2 border-2 border-orange-500/30 group"
                     >
-                        <span className="text-6xl font-black text-orange-500 group-hover:scale-110 transition-transform">+3</span>
-                        <span className="text-xs uppercase font-bold text-slate-500 tracking-widest">Points</span>
+                        <span className="text-5xl font-black text-orange-500 group-hover:scale-110 transition-transform">+3</span>
+                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Points</span>
+                    </button>
+
+                    <button
+                        onClick={() => handleScore(2, undefined, true)}
+                        className="bg-slate-900 border border-slate-800 hover:bg-slate-800 active:scale-95 transition-all rounded-2xl p-4 flex flex-col items-center justify-center gap-1 group opacity-60 hover:opacity-100"
+                    >
+                        <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-2</span>
+                        <span className="text-[8px] uppercase font-bold text-slate-600 tracking-widest">Miss</span>
+                    </button>
+                    <button
+                        onClick={() => handleScore(3, undefined, true)}
+                        className="bg-slate-900 border border-slate-800 hover:bg-slate-800 active:scale-95 transition-all rounded-2xl p-4 flex flex-col items-center justify-center gap-1 group opacity-60 hover:opacity-100"
+                    >
+                        <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-3</span>
+                        <span className="text-[8px] uppercase font-bold text-slate-600 tracking-widest">Miss</span>
                     </button>
 
                     <button
                         onClick={() => handleScore(1)}
-                        className="bg-slate-900 border-2 border-slate-800 hover:bg-slate-800 active:scale-95 transition-all rounded-3xl p-6 font-black flex flex-col items-center justify-center gap-1 col-span-2"
+                        className="bg-slate-900 border-2 border-slate-800 hover:bg-slate-800 active:scale-95 transition-all rounded-2xl p-4 font-black flex flex-col items-center justify-center gap-1"
                     >
-                        <span className="text-4xl">+1</span>
-                        <span className="text-slate-500 text-[10px] uppercase font-bold">Free Throw</span>
+                        <span className="text-3xl">+1</span>
+                        <span className="text-slate-500 text-[8px] uppercase font-bold">Free Throw</span>
+                    </button>
+                    <button
+                        onClick={() => handleScore(1, undefined, true)}
+                        className="bg-slate-900 border border-slate-800 hover:bg-slate-800 active:scale-95 transition-all rounded-2xl p-4 flex flex-col items-center justify-center gap-1 group opacity-60 hover:opacity-100"
+                    >
+                        <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-1</span>
+                        <span className="text-[8px] uppercase font-bold text-slate-600 tracking-widest">Miss</span>
                     </button>
                 </div>
 

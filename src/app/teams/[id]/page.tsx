@@ -102,6 +102,18 @@ export default function TeamDetailsPage() {
         setIsAdding(false);
     };
 
+    const handleRemoveMember = async (memberId: string) => {
+        if (!confirm('Remove this player from the team?')) return;
+
+        const res = await fetch(`/api/teams/${teamId}/members/${memberId}`, {
+            method: 'DELETE',
+        });
+
+        if (res.ok) {
+            setMembers(members.filter(m => m.id !== memberId));
+        }
+    };
+
     if (loading) return <div className="p-8 text-center">Loading team details...</div>;
 
     return (
@@ -193,7 +205,12 @@ export default function TeamDetailsPage() {
                                         <td className="px-6 py-4 font-bold text-orange-500">{member.number || '--'}</td>
                                         <td className="px-6 py-4 font-medium">{member.athlete.name}</td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="text-slate-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 italic text-xs">Remove</button>
+                                            <button
+                                                onClick={() => handleRemoveMember(member.id)}
+                                                className="text-slate-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 italic text-xs"
+                                            >
+                                                Remove
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
