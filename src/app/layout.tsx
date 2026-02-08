@@ -35,12 +35,13 @@ export default function RootLayout({
             <Link href="/" className="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent italic">
               BBALL SCORER
             </Link>
-            <nav className="flex items-center gap-6">
-              <SignedIn>
-                <Link href="/teams" className="text-sm font-medium hover:text-orange-500 transition-colors">My Teams</Link>
-                <Link href="/games" className="text-sm font-medium hover:text-orange-500 transition-colors">My Games</Link>
-                <UserButton />
-              </SignedIn>
+              <nav className="flex items-center gap-6">
+                <SignedIn>
+                  <Link href="/teams" className="text-sm font-medium hover:text-orange-500 transition-colors">Teams</Link>
+                  <Link href="/games" className="text-sm font-medium hover:text-orange-500 transition-colors">Games</Link>
+                  <Link href="/communities" className="text-sm font-medium hover:text-orange-500 transition-colors">Communities</Link>
+                  <UserButton />
+                </SignedIn>
               <SignedOut>
                 <SignInButton mode="modal">
                   <button className="text-sm font-medium bg-orange-600 px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">Sign In</button>

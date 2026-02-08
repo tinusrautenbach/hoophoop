@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Git pre-commit hook - Basketball Scoring App
+# Install this by running: cp scripts/pre-commit-hook .git/hooks/pre-commit
+# Or: ./scripts/install-hooks.sh
+
+# Exit on error, but don't block commits unless critical
+set +e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CHECK_SCRIPT="$SCRIPT_DIR/pre-commit-check.sh"
+
+echo "🔒 Running pre-commit checks..."
+
+# Run the check script in non-interactive mode
+if [ -f "$CHECK_SCRIPT" ]; then
+    # Source the script but override the interactive parts
+    source "$CHECK_SCRIPT" --non-interactive 2>/dev/null || {
+        echo "⚠️  Pre-commit check script not fully compatible with hook mode"
+        echo "   Running basic checks..."
+        
+        # Fallback: just run tests and lint
+        npm test -- --run &>/dev/null || {
+            echo "❌ Tests failed"
+            exit 1
+        }
+    }
+else
+    echo "⚠️  Pre-commit check script not found at: $CHECK_SCRIPT"
+    echo "   Running basic checks..."
+    
+    npm test -- --run &>/dev/null || {
+        echo "❌ Tests failed"
+        exit 1
+    }
+fi
+
+echo "✅ Pre-commit checks passed!"

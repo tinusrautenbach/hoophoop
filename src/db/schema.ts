@@ -10,6 +10,55 @@ export const eventTypeEnum = pgEnum('event_type', [
 ]);
 export const gameStatusEnum = pgEnum('game_status', ['scheduled', 'live', 'final']);
 export const gameModeEnum = pgEnum('game_mode', ['simple', 'advanced']);
+// scorerRoleEnum is defined lower down
+
+// Community Enums
+export const communityTypeEnum = pgEnum('community_type', ['school', 'club', 'league', 'other']);
+export const communityRoleEnum = pgEnum('community_role', ['admin', 'scorer', 'viewer']);
+export const inviteStatusEnum = pgEnum('invite_status', ['pending', 'accepted', 'expired']);
+
+
+// --- COMMUNITY ENTITIES ---
+
+export const communities = pgTable('communities', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    type: communityTypeEnum('type').default('other').notNull(),
+    ownerId: text('owner_id').notNull(), // Creator
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const communityMembers = pgTable('community_members', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    communityId: uuid('community_id').references(() => communities.id, { onDelete: 'cascade' }).notNull(),
+    userId: text('user_id').notNull(),
+    role: communityRoleEnum('role').default('scorer').notNull(),
+    canManageGames: boolean('can_manage_games').default(true).notNull(),
+    joinedAt: timestamp('joined_at').defaultNow().notNull(),
+});
+
+export const communityInvites = pgTable('community_invites', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    communityId: uuid('community_id').references(() => communities.id, { onDelete: 'cascade' }).notNull(),
+    email: text('email').notNull(),
+    role: communityRoleEnum('role').default('scorer').notNull(),
+    token: text('token').notNull().unique(),
+    status: inviteStatusEnum('status').default('pending').notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const userActivityLogs = pgTable('user_activity_logs', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id').notNull(),
+    communityId: uuid('community_id').references(() => communities.id, { onDelete: 'set null' }),
+    action: text('action').notNull(),
+    resourceType: text('resource_type').notNull(),
+    resourceId: text('resource_id').notNull(),
+    details: jsonb('details'),
+    ipAddress: text('ip_address'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
 
 // --- CORE ROSTER ENTITIES ---
@@ -17,6 +66,7 @@ export const gameModeEnum = pgEnum('game_mode', ['simple', 'advanced']);
 export const teams = pgTable('teams', {
     id: uuid('id').defaultRandom().primaryKey(),
     ownerId: text('owner_id').notNull(),
+    communityId: uuid('community_id').references(() => communities.id), // Optional link to community
     name: text('name').notNull(),
     shortCode: text('short_code'), // LAL, BOS
     color: text('color'),
@@ -27,6 +77,21 @@ export const athletes = pgTable('athletes', {
     id: uuid('id').defaultRandom().primaryKey(),
     ownerId: text('owner_id').notNull(), // Who created this profile?
     name: text('name').notNull(),
+    email: text('email'), // Optional email for lookup
+    birthDate: date('birth_date'), // Optional birth date for age verification
+    status: text('status').default('active').notNull(), // active, inactive, transferred
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const playerHistory = pgTable('player_history', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    athleteId: uuid('athlete_id').references(() => athletes.id, { onDelete: 'cascade' }).notNull(),
+    teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }).notNull(),
+    action: text('action').notNull(), // added, removed, number_changed, transferred
+    previousValue: text('previous_value'), // Previous jersey number
+    newValue: text('new_value'), // New jersey number
+    performedBy: text('performed_by'), // User who made change
+    notes: text('notes'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -38,6 +103,9 @@ export const teamMemberships = pgTable('team_memberships', {
     startDate: date('start_date').defaultNow().notNull(),
     endDate: date('end_date'), // NULL = Active
     isActive: boolean('is_active').default(true).notNull(),
+    communityId: uuid('community_id'), // Community context for this membership
+    createdBy: text('created_by'), // User who added player to team
+    notes: text('notes'), // Optional roster notes
 });
 
 // --- GAME ENTITIES ---
@@ -45,6 +113,7 @@ export const teamMemberships = pgTable('team_memberships', {
 export const games = pgTable('games', {
     id: uuid('id').defaultRandom().primaryKey(),
     ownerId: text('owner_id').notNull(),
+    communityId: uuid('community_id').references(() => communities.id), // Optional link to community
 
     // Teams (FKs) - Nullable for ad-hoc/guest teams that aren't in the system
     homeTeamId: uuid('home_team_id').references(() => teams.id),
@@ -69,7 +138,9 @@ export const games = pgTable('games', {
     totalTimeouts: integer('total_timeouts').default(3).notNull(),
     possession: teamEnum('possession'),
     mode: gameModeEnum('mode').default('simple').notNull(),
-
+    isTimerRunning: boolean('is_timer_running').default(false).notNull(),
+    timerStartedAt: timestamp('timer_started_at'), // When timer was last started (for accurate elapsed time calc)
+    timerOffsetSeconds: integer('timer_offset_seconds').default(0), // Accumulated time when timer was stopped
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -112,9 +183,38 @@ export const gameEvents = pgTable('game_events', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Multi-scorer support - tracks authorized scorers for a game
+export const scorerRoleEnum = pgEnum('scorer_role', ['owner', 'co_scorer', 'viewer']);
+
+export const gameScorers = pgTable('game_scorers', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).notNull(),
+    userId: text('user_id').notNull(), // Clerk user ID
+    role: scorerRoleEnum('role').default('co_scorer').notNull(),
+    joinedAt: timestamp('joined_at').defaultNow().notNull(),
+    lastActiveAt: timestamp('last_active_at').defaultNow().notNull(),
+});
+
 // --- RELATIONS ---
 
-export const teamsRelations = relations(teams, ({ many }) => ({
+export const communitiesRelations = relations(communities, ({ many }) => ({
+    members: many(communityMembers),
+    invites: many(communityInvites),
+    teams: many(teams),
+    games: many(games),
+    logs: many(userActivityLogs),
+}));
+
+export const communityMembersRelations = relations(communityMembers, ({ one }) => ({
+    community: one(communities, { fields: [communityMembers.communityId], references: [communities.id] }),
+}));
+
+export const communityInvitesRelations = relations(communityInvites, ({ one }) => ({
+    community: one(communities, { fields: [communityInvites.communityId], references: [communities.id] }),
+}));
+
+export const teamsRelations = relations(teams, ({ one, many }) => ({
+    community: one(communities, { fields: [teams.communityId], references: [communities.id] }),
     memberships: many(teamMemberships),
     homeGames: many(games, { relationName: 'homeGames' }),
     guestGames: many(games, { relationName: 'guestGames' }),
@@ -131,10 +231,16 @@ export const teamMembershipsRelations = relations(teamMemberships, ({ one }) => 
 }));
 
 export const gamesRelations = relations(games, ({ one, many }) => ({
+    community: one(communities, { fields: [games.communityId], references: [communities.id] }),
     homeTeam: one(teams, { fields: [games.homeTeamId], references: [teams.id], relationName: 'homeGames' }),
     guestTeam: one(teams, { fields: [games.guestTeamId], references: [teams.id], relationName: 'guestGames' }),
     rosters: many(gameRosters),
     events: many(gameEvents),
+    scorers: many(gameScorers),
+}));
+
+export const gameScorersRelations = relations(gameScorers, ({ one }) => ({
+    game: one(games, { fields: [gameScorers.gameId], references: [games.id] }),
 }));
 
 export const gameRostersRelations = relations(gameRosters, ({ one, many }) => ({
@@ -146,4 +252,9 @@ export const gameRostersRelations = relations(gameRosters, ({ one, many }) => ({
 export const gameEventsRelations = relations(gameEvents, ({ one }) => ({
     game: one(games, { fields: [gameEvents.gameId], references: [games.id] }),
     rosterEntry: one(gameRosters, { fields: [gameEvents.gameRosterId], references: [gameRosters.id] }),
+}));
+
+export const playerHistoryRelations = relations(playerHistory, ({ one }) => ({
+    athlete: one(athletes, { fields: [playerHistory.athleteId], references: [athletes.id] }),
+    team: one(teams, { fields: [playerHistory.teamId], references: [teams.id] }),
 }));

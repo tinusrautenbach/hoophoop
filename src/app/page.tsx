@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SignedIn, SignedOut, SignInButton } from '@/components/auth-provider';
+import Link from 'next/link';
+import { School } from 'lucide-react';
 
 type Team = {
   id: string;
@@ -17,6 +19,7 @@ export default function LandingPage() {
   const router = useRouter();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const [homeTeamId, setHomeTeamId] = useState('');
   const [guestTeamId, setGuestTeamId] = useState('');
@@ -31,30 +34,35 @@ export default function LandingPage() {
   const [totalTimeouts, setTotalTimeouts] = useState(3);
 
   useEffect(() => {
+    setMounted(true);
     fetch('/api/teams')
       .then(res => res.json())
       .then(data => {
+        console.log('Teams fetched:', data);
         if (Array.isArray(data)) setTeams(data);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(err => {
+        console.error('Failed to fetch teams:', err);
+        setLoading(false);
+      });
   }, []);
 
   const handleCreateGame = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Force roster requirement
-    const homeTeam = teams.find(t => t.id === homeTeamId);
-    if (homeTeamId && homeTeamId !== 'adhoc' && (!homeTeam?._count?.memberships || homeTeam._count.memberships === 0)) {
-      alert(`The team "${homeTeam?.name}" has no players. Please add players to the team before starting a game.`);
+    // Validate adhoc team names
+    if (homeTeamId === 'adhoc' && !homeTeamName.trim()) {
+      alert('Please enter a name for your home team');
+      return;
+    }
+    if (guestTeamId === 'adhoc' && !guestTeamName.trim()) {
+      alert('Please enter a name for the opponent team');
       return;
     }
 
-    const guestTeam = teams.find(t => t.id === guestTeamId);
-    if (guestTeamId && guestTeamId !== 'adhoc' && (!guestTeam?._count?.memberships || guestTeam._count.memberships === 0)) {
-      alert(`The team "${guestTeam?.name}" has no players. Please add players to the team before starting a game.`);
-      return;
-    }
+    // Note: Roster validation skipped - API doesn't return player count
+    // Teams can be used without players for testing purposes
 
     setIsCreating(true);
 
@@ -63,8 +71,8 @@ export default function LandingPage() {
       body: JSON.stringify({
         homeTeamId: homeTeamId || null,
         guestTeamId: guestTeamId || null,
-        homeTeamName: homeTeamId ? teams.find(t => t.id === homeTeamId)?.name : homeTeamName,
-        guestTeamName: guestTeamId ? (guestTeamId === 'adhoc' ? guestTeamName : teams.find(t => t.id === guestTeamId)?.name) : guestTeamName,
+        homeTeamName: homeTeamId && homeTeamId !== 'adhoc' ? teams.find(t => t.id === homeTeamId)?.name : homeTeamName,
+        guestTeamName: guestTeamId && guestTeamId !== 'adhoc' ? teams.find(t => t.id === guestTeamId)?.name : guestTeamName,
         mode,
         periodSeconds: isCustomTime ? Number(customMinutes) * 60 : Number(periodSeconds),
         totalPeriods: Number(totalPeriods),
@@ -73,10 +81,16 @@ export default function LandingPage() {
       headers: { 'Content-Type': 'application/json' },
     });
 
+    console.log('Create game response:', res.status, res.statusText);
+    
     if (res.ok) {
       const game = await res.json();
+      console.log('Game created:', game.id);
       router.push(`/game/${game.id}/scorer`);
     } else {
+      const error = await res.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('Failed to create game:', error);
+      alert(`Failed to create game: ${error.error || 'Unknown error'}`);
       setIsCreating(false);
     }
   };
@@ -94,11 +108,26 @@ export default function LandingPage() {
         </div>
 
         <SignedIn>
+          <div className="flex justify-center mb-8">
+            <Link href="/communities">
+              <button className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border border-slate-700">
+                <School size={16} />
+                Manage Communities
+              </button>
+            </Link>
+          </div>
+
           <div className="bg-slate-800/40 p-10 rounded-3xl border border-slate-700 backdrop-blur-sm shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-orange-600/20 transition-all duration-700"></div>
 
             <h2 className="text-2xl font-bold mb-8 text-left border-l-4 border-orange-500 pl-4">Setup New Game</h2>
 
+            {!mounted ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                <p className="text-slate-400">Loading...</p>
+              </div>
+            ) : (
             <form onSubmit={handleCreateGame} className="space-y-8 text-left">
               <div className="grid sm:grid-cols-2 gap-8">
                 {/* Home Team Selection */}
@@ -244,12 +273,14 @@ export default function LandingPage() {
               </div>
 
               <button
-                disabled={isCreating || (!homeTeamId && !homeTeamName)}
+                type="submit"
+                disabled={isCreating || (homeTeamId === '' && !homeTeamName.trim()) || loading}
                 className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-2xl transition-all shadow-xl hover:shadow-orange-500/20 disabled:opacity-50 text-lg"
               >
-                {isCreating ? 'Initializing Stadium...' : 'START GAME'}
+                {isCreating ? 'Initializing Stadium...' : loading ? 'Loading Teams...' : 'START GAME'}
               </button>
             </form>
+            )}
           </div>
         </SignedIn>
 

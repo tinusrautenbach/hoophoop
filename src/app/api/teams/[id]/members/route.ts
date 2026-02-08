@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { teams, athletes, teamMemberships } from '@/db/schema';
+import { teams, athletes, teamMemberships, playerHistory, communities } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 
 export async function GET(
     request: Request,
@@ -39,29 +39,72 @@ export async function POST(
 
     try {
         const body = await request.json();
-        const { name, number } = body;
+        const { athleteId, name, number, communityId } = body;
 
-        if (!name) {
-            return NextResponse.json({ error: 'Athlete name is required' }, { status: 400 });
+        let athlete;
+        let isNewAthlete = false;
+
+        if (athleteId) {
+            athlete = await db.query.athletes.findFirst({
+                where: eq(athletes.id, athleteId),
+            });
+            if (!athlete) {
+                return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+            }
+        } else if (name) {
+            athlete = await db.query.athletes.findFirst({
+                where: eq(athletes.name, name),
+            });
+
+            if (!athlete) {
+                const [newAthlete] = await db.insert(athletes).values({
+                    ownerId: userId,
+                    name,
+                    status: 'active',
+                }).returning();
+                athlete = newAthlete;
+                isNewAthlete = true;
+            }
+        } else {
+            return NextResponse.json({ error: 'Athlete ID or name is required' }, { status: 400 });
         }
 
-        // 1. Create the athlete profile
-        const [newAthlete] = await db.insert(athletes).values({
-            ownerId: userId,
-            name,
-        }).returning();
+        const existingMembership = await db.query.teamMemberships.findFirst({
+            where: and(
+                eq(teamMemberships.teamId, teamId),
+                eq(teamMemberships.athleteId, athlete.id),
+                isNull(teamMemberships.endDate)
+            ),
+        });
 
-        // 2. Create the team membership
+        if (existingMembership) {
+            return NextResponse.json({ error: 'Player is already on this team' }, { status: 409 });
+        }
+
         const [membership] = await db.insert(teamMemberships).values({
             teamId,
-            athleteId: newAthlete.id,
+            athleteId: athlete.id,
             number: number?.toString(),
+            communityId: communityId || null,
+            createdBy: userId,
+            isActive: true,
         }).returning();
 
-        return NextResponse.json({
-            ...membership,
-            athlete: newAthlete
+        await db.insert(playerHistory).values({
+            athleteId: athlete.id,
+            teamId,
+            action: isNewAthlete ? 'added' : 'transferred',
+            newValue: number?.toString() || null,
+            performedBy: userId,
+            notes: isNewAthlete ? 'New player profile created' : 'Player added to team',
         });
+
+        const fullMembership = await db.query.teamMemberships.findFirst({
+            where: eq(teamMemberships.id, membership.id),
+            with: { athlete: true },
+        });
+
+        return NextResponse.json(fullMembership);
     } catch (error) {
         console.error('Error adding team member:', error);
         return NextResponse.json({ error: 'Failed to add team member' }, { status: 500 });

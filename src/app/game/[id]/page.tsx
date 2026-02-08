@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/use-socket';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Clock, Users, ArrowLeft, ShieldAlert, Target } from 'lucide-react';
+import { Trophy, Clock, Users, ArrowLeft, ShieldAlert, Target, Table, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
@@ -41,17 +41,21 @@ type Game = {
     possession: 'home' | 'guest' | null;
     mode: 'simple' | 'advanced';
     status: 'scheduled' | 'live' | 'final';
+    isTimerRunning: boolean;
     rosters: RosterEntry[];
 };
 
 export default function SpectatorPage() {
     const { id } = useParams();
+    const router = useRouter();
     const { socket, isConnected } = useSocket(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
     const [loading, setLoading] = useState(true);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [events, setEvents] = useState<GameEvent[]>([]);
+    const [hasReceivedGameState, setHasReceivedGameState] = useState(false);
+    const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
     useEffect(() => {
         fetch(`/api/games/${id}`)
@@ -64,6 +68,57 @@ export default function SpectatorPage() {
 
     useEffect(() => {
         if (!socket) return;
+        
+        // Listen for full game state on connection
+        const handleGameState = ({ game: gameState, events: gameEvents }: { game: Game, events: any[] }) => {
+            console.log('[Spectator] Received game-state event:', { 
+                isTimerRunning: gameState.isTimerRunning, 
+                clockSeconds: gameState.clockSeconds,
+                hasGameState: !!gameState 
+            });
+            setGame(gameState);
+            console.log('[Spectator] Setting isTimerRunning to:', gameState.isTimerRunning);
+            setIsTimerRunning(gameState.isTimerRunning);
+            setHasReceivedGameState(true);
+            setLastSyncTime(new Date());
+            if (gameEvents) {
+                setEvents(gameEvents.map((e: any) => ({
+                    ...e,
+                    timestamp: new Date(e.timestamp || e.createdAt)
+                })));
+            }
+        };
+
+        const handleClockUpdate = (data: { gameId: string, clockSeconds: number, isTimerRunning: boolean }) => {
+            if (data.gameId === id) {
+                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
+                setIsTimerRunning(data.isTimerRunning);
+                // Keep "Last sync" updated to show the connection is alive
+                // But maybe don't update on EVERY tick to avoid UI thrashing?
+                // For now, let's update it every tick to be sure.
+                setLastSyncTime(new Date());
+            }
+        };
+
+        const handleTimerStarted = (data: { gameId: string, clockSeconds: number }) => {
+            if (data.gameId === id) {
+                setIsTimerRunning(true);
+                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
+            }
+        };
+
+        const handleTimerStopped = (data: { gameId: string, clockSeconds: number }) => {
+            if (data.gameId === id) {
+                setIsTimerRunning(false);
+                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
+            }
+        };
+        
+        socket.on('game-state', handleGameState);
+        socket.on('clock-update', handleClockUpdate);
+        socket.on('timer-started', handleTimerStarted);
+        socket.on('timer-stopped', handleTimerStopped);
+        
         socket.on('game-updated', (updates: Partial<Game> & { isTimerRunning?: boolean }) => {
             setGame(prev => prev ? { ...prev, ...updates } : null);
             if (updates.isTimerRunning !== undefined) {
@@ -78,18 +133,25 @@ export default function SpectatorPage() {
             };
             setEvents(prev => [newEvent, ...prev]);
         });
-    }, [socket]);
 
-    // Local ticking for spectators to keep it smooth
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (isTimerRunning && game && game.clockSeconds > 0) {
-            interval = setInterval(() => {
-                setGame(prev => prev ? { ...prev, clockSeconds: Math.max(0, prev.clockSeconds - 1) } : null);
-            }, 1000);
+        // Emit join-game AFTER setting up listeners to avoid race condition
+        if (socket.connected) {
+            console.log('Spectator emitting join-game for:', id);
+            socket.emit('join-game', id);
         }
-        return () => clearInterval(interval);
-    }, [isTimerRunning]);
+        
+        return () => {
+            socket.off('game-state', handleGameState);
+            socket.off('clock-update', handleClockUpdate);
+            socket.off('timer-started', handleTimerStarted);
+            socket.off('timer-stopped', handleTimerStopped);
+            socket.off('game-updated');
+            socket.off('event-added');
+        };
+    }, [socket, id]);
+
+    // Local ticking is removed - we rely on the server's clock-update event (every second)
+    // or manual sync. This ensures we show exactly what the server says.
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -97,59 +159,132 @@ export default function SpectatorPage() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    const handleManualSync = () => {
+        if (socket && socket.connected) {
+            console.log('[Spectator] Manual sync requested for game:', id);
+            socket.emit('join-game', id);
+            // Also fetch fresh data from API as fallback
+            fetch(`/api/games/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    console.log('[Spectator] API response:', { 
+                        isTimerRunning: data.isTimerRunning, 
+                        clockSeconds: data.clockSeconds 
+                    });
+                    setGame(data);
+                    console.log('[Spectator] Setting isTimerRunning from API to:', data.isTimerRunning);
+                    setIsTimerRunning(data.isTimerRunning);
+                    setHasReceivedGameState(true);
+                    setLastSyncTime(new Date());
+                    if (data.events) {
+                        setEvents(data.events.map((e: any) => ({
+                            ...e,
+                            timestamp: new Date(e.createdAt || e.timestamp)
+                        })));
+                    }
+                });
+        }
+    };
+
     if (loading || !game) return (
-        <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4" />
-            <div className="text-slate-500 italic">Connecting to the Stadium...</div>
+        <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-8 text-center">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4" />
+            <div className="text-slate-500 italic text-sm sm:text-base">Connecting to the Stadium...</div>
         </div>
     );
 
     return (
-        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col font-sans select-none overflow-y-auto text-white">
+        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col font-sans select-none overflow-hidden text-white">
             {/* Main Scoreboard - High Visibility */}
-            <div className="flex-1 flex flex-col items-center justify-start sm:justify-center p-4 sm:p-6 gap-4 sm:gap-12 min-h-0 pt-10 sm:pt-6">
+            <div className="flex-1 flex flex-col justify-center p-2 sm:p-4 md:p-6 lg:p-8 min-h-0">
 
-                {/* Clock & Period */}
-                <div className="text-center space-y-1 sm:space-y-2 shrink-0">
-                    <div className="text-slate-500 uppercase tracking-[0.3em] font-black text-[10px] sm:text-xs">
-                        Period {game.currentPeriod} / {game.totalPeriods}
+                {/* Clock & Period - Responsive sizing */}
+                <div className="text-center space-y-0.5 sm:space-y-1 md:space-y-2 shrink-0 mb-2 sm:mb-4 md:mb-6">
+                    <div className="flex items-center justify-center gap-2 sm:gap-3">
+                        <div className="text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] font-black text-[8px] sm:text-[10px] md:text-xs">
+                            Period {game.currentPeriod} / {game.totalPeriods}
+                        </div>
+                        {/* Connection Status & Sync Button */}
+                        <div className="flex items-center gap-1 sm:gap-2">
+                            {isConnected ? (
+                                <Wifi size={12} className="sm:w-3.5 sm:h-3.5 text-green-500" />
+                            ) : (
+                                <WifiOff size={12} className="sm:w-3.5 sm:h-3.5 text-red-500" />
+                            )}
+                            <button
+                                onClick={handleManualSync}
+                                className={cn(
+                                    "flex items-center gap-1 px-2 py-1 rounded-full text-[8px] sm:text-[10px] font-bold uppercase transition-all",
+                                    hasReceivedGameState
+                                        ? "bg-green-500/20 text-green-500 hover:bg-green-500/30"
+                                        : "bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 animate-pulse"
+                                )}
+                                title="Sync Game Data"
+                            >
+                                <RefreshCw size={10} className="sm:w-3 sm:h-3" />
+                                {hasReceivedGameState ? 'Synced' : 'Sync'}
+                            </button>
+                        </div>
                     </div>
                     <div className={cn(
-                        "font-mono text-5xl sm:text-9xl font-black tracking-tighter transition-all duration-300",
+                        "font-mono font-black tracking-tighter transition-all duration-300",
+                        "text-3xl xs:text-4xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl",
                         isTimerRunning ? "text-orange-500" : "text-slate-700"
                     )}>
                         {formatTime(game.clockSeconds)}
                     </div>
                     {!isConnected && (
-                        <div className="text-red-500 text-[10px] uppercase font-bold animate-pulse">Disconnected - Reconnecting...</div>
+                        <div className="text-red-500 text-[8px] sm:text-[10px] uppercase font-bold animate-pulse">Disconnected - Reconnecting...</div>
+                    )}
+                    {lastSyncTime && (
+                        <div className="text-slate-600 text-[8px] sm:text-[10px] uppercase font-medium">
+                            Last sync: {lastSyncTime.toLocaleTimeString()}
+                        </div>
                     )}
                 </div>
 
-                {/* Score Spread */}
-                <div className="w-full max-w-4xl grid grid-cols-2 gap-4 relative shrink-0">
-                    {/* Home */}
+                {/* Score Spread - Responsive grid */}
+                <div className="w-full max-w-7xl mx-auto grid grid-cols-[1fr_auto_1fr] gap-1 sm:gap-2 md:gap-4 items-center shrink-0">
+                    {/* Home Team */}
                     <motion.div
                         initial={{ x: -20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
-                        className="flex flex-col items-end gap-2 sm:gap-4"
+                        className="flex flex-col items-center gap-1 sm:gap-2 md:gap-4"
                     >
-                        <div className="text-right">
-                            <h2 className="text-xl sm:text-4xl font-black uppercase italic tracking-tighter text-orange-500 leading-none truncate max-w-[150px] sm:max-w-none">
+                        <div className="text-center w-full">
+                            <h2 className={cn(
+                                "font-black uppercase italic tracking-tighter text-orange-500 leading-none truncate",
+                                "text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl",
+                                "max-w-[100px] xs:max-w-[120px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-none"
+                            )}>
                                 {game.homeTeamName}
                             </h2>
-                            <div className="flex justify-end gap-1 mt-2">
+                            <div className="flex justify-center gap-0.5 sm:gap-1 mt-1 sm:mt-2">
                                 {Array.from({ length: game.totalTimeouts }).map((_, i) => (
-                                    <div key={i} className={cn("w-3 h-1 sm:w-4 rounded-full", i < game.homeTimeouts ? "bg-orange-500" : "bg-slate-800")} />
+                                    <div key={i} className={cn(
+                                        "rounded-full",
+                                        i < game.homeTimeouts ? "bg-orange-500" : "bg-slate-800",
+                                        "w-1.5 h-0.5 sm:w-2 sm:h-1 md:w-3 md:h-1 lg:w-4"
+                                    )} 
+                                    />
                                 ))}
                             </div>
                         </div>
-                        <div className="text-7xl sm:text-9xl font-black leading-none tabular-nums">
+                        <div className={cn(
+                            "font-black leading-none tabular-nums",
+                            "text-5xl xs:text-6xl sm:text-7xl md:text-8xl lg:text-9xl"
+                        )}>
                             {game.homeScore}
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Fouls</div>
+                        <div className="flex items-center gap-1 sm:gap-2">
                             <div className={cn(
-                                "text-lg sm:text-xl font-black px-2 sm:px-3 py-1 rounded-lg border",
+                                "font-bold text-slate-500 uppercase tracking-widest hidden sm:block",
+                                "text-[6px] sm:text-[8px] md:text-[10px]"
+                            )}>Fouls</div>
+                            <div className={cn(
+                                "font-black rounded-lg border transition-all",
+                                "px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1",
+                                "text-base sm:text-lg md:text-xl lg:text-2xl",
                                 game.homeFouls >= 5 ? "bg-red-500/20 border-red-500 text-red-500 animate-pulse" : "bg-slate-900 border-slate-800 text-slate-400"
                             )}>
                                 {game.homeFouls}
@@ -158,58 +293,103 @@ export default function SpectatorPage() {
                     </motion.div>
 
                     {/* Possession Arrow & Dash */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none">
+                    <div className="flex flex-col items-center justify-center px-1 sm:px-2 md:px-4">
                         <div className={cn(
-                            "w-8 h-8 sm:w-16 sm:h-16 rounded-full border-2 border-slate-800 flex items-center justify-center transition-all duration-500 bg-slate-950 shadow-[0_0_20px_rgba(0,0,0,0.5)] mb-8 sm:mb-12",
+                            "rounded-full border-2 flex items-center justify-center transition-all duration-500 bg-slate-950 shadow-[0_0_20px_rgba(0,0,0,0.5)]",
+                            "w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 lg:w-16 lg:h-16",
+                            "mb-2 sm:mb-4 md:mb-6 lg:mb-8",
                             game.possession === 'home' ? "rotate-180 border-orange-500/50" : game.possession === 'guest' ? "rotate-0 border-white/50" : "opacity-0"
                         )}>
-                            <Trophy size={16} className={cn("sm:w-6 sm:h-6", game.possession === 'home' ? "text-orange-500" : "text-white")} />
+                            <Trophy className={cn(
+                                game.possession === 'home' ? "text-orange-500" : "text-white",
+                                "w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5 lg:w-6 lg:h-6"
+                            )} />
                         </div>
-                        <span className="text-4xl sm:text-6xl font-black text-slate-500 leading-none">-</span>
+                        <span className={cn(
+                            "font-black text-slate-500 leading-none",
+                            "text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl"
+                        )}>-</span>
                     </div>
 
-                    {/* Guest */}
+                    {/* Guest Team */}
                     <motion.div
                         initial={{ x: 20, opacity: 0 }}
                         animate={{ x: 0, opacity: 1 }}
-                        className="flex flex-col items-start gap-2 sm:gap-4"
+                        className="flex flex-col items-center gap-1 sm:gap-2 md:gap-4"
                     >
-                        <div className="text-left">
-                            <h2 className="text-xl sm:text-4xl font-black uppercase italic tracking-tighter text-white leading-none truncate max-w-[150px] sm:max-w-none">
+                        <div className="text-center w-full">
+                            <h2 className={cn(
+                                "font-black uppercase italic tracking-tighter text-white leading-none truncate",
+                                "text-base sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl",
+                                "max-w-[100px] xs:max-w-[120px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-[250px] xl:max-w-none"
+                            )}>
                                 {game.guestTeamName}
                             </h2>
-                            <div className="flex justify-start gap-1 mt-2">
+                            <div className="flex justify-center gap-0.5 sm:gap-1 mt-1 sm:mt-2">
                                 {Array.from({ length: game.totalTimeouts }).map((_, i) => (
-                                    <div key={i} className={cn("w-3 h-1 sm:w-4 rounded-full", i < game.guestTimeouts ? "bg-white" : "bg-slate-800")} />
+                                    <div key={i} className={cn(
+                                        "rounded-full",
+                                        i < game.guestTimeouts ? "bg-white" : "bg-slate-800",
+                                        "w-1.5 h-0.5 sm:w-2 sm:h-1 md:w-3 md:h-1 lg:w-4"
+                                    )} 
+                                    />
                                 ))}
                             </div>
                         </div>
-                        <div className="text-7xl sm:text-9xl font-black leading-none tabular-nums">
+                        <div className={cn(
+                            "font-black leading-none tabular-nums",
+                            "text-5xl xs:text-6xl sm:text-7xl md:text-8xl lg:text-9xl"
+                        )}>
                             {game.guestScore}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2">
                             <div className={cn(
-                                "text-lg sm:text-xl font-black px-2 sm:px-3 py-1 rounded-lg border",
+                                "font-black rounded-lg border transition-all",
+                                "px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1",
+                                "text-base sm:text-lg md:text-xl lg:text-2xl",
                                 game.guestFouls >= 5 ? "bg-red-500/20 border-red-500 text-red-500 animate-pulse" : "bg-slate-900 border-slate-800 text-slate-400"
                             )}>
                                 {game.guestFouls}
                             </div>
-                            <div className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Fouls</div>
+                            <div className={cn(
+                                "font-bold text-slate-500 uppercase tracking-widest hidden sm:block",
+                                "text-[6px] sm:text-[8px] md:text-[10px]"
+                            )}>Fouls</div>
                         </div>
                     </motion.div>
                 </div>
             </div>
 
             {/* Bottom Section - Actions & Lineup */}
-            <div className="bg-slate-950/80 border-t border-white/5 p-4 sm:p-6 backdrop-blur-xl relative z-10 shrink-0">
-                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 h-[180px] sm:h-[220px]">
+            <div className="bg-slate-950/80 border-t border-white/5 p-2 sm:p-4 md:p-6 backdrop-blur-xl relative z-10 shrink-0">
+                <div className={cn(
+                    "max-w-7xl mx-auto grid gap-2 sm:gap-4 md:gap-6 lg:gap-8",
+                    "h-[120px] sm:h-[140px] md:h-[180px] lg:h-[200px] xl:h-[220px]",
+                    "grid-cols-1 md:grid-cols-2"
+                )}>
                     {/* Game Log - Now Scrolling */}
                     <div className="flex flex-col h-full overflow-hidden">
-                        <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Live Play-by-Play</h3>
-                            <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
-                                <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Real-time</span>
+                        <div className="flex items-center justify-between mb-1 sm:mb-2 md:mb-4 px-1 sm:px-2">
+                            <h3 className={cn(
+                                "font-black uppercase text-slate-500",
+                                "text-[6px] sm:text-[8px] md:text-[10px]",
+                                "tracking-[0.15em] sm:tracking-[0.2em]"
+                            )}>Live Play-by-Play</h3>
+                            <div className="flex items-center gap-2 sm:gap-3">
+                                <button
+                                    onClick={() => router.push(`/game/${id}/box-score`)}
+                                    className="flex items-center gap-1 text-[8px] sm:text-[10px] font-bold text-orange-500 hover:text-orange-400 uppercase tracking-wider transition-colors"
+                                >
+                                    <Table size={12} className="sm:w-3.5 sm:h-3.5" />
+                                    Box Score
+                                </button>
+                                <div className="flex items-center gap-1 sm:gap-2">
+                                    <span className="w-1 sm:w-1.5 h-1 sm:h-1.5 bg-orange-500 rounded-full animate-pulse" />
+                                    <span className={cn(
+                                        "font-bold text-slate-600 uppercase tracking-widest",
+                                        "text-[6px] sm:text-[8px]"
+                                    )}>Real-time</span>
+                                </div>
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -219,23 +399,36 @@ export default function SpectatorPage() {
 
                     {/* Active Lineup */}
                     <div className="hidden md:flex flex-col h-full overflow-hidden">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4 px-2">On the Floor</h3>
+                        <h3 className={cn(
+                            "font-black uppercase text-slate-500 mb-2 sm:mb-4 px-1 sm:px-2",
+                            "text-[6px] sm:text-[8px] md:text-[10px]",
+                            "tracking-[0.15em] sm:tracking-[0.2em]"
+                        )}>On the Floor</h3>
                         <div className="flex-1 overflow-y-auto">
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                                 {game.rosters?.filter(r => r.isActive).sort((a, b) => a.team === 'home' ? -1 : 1).map(player => (
                                     <div key={player.id} className={cn(
-                                        "bg-slate-900/40 border p-3 rounded-2xl flex items-center gap-3 transition-all",
+                                        "bg-slate-900/40 border rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-3 transition-all",
+                                        "p-2 sm:p-3",
                                         player.team === 'home' ? "border-orange-500/20" : "border-white/5"
                                     )}>
                                         <div className={cn(
-                                            "w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg",
+                                            "rounded-lg sm:rounded-xl flex items-center justify-center font-black",
+                                            "w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10",
+                                            "text-sm sm:text-base md:text-lg",
                                             player.team === 'home' ? "bg-orange-500/20 text-orange-500" : "bg-slate-800 text-slate-400"
                                         )}>
                                             {player.number}
                                         </div>
                                         <div className="flex flex-col min-w-0">
-                                            <div className="text-[10px] font-black truncate text-white leading-tight uppercase font-sans">{player.name}</div>
-                                            <div className="text-[8px] font-bold text-slate-600 uppercase tracking-tighter">
+                                            <div className={cn(
+                                                "font-black truncate text-white leading-tight uppercase font-sans",
+                                                "text-[8px] sm:text-[9px] md:text-[10px]"
+                                            )}>{player.name}</div>
+                                            <div className={cn(
+                                                "font-bold text-slate-600 uppercase tracking-tighter",
+                                                "text-[6px] sm:text-[7px] md:text-[8px]"
+                                            )}>
                                                 {player.points} PTS • {player.fouls} F
                                             </div>
                                         </div>

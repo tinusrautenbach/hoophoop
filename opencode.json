@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "dbhub_bball": {
+      "type": "local",
+      "command": [
+        "node",
+        "/mnt/data/2z5/dbhub/dbhub/dist/index.js",
+        "--transport",
+        "stdio",
+        "--dsn",
+        "postgres://postgres:postgres@127.0.0.1:5432/bball",
+        "--exclude-schemas=_timescaledb_%"
+      ],
+      "enabled": true
+    }
+  }
+}

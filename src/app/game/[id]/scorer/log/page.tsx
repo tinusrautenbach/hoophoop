@@ -75,11 +75,20 @@ export default function FullLogPage() {
         // Optimistically update local state
         setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
 
-        // Persist to DB
+        // Persist to DB - only send valid fields
         fetch(`/api/games/${id}/events`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedEvent)
+            body: JSON.stringify({
+                id: updatedEvent.id,
+                type: updatedEvent.type,
+                player: updatedEvent.player,
+                value: updatedEvent.value,
+                description: updatedEvent.description,
+                clockAt: updatedEvent.clockAt,
+                period: updatedEvent.period,
+                metadata: updatedEvent.metadata
+            })
         }).catch(err => console.error('Failed to persist event update:', err));
 
         // Broadcast to other clients

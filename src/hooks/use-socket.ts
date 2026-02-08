@@ -12,7 +12,8 @@ export const useSocket = (gameId: string) => {
 
         socket.on('connect', () => {
             setIsConnected(true);
-            socket.emit('join-game', gameId);
+            // Note: Components should emit 'join-game' AFTER setting up their listeners
+            // to avoid missing the 'game-state' event due to race conditions
         });
 
         socket.on('disconnect', () => {

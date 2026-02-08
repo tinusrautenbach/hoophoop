@@ -41,6 +41,51 @@
 - [x] 4.1 Live Scoreboard (Public)
 - [x] 4.2 QR Code Sharing
 
-## Phase 5: Stats & Finalization
-- [ ] 5.1 Game Summary
-- [ ] 5.2 Season Statistics
+## Phase 5: Multi-Scorer & Centralized Timer (NEW)
+- [ ] **5.1 Centralized Timer Architecture**:
+  - [ ] Create server-side timer service in Socket.io handler
+  - [ ] Add `timerStartedAt` timestamp field to games table
+  - [ ] Implement timer start/stop commands ('timer-control' socket events)
+  - [ ] Server broadcasts clock updates every second to all room members
+  - [ ] Persist timer state to database every 3-5 seconds
+  - [ ] Remove client-side timer ticking (all timing comes from server)
+  - [ ] Add server-side timer recovery on restart (load active games, resume timers)
+  
+- [ ] **5.2 Multi-Scorer Support**:
+  - [ ] Create `game_scorers` table (gameId, userId, role, joinedAt)
+  - [ ] Add "Invite Scorer" functionality (generate invite codes/links)
+  - [ ] Update API permissions to allow multiple scorers per game
+  - [ ] Add scorer presence indicators (show active scorers in UI)
+  - [ ] Implement role-based permissions (owner vs co-scorer)
+  - [ ] Add activity attribution (show which scorer performed each action)
+  - [ ] Build "Join as Scorer" flow (enter game code or use invite link)
+
+- [ ] **5.3 Conflict Resolution**:
+  - [ ] Implement optimistic concurrency control for game state updates
+  - [ ] Add version/timestamp fields to detect stale updates
+  - [ ] Create conflict notification UI (when two scorers edit simultaneously)
+  - [ ] Add atomic operations for critical actions (end game, period transitions)
+
+## Phase 6: Stats & Finalization
+- [ ] 6.1 Game Summary
+- [ ] 6.2 Season Statistics
+
+## Phase 7: Community & Advanced User System (New)
+- [ ] **7.1 Database Schema Migration**:
+  - [ ] Create `communities`, `community_members`, `community_invites` tables.
+  - [ ] Create `user_activity_logs` table.
+  - [ ] Add `communityId` to `teams` and `games`.
+- [ ] **7.2 Community Management API**:
+  - [ ] CRUD routes for Communities.
+  - [ ] Invite system (Generate token, Send email - *mock for MVP*, Accept invite).
+  - [ ] Member management (Promote/Demote/Remove).
+- [ ] **7.3 Permission Middleware**:
+  - [ ] Update `auth()` checks to respect Community Roles.
+  - [ ] Implement `canManageGame(userId, gameId)` logic.
+- [ ] **7.4 Frontend - Community Hub**:
+  - [ ] "Create Community" flow.
+  - [ ] Community Dashboard (Games, Teams, Members lists).
+  - [ ] User Profile Page (My Communities, Invites).
+- [ ] **7.5 Activity Logging**:
+  - [ ] Create utility function `logActivity()`.
+  - [ ] Integrate logging into key API routes (Game Create, Score Update).

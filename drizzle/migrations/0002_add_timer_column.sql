@@ -1,0 +1,1 @@
+ALTER TABLE "games" ADD COLUMN "is_timer_running" boolean DEFAULT false NOT NULL;

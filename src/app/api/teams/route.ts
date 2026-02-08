@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { name, shortCode, color } = body;
+        const { name, shortCode, color, communityId } = body;
 
         if (!name) {
             return NextResponse.json({ error: 'Team name is required' }, { status: 400 });
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
 
         const [newTeam] = await db.insert(teams).values({
             ownerId: userId,
+            communityId: communityId || null,
             name,
             shortCode,
             color,

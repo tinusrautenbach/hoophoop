@@ -57,3 +57,14 @@ This file defines the strict rules and guidelines for this project. Antigravity 
 
 ## 9. MCP Configuration
 - **Database Access**: Always use the `dbhub-bball` MCP server for database operations instead of the general `dbhub` server.
+
+## 10. Security Testing Policy (REQUIRED)
+- **Reference**: See `spec/security_tests.md` for comprehensive security testing plan.
+- **Test Frequency Enforcement**:
+  - **Every Commit**: Automated security tests must pass before merge (run `npm run test:security`)
+  - **Weekly (Mondays)**: Dependency vulnerability scan (`npm audit --audit-level=moderate`)
+  - **Monthly (1st of month)**: Full security audit - all test categories
+  - **Quarterly**: Penetration testing and external security review
+- **Tracking**: Update `spec/security_test_schedule.md` with last run dates after each test cycle
+- **Blocking**: High/Critical security findings must be resolved before deployment
+- **Mock Auth Check**: Never deploy with `NEXT_PUBLIC_USE_MOCK_AUTH=true` in production

@@ -3,16 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/use-socket';
+import { useAuth } from '@/components/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Trophy, Clock, Users, ArrowLeft, RotateCcw, ShieldAlert,
-    MoreHorizontal, Share2, QrCode, Copy, Check, X, Target, Move, Timer
+    MoreHorizontal, Share2, QrCode, Copy, Check, X, Target, Move, Timer,
+    Home, Flag, Table
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SimpleScorer } from '@/components/scorer/simple-scorer';
 import { AdvancedScorer } from '@/components/scorer/advanced-scorer';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
+import { ScorerManager } from '@/components/scorer/scorer-manager';
 import QRCode from 'react-qr-code';
 
 function cn(...inputs: ClassValue[]) {
@@ -29,8 +32,16 @@ type RosterEntry = {
     isActive: boolean;
 };
 
+type Scorer = {
+    id: string;
+    userId: string;
+    role: 'owner' | 'co_scorer' | 'viewer';
+    joinedAt: string;
+};
+
 type Game = {
     id: string;
+    ownerId: string;
     homeTeamName: string;
     guestTeamName: string;
     homeScore: number;
@@ -46,17 +57,22 @@ type Game = {
     totalTimeouts: number;
     possession: 'home' | 'guest' | null;
     mode: 'simple' | 'advanced';
+    status: 'scheduled' | 'live' | 'final';
+    isTimerRunning: boolean;
     rosters: RosterEntry[];
+    scorers?: Scorer[];
 };
 
 export default function ScorerPage() {
     const { id } = useParams();
     const router = useRouter();
     const { socket, isConnected } = useSocket(id as string);
+    const { userId } = useAuth();
 
     const [game, setGame] = useState<Game | null>(null);
     const [loading, setLoading] = useState(true);
     const [scoringFor, setScoringFor] = useState<{ points: number, side?: 'home' | 'guest', isMiss?: boolean } | null>(null);
+    // isTimerRunning is now derived from game state, but we keep local state for optimistic UI
     const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [isSubsOpen, setIsSubsOpen] = useState(false);
     const [isTimeEditing, setIsTimeEditing] = useState(false);
@@ -66,18 +82,31 @@ export default function ScorerPage() {
     const [foulingFor, setFoulingFor] = useState<'home' | 'guest' | null>(null);
     const [isTimeoutOpen, setIsTimeoutOpen] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
+    const [isScorersOpen, setIsScorersOpen] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [isEndGameOpen, setIsEndGameOpen] = useState(false);
+    const [scorers, setScorers] = useState<Scorer[]>([]);
+
+    useEffect(() => {
+        if (userId && socket) {
+            socket.emit('authenticate', { userId });
+        }
+    }, [userId, socket]);
 
     useEffect(() => {
         fetch(`/api/games/${id}`)
             .then(res => res.json())
             .then(data => {
                 setGame(data);
+                setIsTimerRunning(data.isTimerRunning);
                 if (data.events) {
                     setEvents(data.events.map((e: any) => ({
                         ...e,
                         timestamp: new Date(e.createdAt || e.timestamp)
                     })));
+                }
+                if (data.scorers) {
+                    setScorers(data.scorers);
                 }
                 setLoading(false);
             });
@@ -85,6 +114,49 @@ export default function ScorerPage() {
 
     useEffect(() => {
         if (!socket) return;
+
+        // Listen for full game state on connection
+        const handleGameState = ({ game: gameState, events: gameEvents }: { game: Game, events: any[] }) => {
+            console.log('Scorer received game-state:', gameState);
+            setGame(gameState);
+            setIsTimerRunning(gameState.isTimerRunning);
+            if (gameState.scorers) {
+                setScorers(gameState.scorers);
+            }
+            if (gameEvents) {
+                setEvents(gameEvents.map((e: any) => ({
+                    ...e,
+                    timestamp: new Date(e.timestamp || e.createdAt)
+                })));
+            }
+        };
+
+        const handleClockUpdate = (data: { gameId: string, clockSeconds: number, isTimerRunning: boolean }) => {
+            if (data.gameId === id) {
+                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
+                setIsTimerRunning(data.isTimerRunning);
+            }
+        };
+
+        const handleTimerStarted = (data: { gameId: string, clockSeconds: number }) => {
+            if (data.gameId === id) {
+                setIsTimerRunning(true);
+                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
+            }
+        };
+
+        const handleTimerStopped = (data: { gameId: string, clockSeconds: number }) => {
+            if (data.gameId === id) {
+                setIsTimerRunning(false);
+                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
+            }
+        };
+
+        socket.on('game-state', handleGameState);
+        socket.on('clock-update', handleClockUpdate);
+        socket.on('timer-started', handleTimerStarted);
+        socket.on('timer-stopped', handleTimerStopped);
+
         socket.on('game-updated', (updates: Partial<Game>) => {
             setGame(prev => prev ? { ...prev, ...updates } : null);
         });
@@ -96,44 +168,74 @@ export default function ScorerPage() {
             };
             setEvents(prev => [newEvent, ...prev]);
         });
-    }, [socket]);
 
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (isTimerRunning && game && game.clockSeconds > 0) {
-            interval = setInterval(() => {
-                setGame(prev => prev ? { ...prev, clockSeconds: prev.clockSeconds - 1 } : null);
-            }, 1000);
-        } else if (game?.clockSeconds === 0) {
-            setIsTimerRunning(false);
+        // Emit join-game AFTER setting up listeners to avoid race condition
+        if (socket.connected) {
+            console.log('Scorer emitting join-game for:', id);
+            socket.emit('join-game', id);
         }
-        return () => clearInterval(interval);
-    }, [isTimerRunning, game?.clockSeconds]);
 
-    // Periodic sync with server
-    useEffect(() => {
-        if (!isTimerRunning || !game) return;
-        const interval = setInterval(() => {
-            socket?.emit('update-game', { gameId: id, updates: { clockSeconds: game.clockSeconds } });
-        }, 5000);
-        return () => clearInterval(interval);
-    }, [isTimerRunning, game?.clockSeconds, socket, id]);
+        return () => {
+            socket.off('game-state', handleGameState);
+            socket.off('clock-update', handleClockUpdate);
+            socket.off('timer-started', handleTimerStarted);
+            socket.off('timer-stopped', handleTimerStopped);
+            socket.off('game-updated');
+            socket.off('event-added');
+        };
+    }, [socket, id]);
+
+    // We no longer need local timer ticking or periodic sync in the Scorer
+    // The server is now the authority.
 
     const toggleTimer = () => {
-        if (!isTimerRunning && game?.clockSeconds === 0) return;
-        const newRunning = !isTimerRunning;
-        setIsTimerRunning(newRunning);
+        if (!game || !socket || !userId) return;
+        
+        const action = isTimerRunning ? 'stop' : 'start';
+        
+        // Optimistic update
+        setIsTimerRunning(!isTimerRunning);
+        
+        socket.emit('timer-control', {
+            gameId: id,
+            action,
+            userId
+        });
+    };
 
-        // Sync running state and clock with server
-        if (game) {
-            updateGame({
-                clockSeconds: game.clockSeconds,
+    const handleAddScorer = async (userIdToAdd: string) => {
+        try {
+            const res = await fetch(`/api/games/${id}/scorers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userIdToAdd }),
             });
-            // We also send a special signal for timer state
-            socket?.emit('update-game', {
-                gameId: id,
-                updates: { isTimerRunning: newRunning }
+            
+            if (res.ok) {
+                const newScorer = await res.json();
+                setScorers(prev => [...prev, newScorer]);
+                // Could emit socket event here to notify other scorers
+            } else {
+                console.error('Failed to add scorer');
+            }
+        } catch (error) {
+            console.error('Error adding scorer:', error);
+        }
+    };
+
+    const handleRemoveScorer = async (scorerId: string) => {
+        try {
+            const res = await fetch(`/api/games/${id}/scorers/${scorerId}`, {
+                method: 'DELETE',
             });
+            
+            if (res.ok) {
+                setScorers(prev => prev.filter(s => s.id !== scorerId));
+            } else {
+                console.error('Failed to remove scorer');
+            }
+        } catch (error) {
+            console.error('Error removing scorer:', error);
         }
     };
 
@@ -348,7 +450,15 @@ export default function ScorerPage() {
         });
 
         // Auto-stop timer on timeout
-        if (isTimerRunning) setIsTimerRunning(false);
+        if (isTimerRunning) {
+            // Send stop command to server
+            socket?.emit('timer-control', {
+                gameId: id,
+                action: 'stop',
+                userId
+            });
+            setIsTimerRunning(false);
+        }
         setIsTimeoutOpen(false);
     };
 
@@ -378,7 +488,15 @@ export default function ScorerPage() {
             clockAt: game.periodSeconds || 600
         });
 
-        setIsTimerRunning(false);
+        // Ensure timer is stopped on server
+        if (isTimerRunning) {
+            socket?.emit('timer-control', {
+                gameId: id,
+                action: 'stop',
+                userId
+            });
+            setIsTimerRunning(false);
+        }
     };
 
     const togglePossession = () => {
@@ -388,19 +506,47 @@ export default function ScorerPage() {
         });
     };
 
+    const handleEndGame = () => {
+        if (!game) return;
+        
+        // Stop timer if running
+        if (isTimerRunning) {
+            socket?.emit('timer-control', {
+                gameId: id,
+                action: 'stop',
+                userId
+            });
+            setIsTimerRunning(false);
+        }
+        
+        // Update game status to final
+        updateGame({
+            status: 'final'
+        });
+        
+        // Add end game event
+        addEvent({
+            type: 'game_end',
+            team: 'home',
+            player: 'System',
+            description: `Game Ended - Final Score: ${game.homeScore}-${game.guestScore}`,
+        });
+        
+        setIsEndGameOpen(false);
+    };
+
     const updateGame = (updates: Partial<Game> & { isTimerRunning?: boolean }) => {
         if (!socket || !game) return;
         const newState = { ...game, ...updates };
         setGame(newState);
         socket.emit('update-game', { gameId: id, updates });
 
-        // Persist to DB (extract only valid game fields)
-        const { isTimerRunning, ...persistedUpdates } = updates;
-        if (Object.keys(persistedUpdates).length > 0) {
+        // Persist to DB - now includes isTimerRunning
+        if (Object.keys(updates).length > 0) {
             fetch(`/api/games/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(persistedUpdates),
+                body: JSON.stringify(updates),
             }).catch(err => console.error('Failed to persist game update:', err));
         }
     };
@@ -417,9 +563,18 @@ export default function ScorerPage() {
         <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col font-sans select-none touch-none overflow-hidden">
             {/* Top Header - THE DISPLAY */}
             <div className="bg-black/40 border-b border-slate-800 p-2 landscape:p-1 flex items-center justify-between shrink-0">
-                <button onClick={() => router.back()} className="p-2 text-slate-500 hover:text-white landscape:p-1">
-                    <ArrowLeft size={20} />
-                </button>
+                <div className="flex items-center gap-1">
+                    <button onClick={() => router.back()} className="p-2 text-slate-500 hover:text-white landscape:p-1">
+                        <ArrowLeft size={20} />
+                    </button>
+                    <button 
+                        onClick={() => router.push('/games')} 
+                        className="p-2 text-slate-500 hover:text-orange-500 transition-colors landscape:p-1"
+                        title="Back to Main Menu"
+                    >
+                        <Home size={20} />
+                    </button>
+                </div>
 
                 <div className="flex items-center gap-4 landscape:gap-8">
                     {/* Home Score (Landscape only) */}
@@ -457,6 +612,17 @@ export default function ScorerPage() {
                 </div>
 
                 <div className="flex items-center gap-1">
+                    {/* Multi-Scorer Presence Indicator */}
+                    <button
+                        onClick={() => setIsScorersOpen(true)}
+                        className="p-2 text-slate-500 hover:text-white landscape:p-1 relative"
+                        title="Manage Scorers"
+                    >
+                        <Users size={18} className={cn(scorers.length > 0 && "text-blue-500")} />
+                        {scorers.length > 0 && (
+                            <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full border border-black" />
+                        )}
+                    </button>
                     <button
                         onClick={() => setIsShareOpen(true)}
                         className="p-2 text-slate-500 hover:text-orange-500 transition-colors landscape:p-1"
@@ -509,7 +675,7 @@ export default function ScorerPage() {
                     </div>
 
                     {/* Bottom Controls (Portrait) */}
-                    <div className="h-20 bg-slate-900 border-t border-slate-800 grid grid-cols-3 gap-1 p-1 shrink-0">
+                    <div className="h-20 bg-slate-900 border-t border-slate-800 grid grid-cols-4 gap-1 p-1 shrink-0">
                         <button
                             onClick={() => handleTimeout()}
                             className="bg-slate-800/50 rounded-xl font-bold text-[10px] uppercase text-slate-400 flex flex-col items-center justify-center hover:bg-slate-800 transition-colors"
@@ -539,6 +705,13 @@ export default function ScorerPage() {
                         >
                             <Users size={16} className="mb-1" />
                             Subs
+                        </button>
+                        <button
+                            onClick={() => router.push(`/game/${id}/box-score`)}
+                            className="bg-slate-800/50 rounded-xl font-bold text-[10px] uppercase text-slate-400 flex flex-col items-center justify-center hover:bg-slate-800 transition-colors"
+                        >
+                            <Table size={16} className="mb-1" />
+                            Box Score
                         </button>
                     </div>
                 </div>
@@ -664,6 +837,15 @@ export default function ScorerPage() {
                         >
                             <Clock size={24} className={cn("text-white mb-1", isTimerRunning && "animate-pulse")} fill="currentColor" />
                             <span className="text-[10px] font-black tracking-widest uppercase text-white">{isTimerRunning ? 'PAUSE' : 'RESUME'}</span>
+                        </button>
+
+                        {/* Box Score Button */}
+                        <button
+                            onClick={() => router.push(`/game/${id}/box-score`)}
+                            className="h-14 rounded-xl flex flex-col items-center justify-center bg-slate-900 border border-slate-800 hover:bg-slate-800 transition-all active:scale-95"
+                        >
+                            <Table size={16} className="text-slate-400 mb-0.5" />
+                            <span className="text-[8px] font-black tracking-widest uppercase text-slate-500">Box Score</span>
                         </button>
                     </div>
                 </div>
@@ -844,28 +1026,16 @@ export default function ScorerPage() {
                                                         addEvent({
                                                             type: 'miss',
                                                             team: 'guest',
-                                                            description: `${game.guestTeamName} Missed ${scoringFor.points === 1 ? 'Free Throw' : scoringFor.points === 3 ? '3PT' : 'FG'}`
+                                                            description: 'Home Team Miss (Team)',
+                                                            value: scoringFor.points
                                                         });
                                                         setScoringFor(null);
                                                     }}
-                                                    className="bg-slate-800 border-2 border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center text-center hover:border-white transition-all active:scale-95"
+                                                    className="bg-slate-900/50 border border-slate-800 border-dashed p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-500 text-xs"
                                                 >
-                                                    <div className="text-[10px] font-black uppercase text-slate-400 leading-tight">{game.guestTeamName}</div>
-                                                    <div className="text-[8px] font-bold text-slate-600 uppercase mt-0.5">Other Team Miss</div>
+                                                    Team Miss
                                                 </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => {
-                                                        updateGame({ homeScore: game.homeScore + scoringFor.points });
-                                                        addEvent({ type: 'score', team: 'home', value: scoringFor.points });
-                                                        setScoringFor(null);
-                                                    }}
-                                                    className="bg-slate-800/50 border-dashed border-2 border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-[10px] hover:border-slate-500 hover:text-white transition-all active:scale-95"
-                                                >
-                                                    <div className="font-black uppercase">Team</div>
-                                                    <div className="opacity-50">Score</div>
-                                                </button>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
                                 )}
@@ -873,7 +1043,7 @@ export default function ScorerPage() {
                                 {/* Guest Side */}
                                 {(!scoringFor.side || scoringFor.side === 'guest') && (
                                     <div className="space-y-4">
-                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest px-2 text-right">
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest px-2">
                                             {game.guestTeamName}
                                         </h4>
                                         <div className={cn("grid gap-2", scoringFor.isMiss ? "grid-cols-2" : "grid-cols-3")}>
@@ -887,7 +1057,7 @@ export default function ScorerPage() {
                                                         className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center hover:border-white transition-all active:scale-95 group"
                                                     >
                                                         <div className="text-2xl font-black text-slate-500 group-hover:text-white mb-1">{entry.number}</div>
-                                                        <div className="text-[10px] font-bold truncate w-full text-center text-slate-400 group-hover:text-white">{entry.name}</div>
+                                                        <div className="text-[10px] font-bold truncate w-full text-center">{entry.name}</div>
                                                     </button>
                                                 ))}
                                             {scoringFor.isMiss ? (
@@ -895,29 +1065,17 @@ export default function ScorerPage() {
                                                     onClick={() => {
                                                         addEvent({
                                                             type: 'miss',
-                                                            team: 'home',
-                                                            description: `${game.homeTeamName} Missed ${scoringFor.points === 1 ? 'Free Throw' : scoringFor.points === 3 ? '3PT' : 'FG'}`
+                                                            team: 'guest',
+                                                            description: 'Guest Team Miss (Team)',
+                                                            value: scoringFor.points
                                                         });
                                                         setScoringFor(null);
                                                     }}
-                                                    className="bg-slate-800 border-2 border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center text-center hover:border-white transition-all active:scale-95"
+                                                    className="bg-slate-900/50 border border-slate-800 border-dashed p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-500 text-xs"
                                                 >
-                                                    <div className="text-[10px] font-black uppercase text-slate-400 leading-tight">{game.homeTeamName}</div>
-                                                    <div className="text-[8px] font-bold text-slate-600 uppercase mt-0.5">Other Team Miss</div>
+                                                    Team Miss
                                                 </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => {
-                                                        updateGame({ guestScore: game.guestScore + scoringFor.points });
-                                                        addEvent({ type: 'score', team: 'guest', value: scoringFor.points });
-                                                        setScoringFor(null);
-                                                    }}
-                                                    className="bg-slate-800/50 border-dashed border-2 border-slate-700 p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-[10px] hover:border-slate-500 hover:text-white transition-all active:scale-95"
-                                                >
-                                                    <div className="font-black uppercase text-center">Team</div>
-                                                    <div className="opacity-50">Score</div>
-                                                </button>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
                                 )}
@@ -927,20 +1085,17 @@ export default function ScorerPage() {
                 )}
             </AnimatePresence>
 
-            {/* Edit Event Overlay */}
+            {/* Event Edit Modal */}
             <AnimatePresence>
                 {editingEvent && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
                         className="fixed inset-0 z-[110] bg-slate-950/95 backdrop-blur-xl p-6 flex flex-col"
                     >
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-2xl font-black uppercase tracking-tight flex items-center gap-2">
-                                <Target size={24} className="text-orange-500" />
-                                Edit Action
-                            </h3>
+                            <h3 className="text-2xl font-black uppercase tracking-tight">Edit Event</h3>
                             <button onClick={() => setEditingEvent(null)} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-full">
                                 <X size={20} />
                             </button>
@@ -1297,14 +1452,104 @@ export default function ScorerPage() {
                                     nextPeriod();
                                     setIsTimeEditing(false);
                                 }}
-                                className="w-full bg-orange-600/20 hover:bg-orange-600/40 text-orange-500 border border-orange-500/20 p-4 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
+                                className="w-full bg-orange-600/20 hover:bg-orange-600/40 text-orange-500 border border-orange-500/20 p-4 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 mb-4"
                             >
                                 Start Next Period
                                 <ArrowLeft className="rotate-180" size={16} />
                             </button>
+
+                            {/* End Game Button */}
+                            <button
+                                onClick={() => {
+                                    setIsTimeEditing(false);
+                                    setIsEndGameOpen(true);
+                                }}
+                                disabled={game?.status === 'final'}
+                                className={cn(
+                                    "w-full p-4 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
+                                    game?.status === 'final'
+                                        ? "bg-slate-800 text-slate-600 cursor-not-allowed"
+                                        : "bg-red-950/30 border border-red-500/30 text-red-400 hover:bg-red-900/40"
+                                )}
+                            >
+                                <Flag size={18} />
+                                {game?.status === 'final' ? 'Game Finalized' : 'End Game'}
+                            </button>
                         </motion.div>
                     </motion.div>
                 )}
+
+                {/* End Game Confirmation Modal */}
+                {isEndGameOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[130] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="bg-slate-900 border border-white/10 rounded-[32px] p-8 max-w-sm w-full relative shadow-2xl"
+                        >
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-6">
+                                    <Flag size={32} className="text-red-500" />
+                                </div>
+
+                                <h3 className="text-2xl font-black mb-2 tracking-tight">End Game?</h3>
+                                <p className="text-sm text-slate-500 mb-6">
+                                    This will finalize the game with the current score and prevent further scoring.
+                                </p>
+
+                                <div className="w-full space-y-3">
+                                    <div className="bg-slate-800/50 rounded-2xl p-4 mb-6">
+                                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Final Score</div>
+                                        <div className="flex items-center justify-center gap-4">
+                                            <div className="text-center">
+                                                <div className="text-xs font-bold text-orange-500 uppercase">{game?.homeTeamName}</div>
+                                                <div className="text-3xl font-black">{game?.homeScore}</div>
+                                            </div>
+                                            <div className="text-slate-600 font-black">-</div>
+                                            <div className="text-center">
+                                                <div className="text-xs font-bold text-slate-400 uppercase">{game?.guestTeamName}</div>
+                                                <div className="text-3xl font-black">{game?.guestScore}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => setIsEndGameOpen(false)}
+                                        className="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl font-bold transition-all active:scale-95"
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        onClick={handleEndGame}
+                                        className="w-full bg-red-600 hover:bg-red-500 p-4 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                        <Flag size={18} />
+                                        End Game
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {/* Scorer Manager Modal */}
+                <ScorerManager
+                    gameId={id as string}
+                    ownerId={game.ownerId}
+                    currentUserId={userId}
+                    scorers={scorers}
+                    isOpen={isScorersOpen}
+                    onClose={() => setIsScorersOpen(false)}
+                    onAddScorer={handleAddScorer}
+                    onRemoveScorer={handleRemoveScorer}
+                />
             </AnimatePresence>
         </div>
     );

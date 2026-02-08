@@ -12,7 +12,7 @@ function cn(...inputs: ClassValue[]) {
 
 export type GameEvent = {
     id: string;
-    type: 'score' | 'rebound' | 'assist' | 'steal' | 'block' | 'turnover' | 'foul' | 'timeout' | 'sub' | 'miss' | 'period_start' | 'period_end' | 'clock_start' | 'clock_stop' | 'undo';
+    type: 'score' | 'rebound' | 'assist' | 'steal' | 'block' | 'turnover' | 'foul' | 'timeout' | 'sub' | 'miss' | 'period_start' | 'period_end' | 'clock_start' | 'clock_stop' | 'undo' | 'game_end';
     player?: string;
     team: 'home' | 'guest';
     value?: number;
@@ -47,6 +47,7 @@ const iconMap = {
     clock_start: <Clock size={14} className="text-green-500" />,
     clock_stop: <Clock size={14} className="text-red-500" />,
     undo: <RotateCcw size={14} className="text-slate-500" />,
+    game_end: <Target size={14} className="text-red-500" />,
 };
 
 export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick }: GameLogProps) {

@@ -103,7 +103,7 @@ export async function PATCH(
 
     try {
         const body = await request.json();
-        const { id: eventId, ...updates } = body;
+        const { id: eventId, type, player, value, description, clockAt, period, metadata } = body;
 
         if (!eventId) {
             return NextResponse.json({ error: 'Event ID required' }, { status: 400 });
@@ -120,6 +120,16 @@ export async function PATCH(
         if (!event || event.game.ownerId !== userId || event.gameId !== gameId) {
             return NextResponse.json({ error: 'Unauthorized or event not found' }, { status: 403 });
         }
+
+        // Only allow updating specific fields
+        const updates: Record<string, unknown> = {};
+        if (type !== undefined) updates.type = type;
+        if (player !== undefined) updates.player = player;
+        if (value !== undefined) updates.value = value;
+        if (description !== undefined) updates.description = description;
+        if (clockAt !== undefined) updates.clockAt = clockAt;
+        if (period !== undefined) updates.period = period;
+        if (metadata !== undefined) updates.metadata = metadata;
 
         const [updatedEvent] = await db.update(gameEvents)
             .set(updates)

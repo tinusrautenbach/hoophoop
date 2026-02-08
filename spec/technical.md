@@ -40,6 +40,54 @@ This document outlines the **optimal technical stack** to build a high-performan
 - **Server**: **Custom Node.js Server** (Express + Next.js Custom Server)
   - *Why*: Combining Next.js and Socket.io in one process simplifies deployment for improved latency (no jumping between serverless functions and a separate socket server).
 
+### 4.2 Centralized Timer Architecture (Multi-Scorer Support)
+To support multiple simultaneous scorers, the game clock must be managed centrally on the server:
+
+**Server-Side Timer Management:**
+- **Timer State Storage**: PostgreSQL `games` table stores:
+  - `isTimerRunning` (boolean): Whether the clock is currently running
+  - `clockSeconds` (integer): Current clock value in seconds
+  - `timerStartedAt` (timestamp, optional): When the timer was last started (for accurate time calculation)
+- **Timer Service**: A server-side service that:
+  - Maintains active timers in memory for performance
+  - Persists timer state to database every 3-5 seconds
+  - Broadcasts clock updates to all room members every second
+  - Handles start/stop commands from authorized scorers
+
+**Timer Update Flow:**
+```
+Scorer clicks "Start" 
+  → Socket.emit('timer-control', { action: 'start', gameId })
+  → Server validates scorer permissions
+  → Server starts internal timer interval
+  → Server broadcasts 'timer-started' to all room members
+  → Server persists isTimerRunning=true to database
+  → Server sends clock updates every second via 'clock-update' events
+```
+
+**Benefits:**
+- All scorers and spectators see identical clock times
+- Clock continues accurately even if scorer disconnects
+- No clock drift between clients
+- Clean conflict resolution (server is authority)
+
+### 4.3 Multi-Scorer Synchronization
+**Socket.io Room Management:**
+- Each game has a dedicated room: `game-${gameId}`
+- Scorers join room on connection: `socket.join(`game-${gameId}`)`
+- Broadcast pattern: `io.to(`game-${gameId}`).emit('game-updated', data)`
+
+**State Synchronization Strategy:**
+- **Optimistic Updates**: Client applies changes immediately, then confirms with server
+- **Conflict Resolution**: Server uses last-write-wins for most fields
+- **Event Sourcing**: All scoring events are append-only (no conflicts possible)
+- **Heartbeat**: Clients emit periodic heartbeats to track active scorers
+
+**Permission System:**
+- Game ownership tracked in `games.ownerId` field
+- Co-scorers stored in separate `game_scorers` table (gameId, userId, role, joinedAt)
+- Middleware validates scorer permissions before processing commands
+
 ### 4.2 Database
 - **Database**: **PostgreSQL**
   - *Why*: Relational data (Games -> Teams -> Players -> Events) requires strong consistency.
@@ -58,6 +106,50 @@ This document outlines the **optimal technical stack** to build a high-performan
   - **Unit Tests**: Mandatory for all `services/` (e.g., `scoring.ts`, `clock.ts`).
   - **Integration Tests**: API Routes (`POST /api/games`) using mocked database.
   - **E2E Tests**: (Optional for MVP) Playwright.
+
+### 4.5 Community & User Architecture (New)
+
+**Database Schema Additions:**
+
+1.  **Communities Table** (`communities`)
+    - `id`: UUID (PK)
+    - `name`: String (e.g., "Lincoln High")
+    - `type`: Enum (school, club, league, other)
+    - `ownerId`: String (Clerk User ID)
+    - `createdAt`: Timestamp
+
+2.  **Community Members Table** (`community_members`)
+    - `id`: UUID (PK)
+    - `communityId`: UUID (FK)
+    - `userId`: String (Clerk User ID)
+    - `role`: Enum (admin, scorer, viewer)
+    - `canManageGames`: Boolean (Default: true for scorers/admins)
+    - `joinedAt`: Timestamp
+
+3.  **Community Invites Table** (`community_invites`)
+    - `id`: UUID (PK)
+    - `communityId`: UUID (FK)
+    - `email`: String
+    - `role`: Enum (admin, scorer, viewer)
+    - `token`: String (Unique invite code)
+    - `status`: Enum (pending, accepted, expired)
+    - `expiresAt`: Timestamp
+
+4.  **User Activity Log Table** (`user_activity_logs`)
+    - `id`: UUID (PK)
+    - `userId`: String (Actor)
+    - `communityId`: UUID (Optional, if action is community-scoped)
+    - `action`: String (e.g., "GAME_CREATED", "SCORE_UPDATE", "MEMBER_INVITED")
+    - `resourceType`: String (e.g., "game", "team", "community")
+    - `resourceId`: String (ID of the affected object)
+    - `details`: JSONB (Snapshot of change or metadata)
+    - `ipAddress`: String (Optional, for security)
+    - `createdAt`: Timestamp
+
+**Entity Ownership Updates:**
+- `teams` and `games` tables need a nullable `communityId` column.
+- If `communityId` is present, access control checks `community_members` table.
+- If `communityId` is null, it's a private resource (check `ownerId`).
 
 ## 5. Data Schema Strategy
 

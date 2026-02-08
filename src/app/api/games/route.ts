@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { games, teamMemberships, gameRosters } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { eq, desc } from 'drizzle-orm';
+import { logActivity } from '@/lib/activity-logger';
 
 export async function GET() {
     const { userId } = await auth();
@@ -36,6 +37,8 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
+        console.log('Create game body:', JSON.stringify(body, null, 2));
+        
         const { homeTeamId, guestTeamId, homeTeamName, guestTeamName, mode, periodSeconds, totalPeriods, totalTimeouts } = body;
 
         const [newGame] = await db.insert(games).values({
@@ -101,9 +104,18 @@ export async function POST(request: Request) {
             }
         });
 
+        // Log activity
+        await logActivity({
+            userId,
+            action: 'GAME_CREATED',
+            resourceType: 'game',
+            resourceId: newGame.id,
+            details: { home: homeTeamName, guest: guestTeamName }
+        });
+
         return NextResponse.json(completeGame);
     } catch (error) {
         console.error('Error creating game:', error);
-        return NextResponse.json({ error: 'Failed to create game' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to create game', details: error instanceof Error ? error.message : String(error) }, { status: 500 });
     }
 }
