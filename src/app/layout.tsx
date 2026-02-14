@@ -22,6 +22,8 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "HoopHoop",
   description: "Double the game. Live the score.",
@@ -56,7 +58,7 @@ export default async function RootLayout({
 }>) {
   // Sync user info with database on every layout load if authenticated
   await syncUser();
-  
+
   // Fetch user's theme preference
   const userTheme = await getUserTheme();
 

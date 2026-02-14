@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SignedIn, SignedOut, SignInButton, useAuth } from '@/components/auth-provider';
 import Link from 'next/link';
-import { School, Radio } from 'lucide-react';
+import { School, Radio, Github } from 'lucide-react';
 
 type Team = {
   id: string;
@@ -155,6 +155,12 @@ export default function LandingPage() {
                 Live Scores
               </button>
             </Link>
+            <a href="https://github.com/tinusrautenbach/hoophoop" target="_blank" rel="noopener noreferrer">
+              <button className="bg-card hover:bg-muted text-muted-foreground hover:text-white px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border border-border">
+                <Github size={16} />
+                GitHub
+              </button>
+            </a>
           </div>
 
           <div className="bg-card/40 p-10 rounded-3xl border border-border backdrop-blur-sm shadow-2xl relative overflow-hidden group">
@@ -391,6 +397,12 @@ export default function LandingPage() {
                   View Live Scores
                 </button>
               </Link>
+              <a href="https://github.com/tinusrautenbach/hoophoop" target="_blank" rel="noopener noreferrer">
+                <button className="bg-card hover:bg-muted text-muted-foreground hover:text-white font-bold py-4 px-8 rounded-2xl transition-all border border-border text-lg flex items-center gap-2">
+                  <Github size={18} />
+                  GitHub
+                </button>
+              </a>
             </div>
             <div className="text-slate-500 text-sm">
               Free to use. Real-time updates. Pro stats.

@@ -2,10 +2,6 @@
   "name": "hoophoop",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "mobile",
-    "packages/*"
-  ],
   "scripts": {
     "dev": "nodemon server.ts",
     "build": "next build",
