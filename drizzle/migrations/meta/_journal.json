@@ -78,6 +78,34 @@
       "when": 1771082517705,
       "tag": "0010_add_is_world_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1771091244700,
+      "tag": "0011_phase15_player_invitations_seasons",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1771091343077,
+      "tag": "0012_phase14_tournaments",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1771094790167,
+      "tag": "0013_add_tournament_game_stats",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1771095117658,
+      "tag": "0014_add_mvp_name_column",
+      "breakpoints": true
     }
   ]
 }

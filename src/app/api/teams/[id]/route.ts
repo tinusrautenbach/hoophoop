@@ -28,6 +28,11 @@ export async function GET(
                     orderBy: (games, { desc }) => [desc(games.createdAt)], 
                     limit: 20 
                 },
+                teamSeasons: {
+                    with: {
+                        season: true,
+                    },
+                },
             },
         });
 

@@ -21,7 +21,30 @@ export async function GET(
             where: eq(communities.id, id),
             with: {
                 members: true,
-                teams: true,
+                teams: {
+                    with: {
+                        memberships: {
+                            with: {
+                                athlete: true,
+                            },
+                        },
+                        teamSeasons: {
+                            with: {
+                                season: true,
+                            },
+                        },
+                    },
+                },
+                seasons: {
+                    orderBy: (seasons, { desc }) => [desc(seasons.startDate)],
+                    with: {
+                        teamSeasons: {
+                            with: {
+                                team: true,
+                            },
+                        },
+                    },
+                },
             }
         });
 

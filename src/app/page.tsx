@@ -14,6 +14,23 @@ type Team = {
   _count?: {
     memberships: number;
   };
+  teamSeasons?: {
+    seasonId: string;
+    season: {
+      id: string;
+      name: string;
+      status: string;
+      startDate: string;
+    };
+  }[];
+};
+
+type Season = {
+  id: string;
+  name: string;
+  status: string;
+  startDate: string;
+  communityId: string;
 };
 
 export default function LandingPage() {
@@ -37,6 +54,48 @@ export default function LandingPage() {
   const [isCustomTime, setIsCustomTime] = useState(false);
   const [totalPeriods, setTotalPeriods] = useState(4);
   const [totalTimeouts, setTotalTimeouts] = useState(3);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+  const [availableSeasons, setAvailableSeasons] = useState<Season[]>([]);
+
+  // Extract unique seasons from teams
+  useEffect(() => {
+    if (teams.length > 0) {
+      const seasonMap = new Map<string, Season>();
+      
+      teams.forEach(team => {
+        if (team.teamSeasons) {
+          team.teamSeasons.forEach(ts => {
+            if (!seasonMap.has(ts.season.id)) {
+              seasonMap.set(ts.season.id, {
+                id: ts.season.id,
+                name: ts.season.name,
+                status: ts.season.status,
+                startDate: ts.season.startDate,
+                communityId: team.communityId || '',
+              });
+            }
+          });
+        }
+      });
+      
+      // Sort seasons by start date (newest first)
+      const sortedSeasons = Array.from(seasonMap.values()).sort(
+        (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      );
+      
+      setAvailableSeasons(sortedSeasons);
+    }
+  }, [teams]);
+
+  // Filter teams based on selected season
+  const filteredTeams = selectedSeasonId
+    ? teams.filter(team => 
+        team.teamSeasons?.some(ts => ts.seasonId === selectedSeasonId)
+      )
+    : teams;
+
+  // Get latest season (first in sorted list)
+  const latestSeason = availableSeasons.length > 0 ? availableSeasons[0] : null;
 
   useEffect(() => {
     setMounted(true);
@@ -78,8 +137,10 @@ export default function LandingPage() {
 
     setIsCreating(true);
 
-    // Determine communityId from selected teams
+    // Determine communityId and seasonId from selected teams
     let gameCommunityId = null;
+    let gameSeasonId = selectedSeasonId;
+    
     if (homeTeamId && homeTeamId !== 'adhoc') {
       const homeTeam = teams.find(t => t.id === homeTeamId);
       if (homeTeam?.communityId) {
@@ -90,6 +151,20 @@ export default function LandingPage() {
       const guestTeam = teams.find(t => t.id === guestTeamId);
       if (guestTeam?.communityId) {
         gameCommunityId = guestTeam.communityId;
+      }
+    }
+    
+    // If no season selected but teams have seasons, try to infer from teams
+    if (!gameSeasonId && (homeTeamId !== 'adhoc' || guestTeamId !== 'adhoc')) {
+      const selectedTeam = homeTeamId !== 'adhoc' 
+        ? teams.find(t => t.id === homeTeamId)
+        : teams.find(t => t.id === guestTeamId);
+      if (selectedTeam?.teamSeasons && selectedTeam.teamSeasons.length > 0) {
+        // Use the most recent season
+        const latestTeamSeason = selectedTeam.teamSeasons.sort(
+          (a, b) => new Date(b.season.startDate).getTime() - new Date(a.season.startDate).getTime()
+        )[0];
+        gameSeasonId = latestTeamSeason.seasonId;
       }
     }
 
@@ -105,6 +180,7 @@ export default function LandingPage() {
         mode,
         visibility,
         communityId: gameCommunityId,
+        seasonId: gameSeasonId,
         periodSeconds: isCustomTime ? Number(customMinutes) * 60 : Number(periodSeconds),
         totalPeriods: Number(totalPeriods),
         totalTimeouts: Number(totalTimeouts),
@@ -197,6 +273,45 @@ export default function LandingPage() {
                   </div>
                 </div>
 
+                {/* Season Filter */}
+                {availableSeasons.length > 0 && (
+                  <div className="space-y-4">
+                    <label className="text-xs uppercase font-bold tracking-widest text-slate-400 flex items-center gap-2">
+                      Filter by Season
+                      {latestSeason && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSeasonId(latestSeason.id)}
+                          className="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full hover:bg-orange-500/30 transition-colors"
+                        >
+                          Latest: {latestSeason.name}
+                        </button>
+                      )}
+                      {selectedSeasonId && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSeasonId(null)}
+                          className="text-[10px] bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full hover:bg-slate-600 transition-colors"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </label>
+                    <select
+                      value={selectedSeasonId || ''}
+                      onChange={e => setSelectedSeasonId(e.target.value || null)}
+                      className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg text-white"
+                    >
+                      <option value="">All Seasons</option>
+                      {availableSeasons.map((season, index) => (
+                        <option key={season.id} value={season.id}>
+                          {season.name} {index === 0 ? '(Latest)' : `(${season.status})`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="grid sm:grid-cols-2 gap-8">
                   {/* Home Team Selection */}
                   <div className="space-y-4">
@@ -207,7 +322,7 @@ export default function LandingPage() {
                       className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg text-white"
                     >
                       <option value="">Select a team...</option>
-                      {teams.map(team => (
+                      {filteredTeams.map(team => (
                         <option key={team.id} value={team.id}>{team.name}</option>
                       ))}
                       <option value="adhoc">Other / One-off</option>
@@ -234,7 +349,7 @@ export default function LandingPage() {
                       className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg text-white"
                     >
                       <option value="">Select a team...</option>
-                      {teams.map(team => (
+                      {filteredTeams.map(team => (
                         <option key={team.id} value={team.id}>{team.name}</option>
                       ))}
                       <option value="adhoc">Other / One-off</option>

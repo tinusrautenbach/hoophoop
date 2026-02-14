@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users, Trophy, Settings, Mail, Copy, Check, Shield, Eye, ShieldAlert, Trash2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Settings, Mail, Copy, Check, Shield, Eye, ShieldAlert, Trash2, RotateCcw, Calendar } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -19,8 +19,11 @@ export default function CommunityDashboard() {
     
     const [community, setCommunity] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'overview' | 'teams' | 'members' | 'settings' | 'deleted-games'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'teams' | 'seasons' | 'tournaments' | 'members' | 'settings' | 'deleted-games'>('overview');
     const [communityTeams, setCommunityTeams] = useState<any[]>([]);
+    const [communitySeasons, setCommunitySeasons] = useState<any[]>([]);
+    const [communityTournaments, setCommunityTournaments] = useState<any[]>([]);
+    const [tournamentsLoading, setTournamentsLoading] = useState(false);
     const [teamsLoading, setTeamsLoading] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('scorer');
@@ -28,6 +31,23 @@ export default function CommunityDashboard() {
     const [copied, setCopied] = useState(false);
     const [deletedGames, setDeletedGames] = useState<any[]>([]);
     const [deletedGamesLoading, setDeletedGamesLoading] = useState(false);
+    const [memberTab, setMemberTab] = useState<'users' | 'athletes'>('users');
+
+    // Season form state
+    const [showSeasonForm, setShowSeasonForm] = useState(false);
+    const [newSeason, setNewSeason] = useState({
+        name: '',
+        startDate: '',
+        endDate: '',
+        description: ''
+    });
+    const [isCreatingSeason, setIsCreatingSeason] = useState(false);
+    
+    // Team-Season management state
+    const [selectedTeamForSeason, setSelectedTeamForSeason] = useState<string | null>(null);
+    const [selectedSeasonForTeam, setSelectedSeasonForTeam] = useState<string>('');
+    const [isAddingTeamToSeason, setIsAddingTeamToSeason] = useState(false);
+    const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -35,6 +55,8 @@ export default function CommunityDashboard() {
             .then(res => res.json())
             .then(data => {
                 setCommunity(data);
+                setCommunitySeasons(data.seasons || []);
+                setCommunityTeams(data.teams || []);
                 setLoading(false);
             })
             .catch(err => {
@@ -44,20 +66,20 @@ export default function CommunityDashboard() {
     }, [id, router]);
 
     useEffect(() => {
-        if (activeTab === 'teams' && communityTeams.length === 0) {
-            setTeamsLoading(true);
-            fetch(`/api/communities/${id}/teams`)
+        if (activeTab === 'tournaments' && communityTournaments.length === 0) {
+            setTournamentsLoading(true);
+            fetch(`/api/tournaments?communityId=${id}`)
                 .then(res => res.json())
                 .then(data => {
-                    setCommunityTeams(data.teams || (Array.isArray(data) ? data : []));
-                    setTeamsLoading(false);
+                    setCommunityTournaments(Array.isArray(data) ? data : []);
+                    setTournamentsLoading(false);
                 })
                 .catch(err => {
                     console.error(err);
-                    setTeamsLoading(false);
+                    setTournamentsLoading(false);
                 });
         }
-    }, [activeTab, id, communityTeams.length]);
+    }, [activeTab, id, communityTournaments.length]);
 
     useEffect(() => {
         if (activeTab === 'deleted-games') {
@@ -114,6 +136,93 @@ export default function CommunityDashboard() {
         }
     };
 
+    const handleCreateSeason = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsCreatingSeason(true);
+        try {
+            const res = await fetch('/api/seasons', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...newSeason,
+                    communityId: id,
+                }),
+            });
+
+            if (res.ok) {
+                const season = await res.json();
+                setCommunitySeasons([season, ...communitySeasons]);
+                setShowSeasonForm(false);
+                setNewSeason({ name: '', startDate: '', endDate: '', description: '' });
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to create season');
+            }
+        } catch (error) {
+            console.error('Failed to create season:', error);
+            alert('Failed to create season');
+        } finally {
+            setIsCreatingSeason(false);
+        }
+    };
+
+    const handleAddTeamToSeason = async (teamId: string, seasonId: string) => {
+        if (!teamId || !seasonId) return;
+        setIsAddingTeamToSeason(true);
+        try {
+            const res = await fetch(`/api/seasons/${seasonId}/teams`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teamId }),
+            });
+
+            if (res.ok) {
+                // Refresh community data to get updated team-season relationships
+                const communityRes = await fetch(`/api/communities/${id}`);
+                if (communityRes.ok) {
+                    const data = await communityRes.json();
+                    setCommunityTeams(data.teams || []);
+                    setCommunitySeasons(data.seasons || []);
+                }
+                setSelectedTeamForSeason(null);
+                setSelectedSeasonForTeam('');
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to add team to season');
+            }
+        } catch (error) {
+            console.error('Failed to add team to season:', error);
+            alert('Failed to add team to season');
+        } finally {
+            setIsAddingTeamToSeason(false);
+        }
+    };
+
+    const handleRemoveTeamFromSeason = async (teamId: string, seasonId: string) => {
+        if (!confirm('Remove this team from the season?')) return;
+        try {
+            const res = await fetch(`/api/seasons/${seasonId}/teams?teamId=${teamId}`, {
+                method: 'DELETE',
+            });
+
+            if (res.ok) {
+                // Refresh community data
+                const communityRes = await fetch(`/api/communities/${id}`);
+                if (communityRes.ok) {
+                    const data = await communityRes.json();
+                    setCommunityTeams(data.teams || []);
+                    setCommunitySeasons(data.seasons || []);
+                }
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to remove team from season');
+            }
+        } catch (error) {
+            console.error('Failed to remove team from season:', error);
+            alert('Failed to remove team from season');
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-slate-500">Loading community...</div>;
     if (!community) return null;
 
@@ -154,7 +263,7 @@ export default function CommunityDashboard() {
 
             {/* Tabs */}
             <div className="flex border-b border-border gap-6 overflow-x-auto">
-                {['overview', 'teams', 'members', 'settings', ...(isAdmin ? ['deleted-games'] : [])].map((tab) => (
+                {['overview', 'teams', 'seasons', 'tournaments', 'members', 'settings', ...(isAdmin ? ['deleted-games'] : [])].map((tab) => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab as any)}
@@ -239,31 +348,124 @@ export default function CommunityDashboard() {
                         {teamsLoading ? (
                             <div className="text-center py-12 text-slate-500">Loading teams...</div>
                         ) : communityTeams.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {communityTeams.map((team) => (
-                                    <div 
-                                        key={team.id}
-                                        onClick={() => router.push(`/teams/${team.id}`)}
-                                        className="bg-input border border-border p-6 rounded-2xl cursor-pointer hover:border-orange-500/50 transition-all group relative overflow-hidden"
-                                    >
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="text-4xl font-black font-mono text-slate-700 group-hover:text-orange-500 transition-colors">
-                                                {team.shortCode || team.name.substring(0, 3).toUpperCase()}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {communityTeams.map((team) => {
+                                    const teamSeasons = team.teamSeasons || [];
+                                    const isExpanded = expandedTeamId === team.id;
+                                    return (
+                                        <div 
+                                            key={team.id}
+                                            className="bg-input border border-border p-6 rounded-2xl hover:border-orange-500/50 transition-all group relative overflow-hidden"
+                                        >
+                                            <div 
+                                                onClick={() => router.push(`/teams/${team.id}`)}
+                                                className="cursor-pointer"
+                                            >
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="text-4xl font-black font-mono text-slate-700 group-hover:text-orange-500 transition-colors">
+                                                        {team.shortCode || team.name.substring(0, 3).toUpperCase()}
+                                                    </div>
+                                                    {team.color && (
+                                                        <div 
+                                                            className="w-4 h-4 rounded-full shadow-[0_0_10px_currentColor]"
+                                                            style={{ backgroundColor: team.color, color: team.color }} 
+                                                        />
+                                                    )}
+                                                </div>
+                                                
+                                                <h3 className="text-lg font-bold group-hover:text-white transition-colors truncate">{team.name}</h3>
+                                                <div className="text-xs text-slate-500 mt-1">
+                                                    Created {new Date(team.createdAt).toLocaleDateString()}
+                                                </div>
                                             </div>
-                                            {team.color && (
-                                                <div 
-                                                    className="w-4 h-4 rounded-full shadow-[0_0_10px_currentColor]"
-                                                    style={{ backgroundColor: team.color, color: team.color }} 
-                                                />
-                                            )}
+                                            
+                                            {/* Seasons Section */}
+                                            <div className="mt-4 pt-4 border-t border-border">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-xs uppercase tracking-wider text-slate-500">Seasons</span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setExpandedTeamId(isExpanded ? null : team.id);
+                                                        }}
+                                                        className="text-xs text-orange-500 hover:text-orange-400 transition-colors"
+                                                    >
+                                                        {isExpanded ? 'Close' : 'Manage'}
+                                                    </button>
+                                                </div>
+                                                
+                                                {teamSeasons.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {teamSeasons.map((ts: any) => (
+                                                            <span 
+                                                                key={ts.id}
+                                                                className="text-[10px] px-2 py-1 rounded-full bg-orange-500/20 text-orange-500"
+                                                            >
+                                                                {ts.season?.name || 'Unknown Season'}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-600 italic">Not assigned to any season</span>
+                                                )}
+                                                
+                                                {/* Expandable Management Section */}
+                                                {isExpanded && isAdmin && (
+                                                    <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
+                                                        {/* Current seasons with remove button */}
+                                                        {teamSeasons.length > 0 && (
+                                                            <div className="space-y-1">
+                                                                {teamSeasons.map((ts: any) => (
+                                                                    <div key={ts.id} className="flex items-center justify-between bg-card/50 px-2 py-1 rounded">
+                                                                        <span className="text-xs">{ts.season?.name}</span>
+                                                                        <button
+                                                                            onClick={() => handleRemoveTeamFromSeason(team.id, ts.seasonId)}
+                                                                            className="text-xs text-red-500 hover:text-red-400 px-2 py-0.5 rounded hover:bg-red-500/10 transition-colors"
+                                                                        >
+                                                                            Remove
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {/* Add to season */}
+                                                        <div className="flex gap-2 pt-2">
+                                                            <select
+                                                                value={selectedTeamForSeason === team.id ? selectedSeasonForTeam : ''}
+                                                                onChange={(e) => {
+                                                                    setSelectedTeamForSeason(team.id);
+                                                                    setSelectedSeasonForTeam(e.target.value);
+                                                                }}
+                                                                className="flex-1 text-xs bg-card border border-border rounded-lg px-2 py-1.5"
+                                                            >
+                                                                <option value="">Add to season...</option>
+                                                                {communitySeasons
+                                                                    .filter((s: any) => !teamSeasons.some((ts: any) => ts.seasonId === s.id))
+                                                                    .map((season: any) => (
+                                                                        <option key={season.id} value={season.id}>
+                                                                            {season.name} ({season.status})
+                                                                        </option>
+                                                                    ))}
+                                                            </select>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (selectedTeamForSeason === team.id && selectedSeasonForTeam) {
+                                                                        handleAddTeamToSeason(team.id, selectedSeasonForTeam);
+                                                                    }
+                                                                }}
+                                                                disabled={selectedTeamForSeason !== team.id || !selectedSeasonForTeam || isAddingTeamToSeason}
+                                                                className="text-xs bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                {isAddingTeamToSeason && selectedTeamForSeason === team.id ? 'Adding...' : 'Add'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                        
-                                        <h3 className="text-lg font-bold group-hover:text-white transition-colors truncate">{team.name}</h3>
-                                        <div className="text-xs text-slate-500 mt-1">
-                                            Created {new Date(team.createdAt).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         ) : (
                             <div className="bg-input/50 border border-border border-dashed rounded-2xl p-12 text-center">
@@ -283,100 +485,467 @@ export default function CommunityDashboard() {
                     </div>
                 )}
 
-                {activeTab === 'members' && (
-                    <div className="space-y-8">
-                        {/* Invite Section (Admin Only) */}
-                        {isAdmin && (
+                {activeTab === 'seasons' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xl font-bold">Seasons</h3>
+                            {isAdmin && (
+                                <button
+                                    onClick={() => setShowSeasonForm(!showSeasonForm)}
+                                    className="bg-orange-600 hover:bg-orange-500 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                                >
+                                    {showSeasonForm ? 'Cancel' : 'Create Season'}
+                                </button>
+                            )}
+                        </div>
+
+                        {showSeasonForm && isAdmin && (
                             <div className="bg-input border border-border rounded-2xl p-6">
-                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                    <Mail size={20} className="text-orange-500" />
-                                    Invite New Member
-                                </h3>
-                                
-                                {!inviteLink ? (
-                                    <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-4">
-                                        <input
-                                            type="email"
-                                            value={inviteEmail}
-                                            onChange={(e) => setInviteEmail(e.target.value)}
-                                            placeholder="Enter email address"
-                                            className="flex-1 bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500"
-                                            required
-                                        />
-                                        <select
-                                            value={inviteRole}
-                                            onChange={(e) => setInviteRole(e.target.value)}
-                                            className="bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500"
-                                        >
-                                            <option value="scorer">Scorer</option>
-                                            <option value="admin">Admin</option>
-                                            <option value="viewer">Viewer</option>
-                                        </select>
-                                        <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3 rounded-xl transition-colors">
-                                            Generate Link
-                                        </button>
-                                    </form>
-                                ) : (
-                                    <div className="bg-background border border-orange-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-center gap-4">
-                                        <div className="flex-1 font-mono text-xs sm:text-sm break-all text-orange-500">
-                                            {inviteLink}
+                                <h4 className="font-bold mb-4">New Season</h4>
+                                <form onSubmit={handleCreateSeason} className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="sm:col-span-2">
+                                            <label className="block text-xs uppercase tracking-wider text-slate-500 mb-1">Season Name</label>
+                                            <input
+                                                type="text"
+                                                value={newSeason.name}
+                                                onChange={e => setNewSeason({ ...newSeason, name: e.target.value })}
+                                                placeholder="e.g. 2025 Winter Season"
+                                                className="w-full bg-background border border-border rounded-xl px-4 py-2 focus:outline-none focus:border-orange-500"
+                                                required
+                                            />
                                         </div>
-                                        <div className="flex gap-2 w-full sm:w-auto">
-                                            <button
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(inviteLink);
-                                                    setCopied(true);
-                                                    setTimeout(() => setCopied(false), 2000);
-                                                }}
-                                                className="flex-1 sm:flex-none bg-card hover:bg-muted text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2"
-                                            >
-                                                {copied ? <Check size={16} /> : <Copy size={16} />}
-                                                {copied ? 'Copied' : 'Copy'}
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    setInviteLink('');
-                                                    setInviteEmail('');
-                                                }}
-                                                className="flex-1 sm:flex-none bg-card hover:bg-muted text-white px-4 py-2 rounded-lg text-sm font-bold"
-                                            >
-                                                Done
-                                            </button>
+                                        <div>
+                                            <label className="block text-xs uppercase tracking-wider text-slate-500 mb-1">Start Date</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="date"
+                                                    value={newSeason.startDate}
+                                                    onChange={e => setNewSeason({ ...newSeason, startDate: e.target.value })}
+                                                    className="w-full bg-background border border-border rounded-xl px-4 py-2 pr-10 focus:outline-none focus:border-orange-500 appearance-none"
+                                                    required
+                                                />
+                                                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs uppercase tracking-wider text-slate-500 mb-1">End Date</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="date"
+                                                    value={newSeason.endDate}
+                                                    min={newSeason.startDate}
+                                                    onChange={e => setNewSeason({ ...newSeason, endDate: e.target.value })}
+                                                    className="w-full bg-background border border-border rounded-xl px-4 py-2 pr-10 focus:outline-none focus:border-orange-500 appearance-none"
+                                                    required
+                                                />
+                                                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                            </div>
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                            <label className="block text-xs uppercase tracking-wider text-slate-500 mb-1">Description (Optional)</label>
+                                            <textarea
+                                                value={newSeason.description}
+                                                onChange={e => setNewSeason({ ...newSeason, description: e.target.value })}
+                                                className="w-full bg-background border border-border rounded-xl px-4 py-2 focus:outline-none focus:border-orange-500 h-24"
+                                            />
                                         </div>
                                     </div>
-                                )}
+                                    <button
+                                        type="submit"
+                                        disabled={isCreatingSeason}
+                                        className="bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3 rounded-xl transition-colors disabled:opacity-50"
+                                    >
+                                        {isCreatingSeason ? 'Creating...' : 'Create Season'}
+                                    </button>
+                                </form>
                             </div>
                         )}
 
-                        {/* Members List */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {community.members.map((member: any) => (
-                                <div key={member.id} className="bg-input border border-border p-4 rounded-xl flex items-center justify-between group hover:border-border transition-all">
-                                    <div className="flex items-center gap-3">
-                                        <div className={cn(
-                                            "w-10 h-10 rounded-full flex items-center justify-center",
-                                            member.role === 'admin' ? "bg-orange-500/20 text-orange-500" : 
-                                            member.role === 'scorer' ? "bg-blue-500/20 text-blue-500" : "bg-card text-slate-500"
-                                        )}>
-                                            {member.role === 'admin' ? <Shield size={18} /> : 
-                                             member.role === 'scorer' ? <ShieldAlert size={18} /> : <Eye size={18} />}
+                        {communitySeasons.length > 0 ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {communitySeasons.map((season) => (
+                                    <div 
+                                        key={season.id}
+                                        className="bg-input border border-border p-6 rounded-2xl hover:border-orange-500/50 transition-all group relative overflow-hidden"
+                                    >
+                                        <div className="flex items-center justify-between mb-4">
+                                            <span className={cn(
+                                                "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded",
+                                                season.status === 'active' ? "bg-green-500/20 text-green-500" :
+                                                season.status === 'completed' ? "bg-blue-500/20 text-blue-500" :
+                                                season.status === 'archived' ? "bg-slate-500/20 text-slate-500" :
+                                                "bg-yellow-500/20 text-yellow-500"
+                                            )}>
+                                                {season.status}
+                                            </span>
                                         </div>
-                                        <div>
-                                            <div className="font-bold text-sm truncate max-w-[180px]">{member.displayName}</div>
-                                            {member.userEmail && (
-                                                <div className="text-xs text-slate-500 truncate max-w-[180px]">{member.userEmail}</div>
+                                        
+                                        <h3 className="text-lg font-bold group-hover:text-white transition-colors truncate">{season.name}</h3>
+                                        <div className="text-xs text-slate-500 mt-1">
+                                            {new Date(season.startDate).toLocaleDateString()} - {new Date(season.endDate).toLocaleDateString()}
+                                        </div>
+                                        {season.description && (
+                                            <p className="text-xs text-slate-500 mt-3 line-clamp-2">{season.description}</p>
+                                        )}
+                                        
+                                        {/* Teams in this Season */}
+                                        <div className="mt-4 pt-4 border-t border-border">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-1 text-xs text-slate-400">
+                                                    <Trophy size={14} />
+                                                    <span>{season.teamSeasons?.length || 0} Teams</span>
+                                                </div>
+                                                {isAdmin && (
+                                                    <span className="text-[10px] text-orange-500 uppercase tracking-wider">Manage</span>
+                                                )}
+                                            </div>
+                                            
+                                            {/* List of teams in season */}
+                                            {season.teamSeasons && season.teamSeasons.length > 0 ? (
+                                                <div className="space-y-1 max-h-40 overflow-y-auto">
+                                                    {season.teamSeasons.map((ts: any) => (
+                                                        <div key={ts.id} className="flex items-center justify-between bg-card/50 px-3 py-2 rounded-lg">
+                                                            <div className="flex items-center gap-2">
+                                                                <div 
+                                                                    className="w-3 h-3 rounded-full"
+                                                                    style={{ backgroundColor: ts.team?.color || '#666' }}
+                                                                />
+                                                                <span className="text-xs font-medium truncate">{ts.team?.name || 'Unknown Team'}</span>
+                                                            </div>
+                                                            {isAdmin && (
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        if (!confirm(`Remove ${ts.team?.name || 'this team'} from the season?`)) return;
+                                                                        const res = await fetch(`/api/seasons/${season.id}/teams?teamId=${ts.teamId}`, {
+                                                                            method: 'DELETE',
+                                                                        });
+                                                                        if (res.ok) {
+                                                                            fetch(`/api/communities/${id}`)
+                                                                                .then(res => res.json())
+                                                                                .then(data => {
+                                                                                    setCommunity(data);
+                                                                                    setCommunitySeasons(data.seasons || []);
+                                                                                    setCommunityTeams(data.teams || []);
+                                                                                });
+                                                                        } else {
+                                                                            const data = await res.json();
+                                                                            alert(data.error || 'Failed to remove team');
+                                                                        }
+                                                                    }}
+                                                                    className="text-xs text-red-500 hover:text-red-400 px-2 py-0.5 rounded hover:bg-red-500/10 transition-colors"
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-slate-600 italic py-2">No teams assigned to this season yet</div>
                                             )}
-                                            <div className="text-[10px] uppercase font-bold text-slate-500 mt-0.5">{member.role}</div>
+                                            
+                                            {/* Add Team Section */}
+                                            {isAdmin && (
+                                                <div className="mt-3 pt-3 border-t border-border/50">
+                                                    <div className="flex gap-2">
+                                                        <select
+                                                            onChange={async (e) => {
+                                                                const teamId = e.target.value;
+                                                                if (!teamId) return;
+                                                                
+                                                                const res = await fetch(`/api/seasons/${season.id}/teams`, {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ teamId }),
+                                                                });
+                                                                
+                                                                if (res.ok) {
+                                                                    fetch(`/api/communities/${id}`)
+                                                                        .then(res => res.json())
+                                                                        .then(data => {
+                                                                            setCommunity(data);
+                                                                            setCommunitySeasons(data.seasons || []);
+                                                                            setCommunityTeams(data.teams || []);
+                                                                        });
+                                                                } else {
+                                                                    const data = await res.json();
+                                                                    alert(data.error || 'Failed to add team');
+                                                                }
+                                                                e.target.value = '';
+                                                            }}
+                                                            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-xs"
+                                                        >
+                                                            <option value="">+ Add team to season...</option>
+                                                            {communityTeams
+                                                                .filter((t: any) => !season.teamSeasons?.some((ts: any) => ts.teamId === t.id))
+                                                                .map((team: any) => (
+                                                                    <option key={team.id} value={team.id}>{team.name}</option>
+                                                                ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    {isAdmin && member.userId !== userId && (
-                                        <button className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs font-bold uppercase">
-                                            Remove
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-input/50 border border-border border-dashed rounded-2xl p-12 text-center">
+                                <Calendar size={48} className="mx-auto text-slate-700 mb-4" />
+                                <h3 className="text-lg font-bold text-slate-400 mb-2">No Seasons Yet</h3>
+                                <p className="text-slate-500 text-sm max-w-xs mx-auto mb-6">
+                                    Create seasons to organize teams and track performance over time.
+                                </p>
+                                {isAdmin && (
+                                    <button
+                                        onClick={() => setShowSeasonForm(true)}
+                                        className="bg-card hover:bg-muted text-white font-bold px-6 py-3 rounded-xl transition-colors"
+                                    >
+                                        Create Your First Season
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'tournaments' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xl font-bold">Tournaments</h3>
+                            <button
+                                onClick={() => router.push(`/communities/${id}/tournaments/create`)}
+                                className="bg-orange-600 hover:bg-orange-500 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+                            >
+                                Create Tournament
+                            </button>
                         </div>
+
+                        {tournamentsLoading ? (
+                            <div className="text-center py-12 text-slate-500">Loading tournaments...</div>
+                        ) : communityTournaments.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {communityTournaments.map((tournament) => (
+                                    <div 
+                                        key={tournament.id}
+                                        onClick={() => router.push(`/tournaments/${tournament.id}`)}
+                                        className="bg-input border border-border p-6 rounded-2xl cursor-pointer hover:border-orange-500/50 transition-all group relative overflow-hidden"
+                                    >
+                                        <div className="flex items-center justify-between mb-4">
+                                            <span className={cn(
+                                                "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded",
+                                                tournament.status === 'active' ? "bg-green-500/20 text-green-500" :
+                                                tournament.status === 'completed' ? "bg-blue-500/20 text-blue-500" :
+                                                "bg-yellow-500/20 text-yellow-500"
+                                            )}>
+                                                {tournament.status}
+                                            </span>
+                                            <div className="text-xs text-slate-500">
+                                                {tournament.type.replace('_', ' ')}
+                                            </div>
+                                        </div>
+                                        
+                                        <h3 className="text-lg font-bold group-hover:text-white transition-colors truncate">{tournament.name}</h3>
+                                        <div className="text-xs text-slate-500 mt-1">
+                                            {new Date(tournament.startDate).toLocaleDateString()} - {new Date(tournament.endDate).toLocaleDateString()}
+                                        </div>
+                                        <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+                                            <Trophy size={14} />
+                                            <span>{tournament.teams?.length || 0} Teams</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-input/50 border border-border border-dashed rounded-2xl p-12 text-center">
+                                <Trophy size={48} className="mx-auto text-slate-700 mb-4" />
+                                <h3 className="text-lg font-bold text-slate-400 mb-2">No Tournaments Yet</h3>
+                                <p className="text-slate-500 text-sm max-w-xs mx-auto mb-6">
+                                    Organize round robins, knockout brackets, and more.
+                                </p>
+                                <button
+                                    onClick={() => router.push(`/communities/${id}/tournaments/create`)}
+                                    className="bg-card hover:bg-muted text-white font-bold px-6 py-3 rounded-xl transition-colors"
+                                >
+                                    Create Your First Tournament
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'members' && (
+                    <div className="space-y-8">
+                        <div className="flex gap-4 border-b border-border">
+                            <button 
+                                onClick={() => setMemberTab('users')}
+                                className={cn("pb-2 px-1 text-sm font-bold uppercase tracking-widest transition-all", memberTab === 'users' ? "text-orange-500 border-b-2 border-orange-500" : "text-slate-500")}
+                            >
+                                Community Staff
+                            </button>
+                            <button 
+                                onClick={() => setMemberTab('athletes')}
+                                className={cn("pb-2 px-1 text-sm font-bold uppercase tracking-widest transition-all", memberTab === 'athletes' ? "text-orange-500 border-b-2 border-orange-500" : "text-slate-500")}
+                            >
+                                Athletes
+                            </button>
+                        </div>
+
+                        {memberTab === 'users' ? (
+                            <>
+                                {/* Invite Section (Admin Only) */}
+                                {isAdmin && (
+                                    <div className="bg-input border border-border rounded-2xl p-6">
+                                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                            <Mail size={20} className="text-orange-500" />
+                                            Invite Staff Member
+                                        </h3>
+                                        
+                                        {!inviteLink ? (
+                                            <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-4">
+                                                <input
+                                                    type="email"
+                                                    value={inviteEmail}
+                                                    onChange={(e) => setInviteEmail(e.target.value)}
+                                                    placeholder="Enter email address"
+                                                    className="flex-1 bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500"
+                                                    required
+                                                />
+                                                <select
+                                                    value={inviteRole}
+                                                    onChange={(e) => setInviteRole(e.target.value)}
+                                                    className="bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500"
+                                                >
+                                                    <option value="scorer">Scorer</option>
+                                                    <option value="admin">Admin</option>
+                                                    <option value="viewer">Viewer</option>
+                                                </select>
+                                                <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3 rounded-xl transition-colors">
+                                                    Generate Link
+                                                </button>
+                                            </form>
+                                        ) : (
+                                            <div className="bg-background border border-orange-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-center gap-4">
+                                                <div className="flex-1 font-mono text-xs sm:text-sm break-all text-orange-500">
+                                                    {inviteLink}
+                                                </div>
+                                                <div className="flex gap-2 w-full sm:w-auto">
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(inviteLink);
+                                                            setCopied(true);
+                                                            setTimeout(() => setCopied(false), 2000);
+                                                        }}
+                                                        className="flex-1 sm:flex-none bg-card hover:bg-muted text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2"
+                                                    >
+                                                        {copied ? <Check size={16} /> : <Copy size={16} />}
+                                                        {copied ? 'Copied' : 'Copy'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setInviteLink('');
+                                                            setInviteEmail('');
+                                                        }}
+                                                        className="flex-1 sm:flex-none bg-card hover:bg-muted text-white px-4 py-2 rounded-lg text-sm font-bold"
+                                                    >
+                                                        Done
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Members List */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {community.members.map((member: any) => (
+                                        <div key={member.id} className="bg-input border border-border p-4 rounded-xl flex items-center justify-between group hover:border-border transition-all">
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn(
+                                                    "w-10 h-10 rounded-full flex items-center justify-center",
+                                                    member.role === 'admin' ? "bg-orange-500/20 text-orange-500" : 
+                                                    member.role === 'scorer' ? "bg-blue-500/20 text-blue-500" : "bg-card text-slate-500"
+                                                )}>
+                                                    {member.role === 'admin' ? <Shield size={18} /> : 
+                                                     member.role === 'scorer' ? <ShieldAlert size={18} /> : <Eye size={18} />}
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-sm truncate max-w-[180px]">{member.displayName}</div>
+                                                    {member.userEmail && (
+                                                        <div className="text-xs text-slate-500 truncate max-w-[180px]">{member.userEmail}</div>
+                                                    )}
+                                                    <div className="text-[10px] uppercase font-bold text-slate-500 mt-0.5">{member.role}</div>
+                                                </div>
+                                            </div>
+                                            {isAdmin && member.userId !== userId && (
+                                                <button className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs font-bold uppercase">
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="bg-input border border-border rounded-2xl p-6">
+                                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                        <Trophy size={20} className="text-orange-500" />
+                                        Invite Athlete to Claim Profile
+                                    </h3>
+                                    <form 
+                                        onSubmit={async (e) => {
+                                            e.preventDefault();
+                                            const form = e.target as HTMLFormElement;
+                                            const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+                                            const athleteId = (form.elements.namedItem('athleteId') as HTMLSelectElement).value;
+                                            
+                                            try {
+                                                const res = await fetch('/api/players/invite', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ email, athleteId }),
+                                                });
+                                                if (res.ok) {
+                                                    const data = await res.json();
+                                                    alert(`Invitation generated! Link: ${data.invitationLink}`);
+                                                    form.reset();
+                                                }
+                                            } catch (err) {
+                                                console.error(err);
+                                            }
+                                        }}
+                                        className="flex flex-col sm:flex-row gap-4"
+                                    >
+                                        <select
+                                            name="athleteId"
+                                            className="flex-1 bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500"
+                                            required
+                                        >
+                                            <option value="">Select athlete...</option>
+                                            {community.teams?.flatMap((t: any) => t.memberships || []).map((m: any) => (
+                                                <option key={m.id} value={m.athleteId}>{m.athlete?.name || 'Unknown'}</option>
+                                            ))}
+                                        </select>
+                                        <input
+                                            name="email"
+                                            type="email"
+                                            placeholder="Athlete's email"
+                                            className="flex-1 bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500"
+                                            required
+                                        />
+                                        <button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white font-bold px-6 py-3 rounded-xl transition-colors">
+                                            Send Invite
+                                        </button>
+                                    </form>
+                                </div>
+                                
+                                <p className="text-sm text-slate-500 italic">
+                                    This list shows athletes currently assigned to teams in this community.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 )}
 

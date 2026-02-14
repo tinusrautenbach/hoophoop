@@ -1,0 +1,1 @@
+ALTER TABLE "tournament_games" ADD COLUMN "player_of_the_match_name" text;

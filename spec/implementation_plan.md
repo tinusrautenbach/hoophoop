@@ -287,32 +287,33 @@
   - [x] World Admin can view and manage deleted games via admin dashboard.
   - [x] Deleted games can be restored by setting `deleted_at` to NULL (via database or admin tools).
 
-## Phase 14: Tournament Management System (NEW)
-- [ ] **14.1 Tournament Core Infrastructure**:
-  - [ ] Database schema updates:
-    - [ ] `tournaments` table: id, name, type, status, startDate, endDate, communityId, ownerId, createdAt, updatedAt
-    - [ ] `tournamentTeams` table: tournamentId, teamId, poolId, seed (for knockout stages)
-    - [ ] `tournamentPools` table: id, tournamentId, name, teams advancing
-    - [ ] `tournamentGames` table: tournamentId, gameId, round, poolId, bracketPosition, isPoolGame
-    - [ ] `tournamentStandings` table: tournamentId, teamId, poolId, wins, losses, pointsFor, pointsAgainst, pointDiff, gamesPlayed
-    - [ ] `tournamentAwards` table: id, tournamentId, awardType, playerId, teamId, value, notes
-  - [ ] Migration scripts for new tables
+## Phase 14: Tournament Management System (Partially Done)
+- [x] **14.1 Tournament Core Infrastructure**:
+  - [x] Database schema updates:
+    - [x] `tournaments` table: id, name, type, status, startDate, endDate, communityId, ownerId, createdAt, updatedAt
+    - [x] `tournamentTeams` table: tournamentId, teamId, poolId, seed (for knockout stages)
+    - [x] `tournamentPools` table: id, tournamentId, name, teams advancing
+    - [x] `tournamentGames` table: tournamentId, gameId, round, poolId, bracketPosition, isPoolGame
+    - [x] `tournamentStandings` table: tournamentId, teamId, poolId, wins, losses, pointsFor, pointsAgainst, pointDiff, gamesPlayed
+    - [x] `tournamentAwards` table: id, tournamentId, awardType, playerId, teamId, value, notes
+  - [x] Migration scripts for new tables (0012_phase14_tournaments.sql)
+  - [x] Drizzle ORM schema definitions with relations
 - [ ] **14.2 Tournament Types Support**:
-  - [ ] **Round Robin**: Each team plays every other team once, standings based on record/points
-  - [ ] **Double Round Robin**: Each team plays every other team twice (home/away)
-  - [ ] **Single Elimination**: Knockout bracket, loser eliminated immediately
-  - [ ] **Double Elimination**: Teams eliminated after 2 losses, winners/losers brackets
-  - [ ] **Pool + Knockout Hybrid**: Round robin pools followed by single/double elimination bracket
-  - [ ] **Swiss System**: Teams paired by similar records each round, no elimination until final
-  - [ ] **Group Stage**: Multiple groups playing round robin, advancing teams to knockout
-  - [ ] **Custom**: Flexible format allowing manual bracket creation
-- [ ] **14.3 Tournament Creation & Management**:
-  - [ ] Tournament creation form:
-    - [ ] Name, dates, description
-    - [ ] Tournament type selector
-    - [ ] Number of teams/pools/bracket size
-    - [ ] Teams advancing from pools (if applicable)
-    - [ ] Community association
+  - [x] **Round Robin**: Each team plays every other team once, standings based on record/points (enum defined)
+  - [x] **Double Round Robin**: Each team plays every other team twice (home/away) (enum defined)
+  - [x] **Single Elimination**: Knockout bracket, loser eliminated immediately (enum defined)
+  - [x] **Double Elimination**: Teams eliminated after 2 losses, winners/losers brackets (enum defined)
+  - [x] **Pool + Knockout Hybrid**: Round robin pools followed by single/double elimination bracket (enum defined)
+  - [x] **Swiss System**: Teams paired by similar records each round, no elimination until final (enum defined)
+  - [x] **Group Stage**: Multiple groups playing round robin, advancing teams to knockout (enum defined)
+  - [x] **Custom**: Flexible format allowing manual bracket creation (enum defined)
+  - [ ] Tournament type-specific logic and bracket generation algorithms
+- [x] **14.3 Tournament Creation & Management (Basic)**:
+  - [x] Tournament creation form:
+    - [x] Name, dates, description
+    - [x] Tournament type selector
+    - [x] Community association
+    - [x] Date pickers with calendar icons and duration calculation
   - [ ] Tournament setup wizard:
     - [ ] Step 1: Basic info
     - [ ] Step 2: Pool setup (if applicable)
@@ -320,10 +321,10 @@
     - [ ] Step 4: Schedule generation
     - [ ] Step 5: Review and confirm
   - [ ] Edit tournament details at any time (before tournament starts or during)
-  - [ ] Manage teams:
-    - [ ] Add/remove teams
-    - [ ] Move teams between pools
-    - [ ] Update seedings
+  - [x] Manage teams:
+    - [x] Add/remove teams (via Teams tab modal)
+    - [x] Update seedings (inline editing in Teams tab)
+    - [ ] Move teams between pools (pending pool management UI)
   - [ ] Tournament status management:
     - [ ] Scheduled → Active → Completed
     - [ ] Pause/resume tournament
@@ -362,18 +363,19 @@
     - [ ] Championship bracket
     - [ ] Consolation bracket (3rd place, 5th place, etc.)
     - [ ] Losers bracket (double elimination)
-- [ ] **14.6 Manual Score Entry**:
-  - [ ] For tournament games not scored via app:
-    - [ ] Manual score input form
-    - [ ] Game result confirmation
-    - [ ] Override existing scores (with audit trail)
+- [x] **14.6 Manual Score Entry (Implemented)**:
+  - [x] For tournament games not scored via main app:
+    - [x] Manual score input form per game (inline editing in Games tab)
+    - [x] Support for games that are scored live via app OR entered manually
+  - [ ] Game result confirmation dialog
+  - [ ] Override existing scores with audit trail logging
   - [ ] Batch score entry:
     - [ ] Import from CSV
     - [ ] Quick entry mode for multiple games
-  - [ ] Edit game results:
-    - [ ] Update scores after game completion
-    - [ ] Add/remove games from tournament
-    - [ ] Recalculate standings automatically
+  - [x] Edit game results:
+    - [x] Update scores for scheduled games
+    - [x] Add/remove games from tournament
+    - [ ] Recalculate standings automatically (depends on standings calculation)
 - [ ] **14.7 Tournament Awards System**:
   - [ ] Award categories:
     - [ ] MVP (Most Valuable Player)
@@ -399,42 +401,195 @@
     - [ ] Awards page per tournament
     - [ ] Player profile badges
     - [ ] Team profile tournament history
-- [ ] **14.8 Tournament Dashboard & Views**:
-  - [ ] Tournament list page:
-    - [ ] Filter by status, community, type
-    - [ ] Search tournaments
-    - [ ] Quick stats (teams, games completed, progress %)
-  - [ ] Tournament detail page:
-    - [ ] Overview tab: Info, schedule, standings
-    - [ ] Games tab: All games with filters
-    - [ ] Standings tab: Pool tables, stats leaders
-    - [ ] Bracket tab: Interactive bracket view
-    - [ ] Awards tab: Winners and nominations
+- [x] **14.8 Tournament Dashboard & Views (Functional)**:
+  - [x] Tournament list page:
+    - [x] Filter by status, community, type
+    - [x] Search tournaments
+    - [x] Quick stats (teams, games completed)
+  - [x] Tournament detail page with functional tabs:
+    - [x] Overview tab: Info, quick stats
+    - [x] Teams tab: List teams, add/remove, edit seeds
+    - [x] Games tab: List games, link existing, create new, manual score entry
+    - [ ] Standings tab: Pool tables, stats leaders (auto-calculation pending)
+    - [ ] Bracket tab: Interactive bracket view (visualization pending)
+    - [ ] Awards tab: Winners and nominations (assignment pending)
   - [ ] Tournament public page (if public visibility):
     - [ ] Read-only bracket/schedule
     - [ ] Live scores
     - [ ] Standings
-- [ ] **14.9 Tournament APIs**:
-  - [ ] `POST /api/tournaments` - Create tournament
-  - [ ] `GET /api/tournaments` - List tournaments
-  - [ ] `GET /api/tournaments/[id]` - Get tournament details
-  - [ ] `PATCH /api/tournaments/[id]` - Update tournament
-  - [ ] `DELETE /api/tournaments/[id]` - Delete/cancel tournament
-  - [ ] `POST /api/tournaments/[id]/teams` - Add team to tournament
-  - [ ] `DELETE /api/tournaments/[id]/teams/[teamId]` - Remove team
+- [x] **14.9 Tournament APIs (Functional)**:
+  - [x] `POST /api/tournaments` - Create tournament
+  - [x] `GET /api/tournaments` - List tournaments
+  - [x] `GET /api/tournaments/[id]` - Get tournament details
+  - [x] `PATCH /api/tournaments/[id]` - Update tournament
+  - [x] `DELETE /api/tournaments/[id]` - Delete/cancel tournament
+  - [x] `POST /api/tournaments/[id]/teams` - Add team to tournament
+  - [x] `DELETE /api/tournaments/[id]/teams/[teamId]` - Remove team
+  - [x] `PATCH /api/tournaments/[id]/teams/[teamId]` - Update team seed/pool
   - [ ] `POST /api/tournaments/[id]/pools` - Create/manage pools
   - [ ] `POST /api/tournaments/[id]/generate-schedule` - Auto-generate games
-  - [ ] `POST /api/tournaments/[id]/games` - Add tournament game
-  - [ ] `PATCH /api/tournaments/[id]/games/[gameId]/score` - Manual score entry
+  - [x] `POST /api/tournaments/[id]/games` - Add tournament game (link or create)
+  - [x] `DELETE /api/tournaments/[id]/games/[gameId]` - Remove game from tournament
+  - [x] `PATCH /api/tournaments/[id]/games/[gameId]/score` - Manual score entry
   - [ ] `POST /api/tournaments/[id]/advance` - Advance to knockout stage
-  - [ ] `GET /api/tournaments/[id]/standings` - Get current standings
+  - [ ] `GET /api/tournaments/[id]/standings` - Get current standings (calculation)
   - [ ] `GET /api/tournaments/[id]/bracket` - Get bracket data
   - [ ] `GET /api/tournaments/[id]/awards` - Get awards data
   - [ ] `POST /api/tournaments/[id]/awards` - Assign awards
-- [ ] **14.10 Tournament Integration**:
-  - [ ] Link existing games to tournaments
-  - [ ] Convert regular games to tournament games
+- [x] **14.10 Tournament Integration (Partial)**:
+  - [x] Link existing games to tournaments
+  - [x] Convert regular games to tournament games (via creation UI)
   - [ ] Tournament game badge/icon in games list
   - [ ] Tournament filter in games view
   - [ ] Tournament stats in player profiles (aggregate across tournament games)
   - [ ] Tournament history in team profiles
+
+## Phase 15: Player Profiles, Seasons & Enhanced Search (NEW)
+- [x] **15.1 Player Invitation & Self-Service Profile**:
+  - [x] Database schema updates:
+    - [x] `playerInvitations` table: id, athleteId, email, token, status, expiresAt, createdBy, createdAt
+    - [x] Add `invitedBy` and `invitedAt` columns to `athletes` table
+    - [x] Add `userId` column to `athletes` table (link athlete to registered user)
+  - [x] Player invitation system:
+    - [x] Community admins can invite players via email
+    - [x] Generate unique invitation link/token for each player
+    - [x] Email template with sign-up link
+    - [x] Invitation expiration (default 7 days)
+    - [x] Resend invitation capability
+    - [x] Cancel/revoke invitation
+  - [x] Player sign-up flow:
+    - [x] Click invitation link → registration/login page
+    - [x] Auto-link athlete profile to user account upon registration
+    - [x] Claim existing athlete profile (if player already in database)
+    - [ ] Merge duplicate profiles during claim process
+  - [x] Player profile page (player view):
+    - [x] Personal details (name, birth date)
+    - [x] Edit own profile information
+    - [ ] Privacy settings (what stats are public vs private)
+    
+- [x] **15.2 Player Statistics Dashboard**:
+  - [x] Lifetime statistics:
+    - [x] Total games played
+    - [x] Career points, fouls
+    - [x] Career averages (PPG, fouls per game)
+    - [ ] Career highs (best game stats)
+    - [ ] Total minutes played
+    - [x] Win/loss record
+  - [x] Team-specific statistics:
+    - [x] Stats breakdown per team (games, points, wins, losses)
+    - [x] Games played with each team
+    - [x] Team win/loss record
+    - [ ] Teammates played with most
+    - [ ] Jersey number history per team
+  - [x] Season-specific statistics:
+    - [x] Stats per season (via seasonId filter)
+    - [ ] Season rankings (e.g., "Top 10 scorer in Season 2025")
+    - [ ] Season awards/achievements
+    - [ ] Progress tracking (improvement over seasons)
+  - [ ] Visual statistics:
+    - [ ] Charts/graphs for stat trends
+    - [ ] Heat maps (shooting zones if advanced tracking)
+    - [x] Game-by-game stat log (last 10 games)
+    - [ ] Compare stats to league/community averages
+    
+- [x] **15.3 Season Management**:
+  - [x] Database schema updates:
+    - [x] `seasons` table: id, communityId, name, startDate, endDate, status, description, createdAt, updatedAt
+    - [x] `teamSeasons` table: id, teamId, seasonId, communityId, status, createdAt
+    - [x] Add `seasonId` to `games` table
+    - [ ] Add `seasonId` to `athletes` stats aggregation views
+  - [x] Season creation & management:
+    - [x] Create season within community (name, dates, description)
+    - [x] Season status: Upcoming → Active → Completed → Archived (auto-calculated)
+    - [x] Edit season details
+    - [ ] Archive old seasons (preserve data, hide from active lists)
+    - [ ] Duplicate season (copy structure for new year)
+  - [x] Team-season association:
+    - [x] Assign teams to seasons
+    - [x] Teams can participate in multiple seasons
+    - [ ] Season-specific team rosters (players may change seasons)
+    - [x] Track team performance per season (standings API)
+  - [x] Season filters throughout app:
+    - [x] Filter games by season
+    - [x] Filter teams by season
+    - [x] Filter stats by season
+    - [x] Season selector in community dashboard
+    
+- [x] **15.4 Enhanced Team Search & Filtering**:
+  - [x] Global team search enhancements:
+    - [x] Search by team name (partial match, case-insensitive via `q` param)
+    - [x] Filter by community (via `communityId` param)
+    - [x] Filter by season (via `seasonId` param)
+    - [ ] Filter by team status (active, inactive)
+    - [x] Combined filters (community + season + name)
+  - [x] Team list views with filtering:
+    - [x] Teams page: Search bar + community filter + season filter (via GET /api/teams)
+    - [x] Community teams: Search + season filter
+    - [ ] Game creation: Team search with community/season filters
+    - [ ] Tournament setup: Team selection with filters
+    - [ ] Player assignment: Team search with filters
+  - [x] Quick filters:
+    - [x] "My Teams" filter (via `myTeams=true` param)
+    - [ ] "Current Season" filter
+    - [ ] "Active Teams Only" toggle
+    - [ ] Recent/Popular teams quick access
+  - [ ] Search UX improvements:
+    - [ ] Autocomplete suggestions
+    - [ ] Recent searches
+    - [ ] Saved filters
+    - [ ] Clear all filters button
+    - [ ] Filter count indicator
+    
+- [x] **15.5 Player APIs**:
+  - [x] `POST /api/players/invite` - Send player invitation
+  - [x] `GET /api/players/invitations` - List pending invitations (also lists user's created invitations via GET /api/players/invite)
+  - [x] `POST /api/players/invitations/[token]/accept` - Accept invitation
+  - [x] `GET /api/players/[id]/stats` - Get player statistics (lifetime, per team, per season via query params)
+  - [x] `GET /api/players/[id]` - Get player profile with history
+  - [x] `PATCH /api/players/[id]` - Update player profile (firstName, surname, email, birthDate, status)
+  - [x] `GET /api/players/me` - Get current user's player profile
+  - [x] `POST /api/players/[id]/claim` - Claim unlinked player profile
+  
+- [x] **15.6 Season APIs**:
+  - [x] `POST /api/seasons` - Create season
+  - [x] `GET /api/seasons` - List seasons (with communityId and status filters)
+  - [x] `GET /api/seasons/[id]` - Get season details
+  - [x] `PATCH /api/seasons/[id]` - Update season
+  - [x] `DELETE /api/seasons/[id]` - Delete season
+  - [x] `POST /api/seasons/[id]/teams` - Add team to season
+  - [x] `DELETE /api/seasons/[id]/teams` - Remove team from season
+  - [x] `GET /api/seasons/[id]/teams` - List teams in season (via seasons list with teamSeasons relation)
+  - [x] `GET /api/seasons/[id]/games` - List games in season
+  - [x] `GET /api/seasons/[id]/standings` - Get season standings (calculated from finished games)
+  
+- [x] **15.7 Team Search APIs**:
+  - [x] `GET /api/teams` - Enhanced team search endpoint
+    - [x] Query params: `q` (search term), `communityId`, `seasonId`, `myTeams`
+    - [x] Returns: Teams with community and season info (teamSeasons relation)
+  - [x] `GET /api/communities/[id]` - Community teams with seasons included
+  - [x] `GET /api/seasons/[id]` - Season with teams included (via teamSeasons relation)
+  
+- [x] **15.8 UI Components**:
+  - [x] Player profile page (`/players/[id]`):
+    - [x] Public profile view with three tabs: Overview, Statistics, History
+    - [x] Editable profile (firstName, surname, email, birthDate)
+    - [x] Statistics tabs: Lifetime, By Team, By Season (with filters)
+    - [x] Game history list (recent games)
+    - [ ] Achievement/award display
+  - [x] Player invitation UI:
+    - [x] Invitation email template (HTML/text via email.ts)
+    - [x] Invitation acceptance page (`/invite/player/[token]`)
+    - [x] "Claim Profile" flow (`/players` page + claim API)
+    - [x] Pending invitations management (in `/profile` page)
+  - [x] Season management UI:
+    - [x] Season list in community (`/communities/[id]` Seasons tab)
+    - [x] Season creation form
+    - [x] Team assignment interface (add/remove teams from seasons)
+    - [ ] Season selector component (reusable)
+  - [x] Enhanced team search UI:
+    - [x] Search functionality (via API params)
+    - [x] Filter support (community, season via query params)
+    - [ ] Search bar with autocomplete
+    - [ ] Filter dropdowns (community, season)
+    - [ ] Filter chips/badges
+    - [ ] Results list with team cards

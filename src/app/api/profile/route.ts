@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-server';
 import { db } from '@/db';
-import { users, communityMembers, communities, userActivityLogs } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { users, communityMembers, communities, userActivityLogs, athletes, playerInvitations } from '@/db/schema';
+import { eq, desc, and, gt } from 'drizzle-orm';
 
 export async function GET() {
     const { userId } = await auth();
@@ -20,6 +20,14 @@ export async function GET() {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
+        // Fetch user's athlete profile
+        const playerProfile = await db.query.athletes.findFirst({
+            where: eq(athletes.userId, userId),
+            with: {
+                community: true
+            }
+        });
+
         // Fetch user's communities
         const userCommunities = await db.query.communityMembers.findMany({
             where: eq(communityMembers.userId, userId),
@@ -35,16 +43,38 @@ export async function GET() {
             orderBy: [desc(userActivityLogs.createdAt)]
         });
 
+        // Fetch pending invitations sent by user
+        const pendingInvitations = await db.query.playerInvitations.findMany({
+            where: and(
+                eq(playerInvitations.createdBy, userId),
+                eq(playerInvitations.status, 'pending'),
+                gt(playerInvitations.expiresAt, new Date())
+            ),
+            with: {
+                athlete: {
+                    columns: {
+                        id: true,
+                        name: true,
+                        firstName: true,
+                        surname: true,
+                    },
+                },
+            },
+            orderBy: [desc(playerInvitations.createdAt)],
+        });
+
         return NextResponse.json({
             user: {
                 ...user,
                 theme: user.theme || 'dark'
             },
+            playerProfile,
             communities: userCommunities.map(cm => ({
                 ...cm.community,
                 role: cm.role
             })),
-            activity: recentActivity
+            activity: recentActivity,
+            pendingInvitations,
         });
     } catch (error) {
         console.error('Failed to fetch profile:', error);

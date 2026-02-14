@@ -9,9 +9,12 @@ type ActivityAction =
     | 'COMMUNITY_CREATED'
     | 'MEMBER_INVITED'
     | 'MEMBER_JOINED'
-    | 'MEMBER_REMOVED';
+    | 'MEMBER_REMOVED'
+    | 'TOURNAMENT_CREATED'
+    | 'TOURNAMENT_UPDATED'
+    | 'TOURNAMENT_DELETED';
 
-type ResourceType = 'game' | 'team' | 'community' | 'user';
+type ResourceType = 'game' | 'team' | 'community' | 'user' | 'tournament';
 
 interface LogActivityParams {
     userId: string;

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { communities, communityInvites, communityMembers } from '@/db/schema';
+import { communities, communityInvites, communityMembers, users } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
+import { sendCommunityInvitationEmail } from '@/lib/email';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -57,12 +58,29 @@ export async function POST(
             })
             .returning();
 
-        // In a real app, send email here.
-        // For MVP, return the token/link to the admin to share.
+        // Get inviter name for personalization
+        const inviter = await db.query.users.findFirst({
+            where: eq(users.id, userId),
+        });
+        const inviterName = inviter ? `${inviter.firstName || ''} ${inviter.lastName || ''}`.trim() || undefined : undefined;
+
+        // Generate invite link
+        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/communities/join?token=${token}`;
+
+        // Send email notification
+        const emailResult = await sendCommunityInvitationEmail(
+            email,
+            community.name,
+            inviteLink,
+            role,
+            inviterName
+        );
 
         return NextResponse.json({
             invite,
-            inviteLink: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/communities/join?token=${token}`
+            inviteLink,
+            emailSent: emailResult.success,
+            emailError: emailResult.error,
         });
 
     } catch (error) {

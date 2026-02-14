@@ -6,7 +6,7 @@ import { useSocket } from '@/hooks/use-socket';
 import { useAuth } from '@/components/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Trophy, Clock, Users, ArrowLeft, RotateCcw, ShieldAlert,
+    Trophy, Clock, Users, ArrowLeft, ShieldAlert,
     MoreHorizontal, Share2, QrCode, Copy, Check, X, Target, Move, Timer,
     Home, Flag, Table, Eye, Globe, Users2, Settings, Trash2
 } from 'lucide-react';
@@ -537,13 +537,6 @@ export default function ScorerPage() {
         }
     };
 
-    const togglePossession = () => {
-        if (!game) return;
-        updateGame({
-            possession: game.possession === 'home' ? 'guest' : 'home'
-        });
-    };
-
     const handleEndGame = () => {
         if (!game) return;
         
@@ -867,13 +860,6 @@ export default function ScorerPage() {
                         title="Share Scoreboard"
                     >
                         <QrCode size={18} />
-                    </button>
-                    <button
-                        onClick={togglePossession}
-                        className="p-2 text-slate-500 hover:text-white landscape:p-1"
-                        title="Toggle Possession"
-                    >
-                        <RotateCcw size={18} className={cn(game.possession === 'home' && "text-orange-500 rotate-180", game.possession === 'guest' && "text-slate-300")} />
                     </button>
                     {/* Delete Game Button (Owner/Admin only) */}
                     {canDeleteGame() && (

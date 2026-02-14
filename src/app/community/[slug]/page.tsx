@@ -4,8 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import { GameCard } from '@/app/live/components/game-card';
-import { Wifi, WifiOff, Search, Calendar, Users, ArrowLeft } from 'lucide-react';
+import { Wifi, WifiOff, Search, Calendar, Users, ArrowLeft, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
 
 interface Game {
     id: string;
@@ -58,7 +64,7 @@ interface Team {
     };
 }
 
-type TabType = 'live' | 'historical' | 'teams';
+type TabType = 'live' | 'historical' | 'teams' | 'seasons';
 
 export default function CommunityPage() {
     const params = useParams();
@@ -68,6 +74,10 @@ export default function CommunityPage() {
     const [community, setCommunity] = useState<Community | null>(null);
     const [games, setGames] = useState<Game[]>([]);
     const [teams, setTeams] = useState<Team[]>([]);
+    const [seasons, setSeasons] = useState<any[]>([]);
+    const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+    const [standings, setStandings] = useState<any[]>([]);
+    const [seasonGames, setSeasonGames] = useState<Game[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFrom, setDateFrom] = useState('');
@@ -119,6 +129,47 @@ export default function CommunityPage() {
         }
     }, [activeTab, community]);
 
+    // Fetch seasons when seasons tab is active
+    const fetchSeasons = useCallback(async () => {
+        if (activeTab !== 'seasons') return;
+        
+        try {
+            const response = await fetch(`/api/public/communities/${slug}/seasons`);
+            if (response.ok) {
+                const data = await response.json();
+                setSeasons(data.seasons || []);
+            }
+        } catch (error) {
+            console.error('Error fetching seasons:', error);
+        }
+    }, [activeTab, slug]);
+
+    // Fetch standings and games for selected season
+    const fetchSeasonDetails = useCallback(async () => {
+        if (!selectedSeasonId) return;
+        
+        setLoading(true);
+        try {
+            const [standingsRes, gamesRes] = await Promise.all([
+                fetch(`/api/seasons/${selectedSeasonId}/standings`),
+                fetch(`/api/seasons/${selectedSeasonId}/games`)
+            ]);
+            
+            if (standingsRes.ok) {
+                const data = await standingsRes.json();
+                setStandings(data);
+            }
+            if (gamesRes.ok) {
+                const data = await gamesRes.json();
+                setSeasonGames(data);
+            }
+        } catch (error) {
+            console.error('Error fetching season details:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedSeasonId]);
+
     // Initial fetch
     useEffect(() => {
         fetchData();
@@ -128,6 +179,16 @@ export default function CommunityPage() {
     useEffect(() => {
         fetchTeams();
     }, [fetchTeams]);
+
+    // Fetch seasons when tab changes
+    useEffect(() => {
+        fetchSeasons();
+    }, [fetchSeasons]);
+
+    // Fetch season details when selection changes
+    useEffect(() => {
+        fetchSeasonDetails();
+    }, [fetchSeasonDetails]);
 
     // Setup socket connection
     useEffect(() => {
@@ -289,6 +350,20 @@ export default function CommunityPage() {
                                 </span>
                             )}
                         </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab('seasons');
+                                setSelectedSeasonId(null);
+                            }}
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                                activeTab === 'seasons'
+                                    ? 'bg-orange-600 text-white'
+                                    : 'bg-card text-slate-400 hover:bg-muted'
+                            }`}
+                        >
+                            <Calendar size={16} />
+                            Seasons
+                        </button>
                     </div>
 
                     {/* Search & Filters */}
@@ -336,6 +411,96 @@ export default function CommunityPage() {
                     <div className="flex items-center justify-center py-12">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
                     </div>
+                ) : activeTab === 'seasons' ? (
+                    // Seasons Tab
+                    selectedSeasonId ? (
+                        <div className="space-y-8">
+                            <button 
+                                onClick={() => setSelectedSeasonId(null)}
+                                className="text-sm text-slate-400 hover:text-white flex items-center gap-2"
+                            >
+                                <ArrowLeft size={14} /> Back to All Seasons
+                            </button>
+                            
+                            <div className="bg-input border border-border rounded-2xl p-6">
+                                <h3 className="text-xl font-bold mb-6">Standings</h3>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-card text-xs uppercase tracking-wider text-slate-500">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left">Team</th>
+                                                <th className="px-4 py-3 text-center">Played</th>
+                                                <th className="px-4 py-3 text-center text-green-500">W</th>
+                                                <th className="px-4 py-3 text-center text-red-500">L</th>
+                                                <th className="px-4 py-3 text-center">PF</th>
+                                                <th className="px-4 py-3 text-center">PA</th>
+                                                <th className="px-4 py-3 text-center">Diff</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border">
+                                            {standings.map((team) => (
+                                                <tr key={team.teamId} className="hover:bg-card/50 transition-colors">
+                                                    <td className="px-4 py-4 font-bold">{team.teamName}</td>
+                                                    <td className="px-4 py-4 text-center">{team.played}</td>
+                                                    <td className="px-4 py-4 text-center text-green-500 font-bold">{team.wins}</td>
+                                                    <td className="px-4 py-4 text-center text-red-500 font-bold">{team.losses}</td>
+                                                    <td className="px-4 py-4 text-center">{team.pointsFor}</td>
+                                                    <td className="px-4 py-4 text-center">{team.pointsAgainst}</td>
+                                                    <td className="px-4 py-4 text-center font-mono">
+                                                        {team.pointDiff > 0 ? `+${team.pointDiff}` : team.pointDiff}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h3 className="text-xl font-bold">Season Games</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {seasonGames.map((game) => (
+                                        <GameCard key={game.id} game={game} />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {seasons.map((season) => (
+                                <div 
+                                    key={season.id}
+                                    onClick={() => setSelectedSeasonId(season.id)}
+                                    className="bg-card/50 border border-border p-6 rounded-2xl cursor-pointer hover:border-orange-500/50 transition-all group"
+                                >
+                                    <div className="flex justify-between items-start mb-4">
+                                        <span className={cn(
+                                            "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded",
+                                            season.status === 'active' ? "bg-green-500/20 text-green-500" :
+                                            season.status === 'completed' ? "bg-blue-500/20 text-blue-500" :
+                                            "bg-yellow-500/20 text-yellow-500"
+                                        )}>
+                                            {season.status}
+                                        </span>
+                                    </div>
+                                    <h3 className="text-xl font-bold group-hover:text-orange-500 transition-colors">{season.name}</h3>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        {new Date(season.startDate).toLocaleDateString()} - {new Date(season.endDate).toLocaleDateString()}
+                                    </p>
+                                    <div className="mt-6 flex items-center justify-between text-xs font-bold uppercase tracking-widest text-orange-500">
+                                        View Standings & Games
+                                        <ArrowRight size={14} />
+                                    </div>
+                                </div>
+                            ))}
+                            {seasons.length === 0 && (
+                                <div className="col-span-full text-center py-12">
+                                    <Calendar className="w-12 h-12 mx-auto text-slate-700 mb-4" />
+                                    <p className="text-slate-500 italic">No seasons found for this community.</p>
+                                </div>
+                            )}
+                        </div>
+                    )
                 ) : activeTab === 'teams' ? (
                     // Teams Tab
                     filteredTeams.length === 0 ? (

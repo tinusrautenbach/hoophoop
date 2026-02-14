@@ -18,6 +18,22 @@ export const communityTypeEnum = pgEnum('community_type', ['school', 'club', 'le
 export const communityRoleEnum = pgEnum('community_role', ['admin', 'scorer', 'viewer']);
 export const inviteStatusEnum = pgEnum('invite_status', ['pending', 'accepted', 'expired']);
 
+// Season Enums
+export const seasonStatusEnum = pgEnum('season_status', ['upcoming', 'active', 'completed', 'archived']);
+
+// Tournament Enums
+export const tournamentTypeEnum = pgEnum('tournament_type', [
+    'round_robin',
+    'double_round_robin',
+    'single_elimination',
+    'double_elimination',
+    'pool_knockout',
+    'swiss',
+    'group_stage',
+    'custom'
+]);
+export const tournamentStatusEnum = pgEnum('tournament_status', ['scheduled', 'active', 'completed', 'cancelled']);
+
 
 // --- USER ENTITIES ---
 
@@ -79,6 +95,119 @@ export const userActivityLogs = pgTable('user_activity_logs', {
 });
 
 
+// --- PLAYER INVITATIONS ---
+
+export const playerInvitations = pgTable('player_invitations', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    athleteId: uuid('athlete_id').references(() => athletes.id, { onDelete: 'cascade' }), // Optional: if inviting existing athlete
+    email: text('email').notNull(),
+    token: text('token').notNull().unique(),
+    status: inviteStatusEnum('status').default('pending').notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    createdBy: text('created_by').notNull(), // User who sent the invitation
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+
+// --- SEASON MANAGEMENT ---
+
+export const seasons = pgTable('seasons', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    communityId: uuid('community_id').references(() => communities.id, { onDelete: 'cascade' }).notNull(),
+    name: text('name').notNull(),
+    startDate: date('start_date').notNull(),
+    endDate: date('end_date').notNull(),
+    status: seasonStatusEnum('status').default('upcoming').notNull(),
+    description: text('description'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const teamSeasons = pgTable('team_seasons', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }).notNull(),
+    seasonId: uuid('season_id').references(() => seasons.id, { onDelete: 'cascade' }).notNull(),
+    communityId: uuid('community_id').references(() => communities.id, { onDelete: 'cascade' }).notNull(),
+    status: text('status').default('active').notNull(), // active, inactive
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+
+// --- TOURNAMENT MANAGEMENT ---
+
+export const tournaments = pgTable('tournaments', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    communityId: uuid('community_id').references(() => communities.id, { onDelete: 'cascade' }).notNull(),
+    ownerId: text('owner_id').notNull(),
+    name: text('name').notNull(),
+    type: tournamentTypeEnum('type').default('round_robin').notNull(),
+    status: tournamentStatusEnum('status').default('scheduled').notNull(),
+    startDate: date('start_date').notNull(),
+    endDate: date('end_date').notNull(),
+    description: text('description'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const tournamentPools = pgTable('tournament_pools', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tournamentId: uuid('tournament_id').references(() => tournaments.id, { onDelete: 'cascade' }).notNull(),
+    name: text('name').notNull(),
+    teamsAdvancing: integer('teams_advancing').default(2).notNull(),
+});
+
+export const tournamentTeams = pgTable('tournament_teams', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tournamentId: uuid('tournament_id').references(() => tournaments.id, { onDelete: 'cascade' }).notNull(),
+    teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }).notNull(),
+    poolId: uuid('pool_id').references(() => tournamentPools.id, { onDelete: 'set null' }),
+    seed: integer('seed'),
+});
+
+export const tournamentGames = pgTable('tournament_games', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tournamentId: uuid('tournament_id').references(() => tournaments.id, { onDelete: 'cascade' }).notNull(),
+    gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).notNull(),
+    poolId: uuid('pool_id').references(() => tournamentPools.id, { onDelete: 'set null' }),
+    round: integer('round'),
+    bracketPosition: text('bracket_position'), // e.g. "QF1", "SF1", "F"
+    isPoolGame: boolean('is_pool_game').default(false).notNull(),
+    // Optional statistics for tournament games
+    homeFouls: integer('home_fouls'),
+    guestFouls: integer('guest_fouls'),
+    playerOfTheMatchId: uuid('player_of_the_match_id').references(() => athletes.id, { onDelete: 'set null' }),
+    playerOfTheMatchName: text('player_of_the_match_name'), // Free text MVP name
+    home3Pointers: integer('home_3_pointers'),
+    guest3Pointers: integer('guest_3_pointers'),
+    homeFreeThrows: integer('home_free_throws'),
+    guestFreeThrows: integer('guest_free_throws'),
+});
+
+export const tournamentStandings = pgTable('tournament_standings', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tournamentId: uuid('tournament_id').references(() => tournaments.id, { onDelete: 'cascade' }).notNull(),
+    teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }).notNull(),
+    poolId: uuid('pool_id').references(() => tournamentPools.id, { onDelete: 'set null' }),
+    wins: integer('wins').default(0).notNull(),
+    losses: integer('losses').default(0).notNull(),
+    pointsFor: integer('points_for').default(0).notNull(),
+    pointsAgainst: integer('points_against').default(0).notNull(),
+    pointDiff: integer('point_diff').default(0).notNull(),
+    gamesPlayed: integer('games_played').default(0).notNull(),
+});
+
+export const tournamentAwards = pgTable('tournament_awards', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tournamentId: uuid('tournament_id').references(() => tournaments.id, { onDelete: 'cascade' }).notNull(),
+    awardType: text('award_type').notNull(), // MVP, Top Scorer, etc.
+    athleteId: uuid('athlete_id').references(() => athletes.id, { onDelete: 'cascade' }),
+    teamId: uuid('team_id').references(() => teams.id, { onDelete: 'cascade' }),
+    value: text('value'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+
 // --- CORE ROSTER ENTITIES ---
 
 export const teams = pgTable('teams', {
@@ -103,6 +232,9 @@ export const athletes = pgTable('athletes', {
     isWorldAvailable: boolean('is_world_available').default(false).notNull(), // Visible to all communities in search
     communityId: uuid('community_id').references(() => communities.id), // Community this player belongs to
     mergedIntoId: uuid('merged_into_id'), // If merged, references the primary athlete profile
+    userId: text('user_id'), // Link to registered user (for players who have claimed their profile)
+    invitedBy: text('invited_by'), // User who invited this player
+    invitedAt: timestamp('invited_at'), // When the player was invited
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -137,6 +269,7 @@ export const games = pgTable('games', {
     id: uuid('id').defaultRandom().primaryKey(),
     ownerId: text('owner_id').notNull(),
     communityId: uuid('community_id').references(() => communities.id), // Optional link to community
+    seasonId: uuid('season_id').references(() => seasons.id), // Optional link to season
 
     // Optional user-defined game name and date
     name: text('name'),
@@ -244,6 +377,8 @@ export const communitiesRelations = relations(communities, ({ one, many }) => ({
     teams: many(teams),
     games: many(games),
     logs: many(userActivityLogs),
+    seasons: many(seasons),
+    tournaments: many(tournaments),
 }));
 
 export const communityMembersRelations = relations(communityMembers, ({ one }) => ({
@@ -260,12 +395,19 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
     memberships: many(teamMemberships),
     homeGames: many(games, { relationName: 'homeGames' }),
     guestGames: many(games, { relationName: 'guestGames' }),
+    teamSeasons: many(teamSeasons),
+    tournamentParticipations: many(tournamentTeams),
+    tournamentStandings: many(tournamentStandings),
+    tournamentAwards: many(tournamentAwards),
 }));
 
 export const athletesRelations = relations(athletes, ({ one, many }) => ({
     community: one(communities, { fields: [athletes.communityId], references: [communities.id] }),
+    user: one(users, { fields: [athletes.userId], references: [users.id] }),
     memberships: many(teamMemberships),
     gameAppearances: many(gameRosters),
+    invitations: many(playerInvitations),
+    tournamentAwards: many(tournamentAwards),
 }));
 
 export const teamMembershipsRelations = relations(teamMemberships, ({ one }) => ({
@@ -275,11 +417,13 @@ export const teamMembershipsRelations = relations(teamMemberships, ({ one }) => 
 
 export const gamesRelations = relations(games, ({ one, many }) => ({
     community: one(communities, { fields: [games.communityId], references: [communities.id] }),
+    season: one(seasons, { fields: [games.seasonId], references: [seasons.id] }),
     homeTeam: one(teams, { fields: [games.homeTeamId], references: [teams.id], relationName: 'homeGames' }),
     guestTeam: one(teams, { fields: [games.guestTeamId], references: [teams.id], relationName: 'guestGames' }),
     rosters: many(gameRosters),
     events: many(gameEvents),
     scorers: many(gameScorers),
+    tournamentGame: one(tournamentGames),
 }));
 
 export const gameScorersRelations = relations(gameScorers, ({ one }) => ({
@@ -300,4 +444,62 @@ export const gameEventsRelations = relations(gameEvents, ({ one }) => ({
 export const playerHistoryRelations = relations(playerHistory, ({ one }) => ({
     athlete: one(athletes, { fields: [playerHistory.athleteId], references: [athletes.id] }),
     team: one(teams, { fields: [playerHistory.teamId], references: [teams.id] }),
+}));
+
+export const playerInvitationsRelations = relations(playerInvitations, ({ one }) => ({
+    athlete: one(athletes, { fields: [playerInvitations.athleteId], references: [athletes.id] }),
+}));
+
+export const seasonsRelations = relations(seasons, ({ one, many }) => ({
+    community: one(communities, { fields: [seasons.communityId], references: [communities.id] }),
+    teamSeasons: many(teamSeasons),
+    games: many(games),
+}));
+
+export const teamSeasonsRelations = relations(teamSeasons, ({ one }) => ({
+    team: one(teams, { fields: [teamSeasons.teamId], references: [teams.id] }),
+    season: one(seasons, { fields: [teamSeasons.seasonId], references: [seasons.id] }),
+    community: one(communities, { fields: [teamSeasons.communityId], references: [communities.id] }),
+}));
+
+export const tournamentsRelations = relations(tournaments, ({ one, many }) => ({
+    community: one(communities, { fields: [tournaments.communityId], references: [communities.id] }),
+    owner: one(users, { fields: [tournaments.ownerId], references: [users.id] }),
+    pools: many(tournamentPools),
+    teams: many(tournamentTeams),
+    games: many(tournamentGames),
+    standings: many(tournamentStandings),
+    awards: many(tournamentAwards),
+}));
+
+export const tournamentPoolsRelations = relations(tournamentPools, ({ one, many }) => ({
+    tournament: one(tournaments, { fields: [tournamentPools.tournamentId], references: [tournaments.id] }),
+    teams: many(tournamentTeams),
+    games: many(tournamentGames),
+    standings: many(tournamentStandings),
+}));
+
+export const tournamentTeamsRelations = relations(tournamentTeams, ({ one }) => ({
+    tournament: one(tournaments, { fields: [tournamentTeams.tournamentId], references: [tournaments.id] }),
+    team: one(teams, { fields: [tournamentTeams.teamId], references: [teams.id] }),
+    pool: one(tournamentPools, { fields: [tournamentTeams.poolId], references: [tournamentPools.id] }),
+}));
+
+export const tournamentGamesRelations = relations(tournamentGames, ({ one }) => ({
+    tournament: one(tournaments, { fields: [tournamentGames.tournamentId], references: [tournaments.id] }),
+    game: one(games, { fields: [tournamentGames.gameId], references: [games.id] }),
+    pool: one(tournamentPools, { fields: [tournamentGames.poolId], references: [tournamentPools.id] }),
+    playerOfTheMatch: one(athletes, { fields: [tournamentGames.playerOfTheMatchId], references: [athletes.id] }),
+}));
+
+export const tournamentStandingsRelations = relations(tournamentStandings, ({ one }) => ({
+    tournament: one(tournaments, { fields: [tournamentStandings.tournamentId], references: [tournaments.id] }),
+    team: one(teams, { fields: [tournamentStandings.teamId], references: [teams.id] }),
+    pool: one(tournamentPools, { fields: [tournamentStandings.poolId], references: [tournamentPools.id] }),
+}));
+
+export const tournamentAwardsRelations = relations(tournamentAwards, ({ one }) => ({
+    tournament: one(tournaments, { fields: [tournamentAwards.tournamentId], references: [tournaments.id] }),
+    athlete: one(athletes, { fields: [tournamentAwards.athleteId], references: [athletes.id] }),
+    team: one(teams, { fields: [tournamentAwards.teamId], references: [teams.id] }),
 }));

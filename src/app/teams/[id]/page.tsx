@@ -37,6 +37,17 @@ type Community = {
     name: string;
 };
 
+type TeamSeason = {
+    id: string;
+    status: string;
+    season: {
+        id: string;
+        name: string;
+        startDate: string | null;
+        endDate: string | null;
+    };
+};
+
 type PlayerSearchResult = {
     id: string;
     name: string;
@@ -62,6 +73,7 @@ export default function TeamDetailsPage() {
     const [teamName, setTeamName] = useState('');
     const [teamCommunityId, setTeamCommunityId] = useState<string | null>(null);
     const [teamGames, setTeamGames] = useState<any[]>([]);
+    const [teamSeasons, setTeamSeasons] = useState<TeamSeason[]>([]);
     const [communities, setCommunities] = useState<Community[]>([]);
 
     // Search existing player state
@@ -110,6 +122,7 @@ export default function TeamDetailsPage() {
                     const allGames = [...(data.homeGames || []), ...(data.guestGames || [])]
                         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                     setTeamGames(allGames);
+                    setTeamSeasons(data.teamSeasons || []);
                 }
             })
             .catch(err => {
@@ -628,6 +641,33 @@ export default function TeamDetailsPage() {
                             </div>
                         )}
                     </div>
+
+                    {/* Seasons */}
+                    {teamSeasons.length > 0 && (
+                        <div className="bg-card/20 rounded-2xl border border-border overflow-hidden">
+                            <div className="px-6 py-4 bg-card/50 text-xs uppercase tracking-widest text-slate-400 font-semibold flex items-center gap-2">
+                                <Calendar size={14} />
+                                Seasons ({teamSeasons.length})
+                            </div>
+                            <div className="divide-y divide-slate-800">
+                                {teamSeasons.map(ts => (
+                                    <div key={ts.id} className="px-6 py-3 flex items-center justify-between hover:bg-card/30 transition-colors">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium">{ts.season.name}</span>
+                                            {ts.status === 'active' && (
+                                                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">Active</span>
+                                            )}
+                                        </div>
+                                        <span className="text-xs text-slate-500">
+                                            {ts.season.startDate ? formatDate(ts.season.startDate) : ''}
+                                            {ts.season.startDate && ts.season.endDate ? ' - ' : ''}
+                                            {ts.season.endDate ? formatDate(ts.season.endDate) : ''}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Game History */}
                     <div className="bg-card/20 rounded-2xl border border-border overflow-hidden">

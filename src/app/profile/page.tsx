@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, SignOutButton } from '@/components/auth-provider';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { User, Mail, Shield, History, LogOut, ArrowRight, Trophy, School, Globe, Palette } from 'lucide-react';
+import { User, Mail, Shield, History, LogOut, ArrowRight, Trophy, School, Globe, Palette, Send, X, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -23,6 +23,11 @@ type ProfileData = {
         isWorldAdmin: boolean;
         theme: 'light' | 'dark';
     };
+    playerProfile: {
+        id: string;
+        name: string;
+        community: { name: string } | null;
+    } | null;
     communities: Array<{
         id: string;
         name: string;
@@ -36,6 +41,17 @@ type ProfileData = {
         resourceId: string;
         createdAt: string;
     }>;
+    pendingInvitations?: Array<{
+        id: string;
+        token: string;
+        email: string;
+        status: string;
+        expiresAt: string;
+        athlete: {
+            id: string;
+            name: string;
+        } | null;
+    }>;
 };
 
 export default function ProfilePage() {
@@ -43,6 +59,22 @@ export default function ProfilePage() {
     const router = useRouter();
     const [data, setData] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [pendingInvitations, setPendingInvitations] = useState<ProfileData['pendingInvitations']>([]);
+    const [managingInvitations, setManagingInvitations] = useState(false);
+
+    useEffect(() => {
+        if (userId) {
+            // Fetch pending invitations
+            fetch('/api/players/invitations')
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        setPendingInvitations(data);
+                    }
+                })
+                .catch(err => console.error('Failed to load invitations:', err));
+        }
+    }, [userId]);
 
     useEffect(() => {
         if (isLoaded && !userId) {
@@ -63,6 +95,52 @@ export default function ProfilePage() {
                 });
         }
     }, [userId, isLoaded, router]);
+
+    const handleResendInvitation = async (token: string) => {
+        setManagingInvitations(true);
+        try {
+            const res = await fetch(`/api/players/invitations/${token}/resend`, {
+                method: 'POST',
+            });
+            if (res.ok) {
+                // Refresh invitations
+                const invitationsRes = await fetch('/api/players/invitations');
+                const data = await invitationsRes.json();
+                if (Array.isArray(data)) {
+                    setPendingInvitations(data);
+                }
+            } else {
+                alert('Failed to resend invitation');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to resend invitation');
+        } finally {
+            setManagingInvitations(false);
+        }
+    };
+
+    const handleCancelInvitation = async (token: string) => {
+        if (!confirm('Are you sure you want to cancel this invitation?')) return;
+        
+        setManagingInvitations(true);
+        try {
+            const res = await fetch(`/api/players/invitations/${token}/resend`, {
+                method: 'DELETE',
+            });
+            if (res.ok) {
+                // Remove from list
+                setPendingInvitations(prev => prev?.filter(inv => inv.token !== token) || []);
+            } else {
+                alert('Failed to cancel invitation');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to cancel invitation');
+        } finally {
+            setManagingInvitations(false);
+        }
+    };
 
     if (!isLoaded || loading) {
         return (
@@ -130,10 +208,104 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* My Communities */}
+                    {/* Athlete Profile */}
                     <div className="space-y-4">
                         <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[var(--muted-foreground)] px-2 flex items-center gap-2">
                             <Trophy size={16} className="text-orange-500" />
+                            Athlete Profile
+                        </h2>
+                        {data.playerProfile ? (
+                            <Link href={`/players/${data.playerProfile.id}`}>
+                                <div className="bg-[var(--card)] border border-[var(--border)] p-6 rounded-3xl hover:border-orange-500/50 transition-all group cursor-pointer shadow-xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <Trophy size={64} />
+                                    </div>
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform font-black text-2xl">
+                                            {data.playerProfile.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <div className="text-xl font-black uppercase tracking-tight text-[var(--foreground)]">{data.playerProfile.name}</div>
+                                            {data.playerProfile.community && (
+                                                <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted-foreground)] mt-1">
+                                                    <Shield size={12} className="text-blue-500" />
+                                                    {data.playerProfile.community.name}
+                                                </div>
+                                            )}
+                                            <div className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 flex items-center gap-2">
+                                                View Statistics <ArrowRight size={12} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Link>
+                        ) : (
+                            <div className="bg-[var(--card)]/50 border border-dashed border-[var(--border)] p-8 rounded-3xl text-center space-y-4">
+                                <p className="text-[var(--muted-foreground)] text-sm">No athlete profile linked to your account.</p>
+                                <div className="flex flex-col gap-2">
+                                    <Link href="/players">
+                                        <button className="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all">
+                                            Find & Claim Profile
+                                        </button>
+                                    </Link>
+                                    <p className="text-[10px] text-[var(--muted-foreground)] uppercase font-bold">
+                                        OR ask your community admin to invite you
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Pending Invitations */}
+                    {pendingInvitations && pendingInvitations.length > 0 && (
+                        <div className="space-y-4">
+                            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[var(--muted-foreground)] px-2 flex items-center gap-2">
+                                <Send size={16} className="text-orange-500" />
+                                Pending Invitations ({pendingInvitations.length})
+                            </h2>
+                            <div className="space-y-3">
+                                {pendingInvitations.map((invitation) => (
+                                    <div key={invitation.id} className="bg-[var(--card)] border border-[var(--border)] p-4 rounded-2xl flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center">
+                                                <User className="w-5 h-5 text-orange-500" />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-sm">{invitation.athlete?.name || 'Unknown Player'}</div>
+                                                <div className="text-xs text-[var(--muted-foreground)]">{invitation.email}</div>
+                                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                                    Expires: {new Date(invitation.expiresAt).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleResendInvitation(invitation.token)}
+                                                disabled={managingInvitations}
+                                                className="p-2 bg-[var(--muted)] hover:bg-[var(--border)] rounded-lg transition-colors"
+                                                title="Resend invitation"
+                                            >
+                                                <RefreshCw size={16} className={managingInvitations ? 'animate-spin' : ''} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleCancelInvitation(invitation.token)}
+                                                disabled={managingInvitations}
+                                                className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors"
+                                                title="Cancel invitation"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* My Communities */}
+                    <div className="space-y-4">
+                        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[var(--muted-foreground)] px-2 flex items-center gap-2">
+                            <School size={16} className="text-blue-500" />
                             My Communities
                         </h2>
                         <div className="space-y-3">
