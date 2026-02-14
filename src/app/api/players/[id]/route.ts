@@ -18,6 +18,11 @@ export async function GET(
     try {
         const player = await db.query.athletes.findFirst({
             where: eq(athletes.id, playerId),
+            with: {
+                community: {
+                    columns: { id: true, name: true },
+                },
+            },
         });
 
         if (!player) {
@@ -64,7 +69,7 @@ export async function PATCH(
 
     try {
         const body = await request.json();
-        const { name, email, birthDate, status } = body;
+        const { firstName, surname, name, email, birthDate, status } = body;
 
         const existingPlayer = await db.query.athletes.findFirst({
             where: eq(athletes.id, playerId),
@@ -75,7 +80,26 @@ export async function PATCH(
         }
 
         const updates: Record<string, unknown> = {};
-        if (name !== undefined) updates.name = name;
+
+        // Handle firstName/surname updates and recompute name
+        if (firstName !== undefined) updates.firstName = firstName;
+        if (surname !== undefined) updates.surname = surname;
+
+        // Recompute the `name` field when firstName or surname changes
+        const newFirstName = firstName !== undefined ? firstName : existingPlayer.firstName;
+        const newSurname = surname !== undefined ? surname : existingPlayer.surname;
+        if (firstName !== undefined || surname !== undefined) {
+            updates.name = `${newFirstName || ''} ${newSurname || ''}`.trim();
+        }
+
+        // Legacy support: if `name` is passed directly (without firstName/surname), split it
+        if (name !== undefined && firstName === undefined && surname === undefined) {
+            updates.name = name;
+            const parts = name.trim().split(/\s+/);
+            updates.firstName = parts[0];
+            updates.surname = parts.slice(1).join(' ') || '';
+        }
+
         if (email !== undefined) updates.email = email;
         if (birthDate !== undefined) updates.birthDate = birthDate;
         if (status !== undefined) updates.status = status;

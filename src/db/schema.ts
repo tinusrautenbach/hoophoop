@@ -10,6 +10,7 @@ export const eventTypeEnum = pgEnum('event_type', [
 ]);
 export const gameStatusEnum = pgEnum('game_status', ['scheduled', 'live', 'final']);
 export const gameModeEnum = pgEnum('game_mode', ['simple', 'advanced']);
+export const gameVisibilityEnum = pgEnum('game_visibility', ['private', 'public_general', 'public_community']);
 // scorerRoleEnum is defined lower down
 
 // Community Enums
@@ -20,12 +21,16 @@ export const inviteStatusEnum = pgEnum('invite_status', ['pending', 'accepted', 
 
 // --- USER ENTITIES ---
 
+export const themeEnum = pgEnum('theme', ['light', 'dark']);
+
 export const users = pgTable('users', {
     id: text('id').primaryKey(), // Clerk User ID
     email: text('email').notNull(),
     firstName: text('first_name'),
     lastName: text('last_name'),
     imageUrl: text('image_url'),
+    isWorldAdmin: boolean('is_world_admin').default(false).notNull(), // God-mode access to all communities/data
+    theme: themeEnum('theme').default('dark').notNull(), // User's preferred theme: light or dark
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -35,6 +40,7 @@ export const users = pgTable('users', {
 export const communities = pgTable('communities', {
     id: uuid('id').defaultRandom().primaryKey(),
     name: text('name').notNull(),
+    slug: text('slug').unique(), // URL-friendly identifier for public portals
     type: communityTypeEnum('type').default('other').notNull(),
     ownerId: text('owner_id').notNull(), // Creator
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -88,10 +94,15 @@ export const teams = pgTable('teams', {
 export const athletes = pgTable('athletes', {
     id: uuid('id').defaultRandom().primaryKey(),
     ownerId: text('owner_id').notNull(), // Who created this profile?
-    name: text('name').notNull(),
+    name: text('name').notNull(), // Computed: firstName + ' ' + surname (kept for backward compat)
+    firstName: text('first_name'), // Split from name — required for new players
+    surname: text('surname'), // Split from name — required for new players
     email: text('email'), // Optional email for lookup
-    birthDate: date('birth_date'), // Optional birth date for age verification
-    status: text('status').default('active').notNull(), // active, inactive, transferred
+    birthDate: date('birth_date'), // Optional birth date for age verification / search disambiguation
+    status: text('status').default('active').notNull(), // active, inactive, transferred, merged
+    isWorldAvailable: boolean('is_world_available').default(false).notNull(), // Visible to all communities in search
+    communityId: uuid('community_id').references(() => communities.id), // Community this player belongs to
+    mergedIntoId: uuid('merged_into_id'), // If merged, references the primary athlete profile
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -128,8 +139,11 @@ export const games = pgTable('games', {
     communityId: uuid('community_id').references(() => communities.id), // Optional link to community
 
     // Optional user-defined game name and date
-    name: text('name'), 
+    name: text('name'),
     scheduledDate: timestamp('scheduled_date'),
+
+    // Public visibility settings
+    visibility: gameVisibilityEnum('visibility').default('private').notNull(),
 
     // Teams (FKs) - Nullable for ad-hoc/guest teams that aren't in the system
     homeTeamId: uuid('home_team_id').references(() => teams.id),
@@ -160,6 +174,7 @@ export const games = pgTable('games', {
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    deletedAt: timestamp('deleted_at'), // Soft delete - null means not deleted
 });
 
 // Replaces old 'players' table
@@ -219,6 +234,7 @@ export const usersRelations = relations(users, ({ many }) => ({
     ownedCommunities: many(communities),
     ownedTeams: many(teams),
     ownedGames: many(games),
+    communityMemberships: many(communityMembers),
 }));
 
 export const communitiesRelations = relations(communities, ({ one, many }) => ({
@@ -232,6 +248,7 @@ export const communitiesRelations = relations(communities, ({ one, many }) => ({
 
 export const communityMembersRelations = relations(communityMembers, ({ one }) => ({
     community: one(communities, { fields: [communityMembers.communityId], references: [communities.id] }),
+    user: one(users, { fields: [communityMembers.userId], references: [users.id] }),
 }));
 
 export const communityInvitesRelations = relations(communityInvites, ({ one }) => ({
@@ -245,7 +262,8 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
     guestGames: many(games, { relationName: 'guestGames' }),
 }));
 
-export const athletesRelations = relations(athletes, ({ many }) => ({
+export const athletesRelations = relations(athletes, ({ one, many }) => ({
+    community: one(communities, { fields: [athletes.communityId], references: [communities.id] }),
     memberships: many(teamMemberships),
     gameAppearances: many(gameRosters),
 }));

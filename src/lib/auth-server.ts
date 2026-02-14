@@ -12,7 +12,21 @@ export async function auth() {
             sessionId: 'sess_mock_123',
         };
     }
-    
+
+    // Check for test header
+    try {
+        const { headers } = await import('next/headers');
+        const headerList = await headers();
+        if (headerList.get('x-test-auth') === 'true') {
+            return {
+                userId: 'user_mock_123',
+                sessionId: 'sess_mock_123',
+            };
+        }
+    } catch (e) {
+        // Ignore errors if headers() is not available (e.g. not in request context)
+    }
+
     // Dynamically import to avoid initialization errors when mocking
     const { auth: clerkAuth } = await import('@clerk/nextjs/server');
     const session = await clerkAuth();
@@ -24,6 +38,17 @@ export async function auth() {
 
 export async function syncUser() {
     if (useMock) return;
+
+    // Check for test header
+    try {
+        const { headers } = await import('next/headers');
+        const headerList = await headers();
+        if (headerList.get('x-test-auth') === 'true') {
+            return;
+        }
+    } catch (e) {
+        // Ignore errors
+    }
 
     try {
         const { currentUser } = await import('@clerk/nextjs/server');

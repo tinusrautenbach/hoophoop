@@ -36,7 +36,10 @@ export async function GET() {
         });
 
         return NextResponse.json({
-            user,
+            user: {
+                ...user,
+                theme: user.theme || 'dark'
+            },
             communities: userCommunities.map(cm => ({
                 ...cm.community,
                 role: cm.role

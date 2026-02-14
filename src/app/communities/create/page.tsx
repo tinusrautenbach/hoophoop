@@ -65,7 +65,7 @@ export default function CreateCommunityPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. Lincoln High School"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-6 py-4 text-lg font-bold focus:outline-none focus:border-orange-500 transition-colors placeholder:text-slate-700"
+                        className="w-full bg-input border border-border rounded-2xl px-6 py-4 text-lg font-bold focus:outline-none focus:border-orange-500 transition-colors placeholder:text-slate-700"
                         required
                     />
                 </div>
@@ -82,12 +82,12 @@ export default function CreateCommunityPage() {
                                     "p-4 rounded-xl border text-left transition-all flex items-start gap-3",
                                     type === t.id
                                         ? "bg-orange-500/10 border-orange-500"
-                                        : "bg-slate-900 border-slate-800 hover:border-slate-700"
+                                        : "bg-input border-border hover:border-border"
                                 )}
                             >
                                 <div className={cn(
                                     "p-2 rounded-lg",
-                                    type === t.id ? "bg-orange-500 text-white" : "bg-slate-800 text-slate-500"
+                                    type === t.id ? "bg-orange-500 text-white" : "bg-card text-slate-500"
                                 )}>
                                     <t.icon size={20} />
                                 </div>

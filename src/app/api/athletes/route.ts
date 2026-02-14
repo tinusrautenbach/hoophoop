@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { athletes } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, ilike, and } from 'drizzle-orm';
+import { eq, ilike, and, or } from 'drizzle-orm';
 
 export async function GET(request: Request) {
     const { userId } = await auth();
@@ -15,10 +15,24 @@ export async function GET(request: Request) {
     const query = searchParams.get('q');
 
     try {
+        let whereCondition;
+
+        if (query) {
+            const searchTerm = `%${query}%`;
+            whereCondition = and(
+                eq(athletes.ownerId, userId),
+                or(
+                    ilike(athletes.firstName, searchTerm),
+                    ilike(athletes.surname, searchTerm),
+                    ilike(athletes.name, searchTerm),
+                )
+            );
+        } else {
+            whereCondition = eq(athletes.ownerId, userId);
+        }
+
         const results = await db.query.athletes.findMany({
-            where: query
-                ? and(eq(athletes.ownerId, userId), ilike(athletes.name, `%${query}%`))
-                : eq(athletes.ownerId, userId),
+            where: whereCondition,
             limit: 20,
         });
 

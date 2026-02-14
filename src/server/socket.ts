@@ -1,12 +1,12 @@
 import { Server, Socket } from "socket.io";
 import { db } from "@/db";
-import { games, gameEvents, gameScorers } from "@/db/schema";
+import { games, gameScorers } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
 // Server-side timer management for centralized clock
 interface ActiveTimer {
     gameId: string;
-    intervalId: NodeJS.Timeout;
+    intervalId: ReturnType<typeof setInterval>;
     lastTickAt: number;
     startedAt: Date;
     initialClockSeconds: number;
@@ -219,6 +219,11 @@ export function setupSocket(io: Server) {
                         scorers: true,
                         events: {
                             orderBy: (events, { desc }) => [desc(events.createdAt)]
+                        },
+                        community: {
+                            with: {
+                                members: true
+                            }
                         }
                     }
                 });
@@ -257,6 +262,9 @@ export function setupSocket(io: Server) {
                     socket.emit("game-state", {
                         game: {
                             id: game.id,
+                            ownerId: game.ownerId,
+                            communityId: game.communityId,
+                            community: game.community,
                             homeTeamName: game.homeTeamName,
                             guestTeamName: game.guestTeamName,
                             homeScore: game.homeScore,
@@ -312,10 +320,36 @@ export function setupSocket(io: Server) {
             }
         });
 
-        socket.on("update-game", ({ gameId, updates }) => {
+        socket.on("update-game", async ({ gameId, updates }) => {
             // Broadcast to everyone in the room except sender
             socket.to(`game-${gameId}`).emit("game-updated", updates);
             console.log(`[Socket] Game ${gameId} updated`, updates);
+
+            // If game visibility is public, also broadcast to public rooms
+            try {
+                const game = await db.query.games.findFirst({
+                    where: eq(games.id, gameId),
+                    columns: { visibility: true, communityId: true }
+                });
+
+                if (game && (game.visibility === 'public_general' || game.visibility === 'public_community')) {
+                    // Broadcast to public-games room
+                    socket.to("public-games").emit("public-game-update", {
+                        gameId,
+                        ...updates
+                    });
+
+                    // Broadcast to community room if applicable
+                    if (game.communityId) {
+                        socket.to(`community-${game.communityId}`).emit("community-game-update", {
+                            gameId,
+                            ...updates
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error(`[Socket] Error broadcasting public update for ${gameId}:`, error);
+            }
         });
 
         socket.on("add-event", ({ gameId, event }) => {
@@ -324,9 +358,57 @@ export function setupSocket(io: Server) {
             console.log(`[Socket] Event added to game ${gameId}`, event);
         });
 
+        // Public games rooms - for live scoreboard and community portals
+        socket.on("join-public-games", () => {
+            socket.join("public-games");
+            console.log(`[Socket] ${socket.id} joined public-games room`);
+        });
+
+        socket.on("leave-public-games", () => {
+            socket.leave("public-games");
+            console.log(`[Socket] ${socket.id} left public-games room`);
+        });
+
+        socket.on("join-community", (communityId: string) => {
+            socket.join(`community-${communityId}`);
+            console.log(`[Socket] ${socket.id} joined community-${communityId}`);
+        });
+
+        socket.on("leave-community", (communityId: string) => {
+            socket.leave(`community-${communityId}`);
+            console.log(`[Socket] ${socket.id} left community-${communityId}`);
+        });
+
         socket.on("disconnect", () => {
             console.log("[Socket] Client disconnected", socket.id);
         });
+    });
+}
+
+// Broadcast game updates to public rooms
+interface GameUpdateData {
+    homeScore?: number;
+    guestScore?: number;
+    homeFouls?: number;
+    guestFouls?: number;
+    clockSeconds?: number;
+    currentPeriod?: number;
+    status?: string;
+    isTimerRunning?: boolean;
+    [key: string]: unknown;
+}
+
+export function broadcastToPublicGames(io: Server, gameId: string, data: GameUpdateData) {
+    io.to("public-games").emit("public-game-update", {
+        gameId,
+        ...data
+    });
+}
+
+export function broadcastToCommunity(io: Server, communityId: string, gameId: string, data: GameUpdateData) {
+    io.to(`community-${communityId}`).emit("community-game-update", {
+        gameId,
+        ...data
     });
 }
 

@@ -268,7 +268,7 @@ export default function BoxScorePage() {
         const periodLength = 600;
 
         // Track active players at the start of each period
-        let lastPeriodEndClock: { [key: number]: number } = {};
+        const lastPeriodEndClock: { [key: number]: number } = {};
 
         sortedEvents.forEach(event => {
             const playerName = event.player;
@@ -841,7 +841,7 @@ export default function BoxScorePage() {
     };
 
     if (loading || !game) return (
-        <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-8 text-center">
+        <div className="fixed inset-0 bg-background flex flex-col items-center justify-center p-4 sm:p-8 text-center">
             <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4" />
             <div className="text-slate-500 italic text-sm sm:text-base">Loading Box Score...</div>
         </div>
@@ -854,9 +854,9 @@ export default function BoxScorePage() {
     const guestRoster = game.rosters?.filter(r => r.team === 'guest') || [];
 
     return (
-        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col font-sans overflow-hidden text-white">
+        <div className="fixed inset-0 z-[100] bg-background flex flex-col font-sans overflow-hidden text-white">
             {/* Header */}
-            <div className="bg-black/40 border-b border-slate-800 p-2 sm:p-4 flex items-center justify-between shrink-0">
+            <div className="bg-black/40 border-b border-border p-2 sm:p-4 flex items-center justify-between shrink-0">
                 <button
                     onClick={() => router.back()}
                     className="p-2 text-slate-500 hover:text-white transition-colors"
@@ -875,8 +875,8 @@ export default function BoxScorePage() {
             </div>
 
             {/* Scoreboard */}
-            <div className="bg-slate-900/50 p-3 sm:p-4 md:p-6 shrink-0">
-                <div className="bg-slate-900 border border-slate-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4">
+            <div className="bg-input/50 p-3 sm:p-4 md:p-6 shrink-0">
+                <div className="bg-input border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4">
                     <div className="flex items-center justify-between">
                         <div className="text-center flex-1">
                             <div className="text-xs sm:text-sm font-bold uppercase tracking-widest text-orange-500 truncate">
@@ -906,7 +906,7 @@ export default function BoxScorePage() {
                 {/* Shooting Stats Summary */}
                 <div className="grid grid-cols-2 gap-3">
                     {/* Home Team Shooting */}
-                    <div className="bg-slate-900/50 border border-orange-500/20 rounded-lg p-3">
+                    <div className="bg-input/50 border border-orange-500/20 rounded-lg p-3">
                         <div className="text-[10px] uppercase text-orange-500 text-center mb-2 font-bold tracking-wider">Home Shooting</div>
                         <div className="grid grid-cols-3 gap-2 text-center">
                             <div>
@@ -928,7 +928,7 @@ export default function BoxScorePage() {
                     </div>
 
                     {/* Guest Team Shooting */}
-                    <div className="bg-slate-900/50 border border-white/10 rounded-lg p-3">
+                    <div className="bg-input/50 border border-white/10 rounded-lg p-3">
                         <div className="text-[10px] uppercase text-white text-center mb-2 font-bold tracking-wider">Guest Shooting</div>
                         <div className="grid grid-cols-3 gap-2 text-center">
                             <div>
@@ -954,7 +954,7 @@ export default function BoxScorePage() {
             {/* Both Teams - Scrollable */}
             <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-4">
                 {/* Home Team Section */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-3 sm:p-4">
+                <div className="bg-input/50 border border-border rounded-xl p-3 sm:p-4">
                     <div className="flex items-center justify-between mb-3 pb-3 border-b-2 border-orange-500/20">
                         <h2 className="text-lg sm:text-xl font-black uppercase text-orange-500">
                             {game.homeTeamName}
@@ -978,7 +978,7 @@ export default function BoxScorePage() {
                     {/* Home Players Table */}
                     <div className="overflow-x-auto">
                         <div className="min-w-[600px]">
-                            <div className="grid grid-cols-[40px_1fr_50px_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 py-2 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 text-center">
+                            <div className="grid grid-cols-[40px_1fr_50px_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 py-2 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-border text-center">
                                 <div className="text-left">#</div>
                                 <div className="text-left">Player</div>
                                 <div>PTS</div>
@@ -1009,7 +1009,7 @@ export default function BoxScorePage() {
                                                 "grid grid-cols-[40px_1fr_50px_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-3 rounded-lg sm:rounded-xl items-center text-center",
                                                 player.isActive
                                                     ? "bg-orange-500/10 border border-orange-500/20"
-                                                    : "bg-slate-900/30 border border-slate-800/50 opacity-60"
+                                                    : "bg-input/30 border border-border/50 opacity-60"
                                             )}
                                         >
                                             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-black text-sm sm:text-base bg-orange-500/20 text-orange-500">
@@ -1079,7 +1079,7 @@ export default function BoxScorePage() {
                 </div>
 
                 {/* Guest Team Section */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-3 sm:p-4">
+                <div className="bg-input/50 border border-border rounded-xl p-3 sm:p-4">
                     <div className="flex items-center justify-between mb-3 pb-3 border-b-2 border-white/10">
                         <h2 className="text-lg sm:text-xl font-black uppercase text-white">
                             {game.guestTeamName}
@@ -1103,7 +1103,7 @@ export default function BoxScorePage() {
                     {/* Guest Players Table */}
                     <div className="overflow-x-auto">
                         <div className="min-w-[600px]">
-                            <div className="grid grid-cols-[40px_1fr_50px_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 py-2 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 text-center">
+                            <div className="grid grid-cols-[40px_1fr_50px_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 py-2 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-border text-center">
                                 <div className="text-left">#</div>
                                 <div className="text-left">Player</div>
                                 <div>PTS</div>
@@ -1134,10 +1134,10 @@ export default function BoxScorePage() {
                                                 "grid grid-cols-[40px_1fr_50px_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-3 rounded-lg sm:rounded-xl items-center text-center",
                                                 player.isActive
                                                     ? "bg-white/5 border border-white/10"
-                                                    : "bg-slate-900/30 border border-slate-800/50 opacity-60"
+                                                    : "bg-input/30 border border-border/50 opacity-60"
                                             )}
                                         >
-                                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-black text-sm sm:text-base bg-slate-800 text-slate-400">
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-black text-sm sm:text-base bg-card text-slate-400">
                                                 {player.number}
                                             </div>
                                             <div className="min-w-0 text-left">
@@ -1207,7 +1207,7 @@ export default function BoxScorePage() {
             {/* Share Modal */}
             {showShareModal && (
                 <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full">
+                    <div className="bg-input border border-border rounded-2xl p-6 max-w-sm w-full">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-bold">Share Box Score</h2>
                             <button onClick={() => setShowShareModal(false)}>
@@ -1227,7 +1227,7 @@ export default function BoxScorePage() {
                             </button>
                             <button
                                 onClick={handleCopyToClipboard}
-                                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
+                                className="w-full bg-card hover:bg-muted text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
                             >
                                 <Share2 size={20} />
                                 Copy HTML to Clipboard

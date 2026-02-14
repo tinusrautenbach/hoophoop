@@ -60,8 +60,13 @@ describe('Players [id] API Route', () => {
             const mockPlayer = {
                 id: 'player-1',
                 name: 'Test Player',
+                firstName: 'Test',
+                surname: 'Player',
                 email: null,
-                status: 'active'
+                birthDate: null,
+                status: 'active',
+                isWorldAvailable: false,
+                community: null,
             };
             const mockHistory = [
                 { id: 'history-1', action: 'added', team: { id: 'team-1', name: 'Team A' } }
@@ -81,6 +86,8 @@ describe('Players [id] API Route', () => {
 
             expect(response.status).toBe(200);
             expect(data.name).toBe('Test Player');
+            expect(data.firstName).toBe('Test');
+            expect(data.surname).toBe('Player');
             expect(data.history).toEqual(mockHistory);
             expect(data.memberships).toEqual(mockMemberships);
         });
@@ -91,7 +98,7 @@ describe('Players [id] API Route', () => {
             (auth as any).mockReturnValue({ userId: null });
             const response = await PATCH(new Request('http://localhost', {
                 method: 'PATCH',
-                body: JSON.stringify({ name: 'Updated' })
+                body: JSON.stringify({ firstName: 'Updated' })
             }), { params: Promise.resolve({ id: 'player-1' }) });
             expect(response.status).toBe(401);
         });
@@ -102,21 +109,41 @@ describe('Players [id] API Route', () => {
 
             const response = await PATCH(new Request('http://localhost', {
                 method: 'PATCH',
-                body: JSON.stringify({ name: 'Updated' })
+                body: JSON.stringify({ firstName: 'Updated' })
             }), { params: Promise.resolve({ id: 'non-existent' }) });
             expect(response.status).toBe(404);
         });
 
-        it('should update player name', async () => {
+        it('should update player firstName and surname, recomputing name', async () => {
             (auth as any).mockReturnValue({ userId: 'user_123' });
             (db.query.athletes.findFirst as any).mockResolvedValue({
                 id: 'player-1',
-                name: 'Old Name'
+                name: 'Old Name',
+                firstName: 'Old',
+                surname: 'Name',
             });
 
             const response = await PATCH(new Request('http://localhost', {
                 method: 'PATCH',
-                body: JSON.stringify({ name: 'New Name' })
+                body: JSON.stringify({ firstName: 'New', surname: 'Name' })
+            }), { params: Promise.resolve({ id: 'player-1' }) });
+
+            expect(response.status).toBe(200);
+            expect(db.update).toHaveBeenCalled();
+        });
+
+        it('should update player using legacy name field', async () => {
+            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findFirst as any).mockResolvedValue({
+                id: 'player-1',
+                name: 'Old Name',
+                firstName: 'Old',
+                surname: 'Name',
+            });
+
+            const response = await PATCH(new Request('http://localhost', {
+                method: 'PATCH',
+                body: JSON.stringify({ name: 'New Full Name' })
             }), { params: Promise.resolve({ id: 'player-1' }) });
 
             expect(response.status).toBe(200);
@@ -127,7 +154,9 @@ describe('Players [id] API Route', () => {
             (auth as any).mockReturnValue({ userId: 'user_123' });
             (db.query.athletes.findFirst as any).mockResolvedValue({
                 id: 'player-1',
-                name: 'Test',
+                name: 'Test Player',
+                firstName: 'Test',
+                surname: 'Player',
                 email: null,
                 status: 'active'
             });
@@ -135,7 +164,8 @@ describe('Players [id] API Route', () => {
             const response = await PATCH(new Request('http://localhost', {
                 method: 'PATCH',
                 body: JSON.stringify({
-                    name: 'Updated Name',
+                    firstName: 'Updated',
+                    surname: 'Name',
                     email: 'test@example.com',
                     status: 'inactive'
                 })

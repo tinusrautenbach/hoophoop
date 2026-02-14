@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { teams, communityMembers, communities } from '@/db/schema';
+import { teams, communityMembers, communities, games } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, isNull } from 'drizzle-orm';
 
 export async function GET(
     request: Request,
@@ -18,6 +18,16 @@ export async function GET(
             where: eq(teams.id, teamId),
             with: {
                 community: true,
+                homeGames: { 
+                    where: isNull(games.deletedAt),
+                    orderBy: (games, { desc }) => [desc(games.createdAt)], 
+                    limit: 20 
+                },
+                guestGames: { 
+                    where: isNull(games.deletedAt),
+                    orderBy: (games, { desc }) => [desc(games.createdAt)], 
+                    limit: 20 
+                },
             },
         });
 

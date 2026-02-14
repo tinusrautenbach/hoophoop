@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { gameEvents, games } from '@/db/schema';
+import { gameEvents, games, gameRosters } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 export async function POST(
     request: Request,
@@ -81,9 +81,61 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized or event not found' }, { status: 403 });
         }
 
+        // Recalculate stats if needed
+        if (event.type === 'score' && event.value) {
+            // Update Game Score
+            const scoreField = event.team === 'home' ? games.homeScore : games.guestScore;
+            await db.update(games)
+                .set({ 
+                    [event.team === 'home' ? 'homeScore' : 'guestScore']: sql`${scoreField} - ${event.value}` 
+                })
+                .where(eq(games.id, gameId));
+
+            // Update Player Stats
+            if (event.player) {
+                await db.update(gameRosters)
+                    .set({ points: sql`${gameRosters.points} - ${event.value}` })
+                    .where(and(
+                        eq(gameRosters.gameId, gameId),
+                        eq(gameRosters.name, event.player),
+                        eq(gameRosters.team, event.team!)
+                    ));
+            }
+        } else if (event.type === 'foul') {
+             // Update Game Fouls
+             const foulField = event.team === 'home' ? games.homeFouls : games.guestFouls;
+             await db.update(games)
+                 .set({ 
+                     [event.team === 'home' ? 'homeFouls' : 'guestFouls']: sql`GREATEST(${foulField} - 1, 0)` 
+                 })
+                 .where(eq(games.id, gameId));
+ 
+             // Update Player Fouls
+             if (event.player) {
+                 await db.update(gameRosters)
+                     .set({ fouls: sql`GREATEST(${gameRosters.fouls} - 1, 0)` })
+                     .where(and(
+                         eq(gameRosters.gameId, gameId),
+                         eq(gameRosters.name, event.player),
+                         eq(gameRosters.team, event.team!)
+                     ));
+             }
+        }
+
         await db.delete(gameEvents).where(eq(gameEvents.id, eventId));
 
-        return NextResponse.json({ success: true });
+        // Return the updated game state (simplified)
+        const updatedGame = await db.query.games.findFirst({
+            where: eq(games.id, gameId),
+            columns: {
+                homeScore: true,
+                guestScore: true,
+                homeFouls: true,
+                guestFouls: true
+            }
+        });
+
+        return NextResponse.json({ success: true, game: updatedGame });
     } catch (error) {
         console.error('Error deleting event:', error);
         return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });

@@ -59,10 +59,10 @@ export async function POST(
 
         // In a real app, send email here.
         // For MVP, return the token/link to the admin to share.
-        
-        return NextResponse.json({ 
+
+        return NextResponse.json({
             invite,
-            inviteLink: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/community/join?token=${token}`
+            inviteLink: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/communities/join?token=${token}`
         });
 
     } catch (error) {

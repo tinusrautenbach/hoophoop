@@ -32,15 +32,24 @@ describe('Community Teams API Route', () => {
     });
 
     describe('GET', () => {
-        it('should return 401 if not authenticated', async () => {
+        it('should return community teams for public access (no auth)', async () => {
             (auth as any).mockReturnValue({ userId: null });
+            (db.query.teams.findMany as any).mockResolvedValue([
+                { id: 'team-1', name: 'Varsity', communityId: 'community-1' },
+                { id: 'team-2', name: 'Junior Varsity', communityId: 'community-1' }
+            ]);
+
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1' }) 
             });
-            expect(response.status).toBe(401);
+            const data = await response.json();
+
+            expect(response.status).toBe(200);
+            expect(data.teams.length).toBe(2);
+            expect(data.teams[0].name).toBe('Varsity');
         });
 
-        it('should return 403 if not a community member', async () => {
+        it('should return 403 if authenticated but not a community member', async () => {
             (auth as any).mockReturnValue({ userId: 'user_123' });
             (db.query.communityMembers.findFirst as any).mockResolvedValue(null);
 
@@ -50,7 +59,7 @@ describe('Community Teams API Route', () => {
             expect(response.status).toBe(403);
         });
 
-        it('should return community teams for members', async () => {
+        it('should return community teams for authenticated members', async () => {
             (auth as any).mockReturnValue({ userId: 'user_123' });
             (db.query.communityMembers.findFirst as any).mockResolvedValue({
                 communityId: 'community-1',
@@ -68,17 +77,12 @@ describe('Community Teams API Route', () => {
             const data = await response.json();
 
             expect(response.status).toBe(200);
-            expect(data.length).toBe(2);
-            expect(data[0].name).toBe('Varsity');
+            expect(data.teams.length).toBe(2);
+            expect(data.teams[0].name).toBe('Varsity');
         });
 
         it('should return empty array for community with no teams', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communityMembers.findFirst as any).mockResolvedValue({
-                communityId: 'community-1',
-                userId: 'user_123',
-                role: 'viewer'
-            });
+            (auth as any).mockReturnValue({ userId: null });
             (db.query.teams.findMany as any).mockResolvedValue([]);
 
             const response = await GET(new Request('http://localhost'), { 
@@ -87,7 +91,7 @@ describe('Community Teams API Route', () => {
             const data = await response.json();
 
             expect(response.status).toBe(200);
-            expect(data).toEqual([]);
+            expect(data.teams).toEqual([]);
         });
     });
 

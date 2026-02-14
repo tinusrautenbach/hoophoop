@@ -60,13 +60,13 @@ export function ScorerManager({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[150] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6"
+                    className="fixed inset-0 z-[150] bg-background/90 backdrop-blur-xl flex items-center justify-center p-6"
                 >
                     <motion.div
                         initial={{ scale: 0.9, y: 20 }}
                         animate={{ scale: 1, y: 0 }}
                         exit={{ scale: 0.9, y: 20 }}
-                        className="bg-slate-900 border border-white/10 rounded-[32px] p-8 max-w-md w-full relative shadow-2xl"
+                        className="bg-input border border-white/10 rounded-[32px] p-8 max-w-md w-full relative shadow-2xl"
                     >
                         <button
                             onClick={onClose}
@@ -97,7 +97,7 @@ export function ScorerManager({
                                         value={newScorerId}
                                         onChange={(e) => setNewScorerId(e.target.value)}
                                         placeholder="Enter User ID"
-                                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                                        className="flex-1 bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-colors"
                                     />
                                     <button
                                         onClick={handleAdd}
@@ -117,7 +117,7 @@ export function ScorerManager({
                             </label>
                             
                             {/* Owner */}
-                            <div className="bg-slate-950/50 border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
+                            <div className="bg-background/50 border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <Shield size={16} className="text-yellow-500" />
                                     <div>
@@ -132,7 +132,7 @@ export function ScorerManager({
 
                             {/* Co-Scorers */}
                             {scorers.map((scorer) => (
-                                <div key={scorer.id} className="bg-slate-950/50 border border-slate-800 rounded-xl p-4 flex items-center justify-between group">
+                                <div key={scorer.id} className="bg-background/50 border border-border rounded-xl p-4 flex items-center justify-between group">
                                     <div className="flex items-center gap-3">
                                         {scorer.role === 'viewer' ? (
                                             <Eye size={16} className="text-slate-500" />
@@ -147,7 +147,7 @@ export function ScorerManager({
                                     
                                     <div className="flex items-center gap-2">
                                         {scorer.userId === currentUserId && (
-                                            <span className="text-[10px] font-bold bg-slate-800 text-slate-400 px-2 py-1 rounded">YOU</span>
+                                            <span className="text-[10px] font-bold bg-card text-slate-400 px-2 py-1 rounded">YOU</span>
                                         )}
                                         {isOwner && (
                                             <button

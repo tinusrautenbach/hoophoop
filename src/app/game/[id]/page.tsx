@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/use-socket';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Clock, Users, ArrowLeft, ShieldAlert, Target, Table, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Trophy, Clock, Users, ArrowLeft, ShieldAlert, Target, Table, RefreshCw, Wifi, WifiOff, Eye, Globe, Users2 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
@@ -40,6 +40,7 @@ type Game = {
     clockSeconds: number;
     possession: 'home' | 'guest' | null;
     mode: 'simple' | 'advanced';
+    visibility: 'private' | 'public_general' | 'public_community';
     status: 'scheduled' | 'live' | 'final';
     isTimerRunning: boolean;
     rosters: RosterEntry[];
@@ -187,14 +188,14 @@ export default function SpectatorPage() {
     };
 
     if (loading || !game) return (
-        <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center p-4 sm:p-8 text-center">
+        <div className="fixed inset-0 bg-background flex flex-col items-center justify-center p-4 sm:p-8 text-center">
             <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4" />
             <div className="text-slate-500 italic text-sm sm:text-base">Connecting to the Stadium...</div>
         </div>
     );
 
     return (
-        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col font-sans select-none overflow-hidden text-white">
+        <div className="fixed inset-0 z-[100] bg-background flex flex-col font-sans select-none overflow-hidden text-white">
             {/* Main Scoreboard - High Visibility */}
             <div className="flex-1 flex flex-col justify-center p-2 sm:p-4 md:p-6 lg:p-8 min-h-0">
 
@@ -203,6 +204,18 @@ export default function SpectatorPage() {
                     <div className="flex items-center justify-center gap-2 sm:gap-3">
                         <div className="text-slate-500 uppercase tracking-[0.2em] sm:tracking-[0.3em] font-black text-[8px] sm:text-[10px] md:text-xs">
                             Period {game.currentPeriod} / {game.totalPeriods}
+                        </div>
+                        {/* Visibility Badge */}
+                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] sm:text-[10px] font-bold uppercase ${
+                            game.visibility === 'private' ? 'bg-card text-slate-500' :
+                            game.visibility === 'public_general' ? 'bg-green-500/20 text-green-500' :
+                            'bg-blue-500/20 text-blue-500'
+                        }`}>
+                            {game.visibility === 'private' ? <Eye size={10} className="sm:w-3 sm:h-3" /> :
+                             game.visibility === 'public_general' ? <Globe size={10} className="sm:w-3 sm:h-3" /> :
+                             <Users2 size={10} className="sm:w-3 sm:h-3" />}
+                            {game.visibility === 'private' ? 'Private' :
+                             game.visibility === 'public_general' ? 'Public' : 'Community'}
                         </div>
                         {/* Connection Status & Sync Button */}
                         <div className="flex items-center gap-1 sm:gap-2">
@@ -263,7 +276,7 @@ export default function SpectatorPage() {
                                 {Array.from({ length: game.totalTimeouts }).map((_, i) => (
                                     <div key={i} className={cn(
                                         "rounded-full",
-                                        i < game.homeTimeouts ? "bg-orange-500" : "bg-slate-800",
+                                        i < game.homeTimeouts ? "bg-orange-500" : "bg-card",
                                         "w-1.5 h-0.5 sm:w-2 sm:h-1 md:w-3 md:h-1 lg:w-4"
                                     )} 
                                     />
@@ -285,7 +298,7 @@ export default function SpectatorPage() {
                                 "font-black rounded-lg border transition-all",
                                 "px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1",
                                 "text-base sm:text-lg md:text-xl lg:text-2xl",
-                                game.homeFouls >= 5 ? "bg-red-500/20 border-red-500 text-red-500 animate-pulse" : "bg-slate-900 border-slate-800 text-slate-400"
+                                game.homeFouls >= 5 ? "bg-red-500/20 border-red-500 text-red-500 animate-pulse" : "bg-input border-border text-slate-400"
                             )}>
                                 {game.homeFouls}
                             </div>
@@ -295,7 +308,7 @@ export default function SpectatorPage() {
                     {/* Possession Arrow & Dash */}
                     <div className="flex flex-col items-center justify-center px-1 sm:px-2 md:px-4">
                         <div className={cn(
-                            "rounded-full border-2 flex items-center justify-center transition-all duration-500 bg-slate-950 shadow-[0_0_20px_rgba(0,0,0,0.5)]",
+                            "rounded-full border-2 flex items-center justify-center transition-all duration-500 bg-background shadow-[0_0_20px_rgba(0,0,0,0.5)]",
                             "w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 lg:w-16 lg:h-16",
                             "mb-2 sm:mb-4 md:mb-6 lg:mb-8",
                             game.possession === 'home' ? "rotate-180 border-orange-500/50" : game.possession === 'guest' ? "rotate-0 border-white/50" : "opacity-0"
@@ -329,7 +342,7 @@ export default function SpectatorPage() {
                                 {Array.from({ length: game.totalTimeouts }).map((_, i) => (
                                     <div key={i} className={cn(
                                         "rounded-full",
-                                        i < game.guestTimeouts ? "bg-white" : "bg-slate-800",
+                                        i < game.guestTimeouts ? "bg-white" : "bg-card",
                                         "w-1.5 h-0.5 sm:w-2 sm:h-1 md:w-3 md:h-1 lg:w-4"
                                     )} 
                                     />
@@ -347,7 +360,7 @@ export default function SpectatorPage() {
                                 "font-black rounded-lg border transition-all",
                                 "px-1.5 sm:px-2 md:px-3 py-0.5 sm:py-1",
                                 "text-base sm:text-lg md:text-xl lg:text-2xl",
-                                game.guestFouls >= 5 ? "bg-red-500/20 border-red-500 text-red-500 animate-pulse" : "bg-slate-900 border-slate-800 text-slate-400"
+                                game.guestFouls >= 5 ? "bg-red-500/20 border-red-500 text-red-500 animate-pulse" : "bg-input border-border text-slate-400"
                             )}>
                                 {game.guestFouls}
                             </div>
@@ -360,7 +373,7 @@ export default function SpectatorPage() {
                 </div>
             </div>
 
-            <div className="bg-slate-950/80 border-t border-white/5 p-2 sm:p-4 md:p-6 backdrop-blur-xl relative z-10 shrink-0">
+            <div className="bg-background/80 border-t border-white/5 p-2 sm:p-4 md:p-6 backdrop-blur-xl relative z-10 shrink-0">
                 <div className={cn(
                     "max-w-7xl mx-auto grid gap-2 sm:gap-4 md:gap-6 lg:gap-8",
                     "h-[200px] sm:h-[250px] md:h-[300px] lg:h-[350px] xl:h-[400px]",
@@ -416,7 +429,7 @@ export default function SpectatorPage() {
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                                 {game.rosters?.filter(r => r.isActive).sort((a, b) => a.team === 'home' ? -1 : 1).map(player => (
                                     <div key={player.id} className={cn(
-                                        "bg-slate-900/40 border rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-3 transition-all",
+                                        "bg-input/40 border rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-3 transition-all",
                                         "p-2 sm:p-3",
                                         player.team === 'home' ? "border-orange-500/20" : "border-white/5"
                                     )}>
@@ -424,7 +437,7 @@ export default function SpectatorPage() {
                                             "rounded-lg sm:rounded-xl flex items-center justify-center font-black",
                                             "w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10",
                                             "text-sm sm:text-base md:text-lg",
-                                            player.team === 'home' ? "bg-orange-500/20 text-orange-500" : "bg-slate-800 text-slate-400"
+                                            player.team === 'home' ? "bg-orange-500/20 text-orange-500" : "bg-card text-slate-400"
                                         )}>
                                             {player.number}
                                         </div>

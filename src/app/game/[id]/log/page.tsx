@@ -67,7 +67,7 @@ export default function SpectatorLogPage() {
     });
 
     if (loading || !game) return (
-        <div className="fixed inset-0 bg-slate-950 flex items-center justify-center">
+        <div className="fixed inset-0 bg-background flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
                 <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
                 <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Loading Timeline...</p>
@@ -76,13 +76,13 @@ export default function SpectatorLogPage() {
     );
 
     return (
-        <div className="fixed inset-0 z-[200] bg-slate-950 flex flex-col font-sans overflow-hidden">
+        <div className="fixed inset-0 z-[200] bg-background flex flex-col font-sans overflow-hidden">
             {/* Header */}
-            <div className="bg-black/40 border-b border-slate-800 p-4 shrink-0 flex items-center justify-between">
+            <div className="bg-black/40 border-b border-border p-4 shrink-0 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => router.push(`/game/${id}`)}
-                        className="p-2 text-slate-500 hover:text-white bg-slate-900 rounded-xl border border-white/5 transition-all active:scale-95"
+                        className="p-2 text-slate-500 hover:text-white bg-input rounded-xl border border-white/5 transition-all active:scale-95"
                     >
                         <ArrowLeft size={20} />
                     </button>
@@ -96,7 +96,7 @@ export default function SpectatorLogPage() {
             </div>
 
             {/* Filters Bar */}
-            <div className="bg-slate-900/50 border-b border-white/5 p-4 shrink-0 overflow-x-auto custom-scrollbar">
+            <div className="bg-input/50 border-b border-white/5 p-4 shrink-0 overflow-x-auto custom-scrollbar">
                 <div className="flex items-center gap-4 max-w-4xl mx-auto">
                     <div className="flex-1 relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
@@ -118,7 +118,7 @@ export default function SpectatorLogPage() {
                                     "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
                                     filterType === type
                                         ? "bg-orange-600 text-white shadow-lg shadow-orange-600/20"
-                                        : "bg-slate-800 text-slate-500 hover:text-slate-300"
+                                        : "bg-card text-slate-500 hover:text-slate-300"
                                 )}
                             >
                                 {type}
@@ -144,7 +144,7 @@ export default function SpectatorLogPage() {
             </div>
 
             {/* Footer Stats Summary */}
-            <div className="fixed bottom-0 left-0 right-0 bg-slate-950/80 backdrop-blur-md border-t border-white/5 p-4 flex items-center justify-center gap-8 z-10">
+            <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t border-white/5 p-4 flex items-center justify-center gap-8 z-10">
                 <div className="flex flex-col items-center">
                     <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none mb-1">Total Actions</span>
                     <span className="text-xl font-black text-white">{events.length}</span>

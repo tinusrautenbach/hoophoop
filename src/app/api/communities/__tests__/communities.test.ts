@@ -191,7 +191,7 @@ describe('Communities API Route', () => {
             const mockUserId = 'user_admin';
             (auth as any).mockReturnValue({ userId: mockUserId });
 
-            let insertedValues: any[] = [];
+            const insertedValues: any[] = [];
             const mockTx = {
                 insert: vi.fn().mockImplementation((table) => ({
                     values: vi.fn().mockImplementation((values) => {

@@ -39,34 +39,61 @@ export async function POST(
 
     try {
         const body = await request.json();
-        const { athleteId, name, number, communityId } = body;
+        const { athleteId, firstName, surname, name, number, communityId, birthDate, email } = body;
 
         let athlete;
         let isNewAthlete = false;
 
         if (athleteId) {
+            // Existing athlete selected from search
             athlete = await db.query.athletes.findFirst({
                 where: eq(athletes.id, athleteId),
             });
             if (!athlete) {
                 return NextResponse.json({ error: 'Player not found' }, { status: 404 });
             }
-        } else if (name) {
+        } else if (firstName || name) {
+            // Create a new athlete
+            let resolvedFirstName: string;
+            let resolvedSurname: string;
+            let resolvedName: string;
+
+            if (firstName) {
+                // New format: firstName + surname
+                resolvedFirstName = firstName;
+                resolvedSurname = surname || '';
+                resolvedName = `${firstName} ${resolvedSurname}`.trim();
+            } else if (name) {
+                // Legacy format: single name field
+                const parts = name.trim().split(/\s+/);
+                resolvedFirstName = parts[0];
+                resolvedSurname = parts.slice(1).join(' ') || '';
+                resolvedName = name;
+            } else {
+                return NextResponse.json({ error: 'Player first name is required' }, { status: 400 });
+            }
+
+            // Try to find existing athlete by exact name match (legacy compat)
             athlete = await db.query.athletes.findFirst({
-                where: eq(athletes.name, name),
+                where: eq(athletes.name, resolvedName),
             });
 
             if (!athlete) {
                 const [newAthlete] = await db.insert(athletes).values({
                     ownerId: userId,
-                    name,
+                    name: resolvedName,
+                    firstName: resolvedFirstName,
+                    surname: resolvedSurname,
+                    email: email || null,
+                    birthDate: birthDate || null,
+                    communityId: communityId || null,
                     status: 'active',
                 }).returning();
                 athlete = newAthlete;
                 isNewAthlete = true;
             }
         } else {
-            return NextResponse.json({ error: 'Athlete ID or name is required' }, { status: 400 });
+            return NextResponse.json({ error: 'Athlete ID or player name is required' }, { status: 400 });
         }
 
         const existingMembership = await db.query.teamMemberships.findFirst({

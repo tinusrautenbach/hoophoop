@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { games, teamMemberships, gameRosters } from '@/db/schema';
+import { games, teamMemberships, gameRosters, communityMembers, users, teams } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, or, inArray, isNull, and } from 'drizzle-orm';
 import { logActivity } from '@/lib/activity-logger';
 
 export async function GET() {
@@ -13,15 +13,82 @@ export async function GET() {
     }
 
     try {
+        // Get user's communities
+        const userCommunities = await db.query.communityMembers.findMany({
+            where: eq(communityMembers.userId, userId),
+        });
+        const communityIds = userCommunities.map(c => c.communityId);
+
+        // Get teams belonging to user's communities
+        let communityTeamIds: string[] = [];
+        if (communityIds.length > 0) {
+            const communityTeams = await db.query.teams.findMany({
+                where: inArray(teams.communityId, communityIds),
+            });
+            communityTeamIds = communityTeams.map(t => t.id);
+        }
+
+        // Build where clause to include:
+        // 1. Games owned by user
+        // 2. Games with communityId matching user's communities
+        // 3. Games where home or guest team belongs to user's communities
+        // 4. Games that are NOT deleted (deletedAt IS NULL)
+        let baseWhereClause;
+        if (communityIds.length > 0 && communityTeamIds.length > 0) {
+            baseWhereClause = or(
+                eq(games.ownerId, userId),
+                inArray(games.communityId, communityIds),
+                inArray(games.homeTeamId, communityTeamIds),
+                inArray(games.guestTeamId, communityTeamIds)
+            );
+        } else if (communityIds.length > 0) {
+            baseWhereClause = or(
+                eq(games.ownerId, userId),
+                inArray(games.communityId, communityIds)
+            );
+        } else {
+            baseWhereClause = eq(games.ownerId, userId);
+        }
+        
+        // Always filter out deleted games
+        const whereClause = and(baseWhereClause, isNull(games.deletedAt));
+
+        // Fetch games
         const userGames = await db.query.games.findMany({
-            where: eq(games.ownerId, userId),
+            where: whereClause,
             orderBy: [desc(games.createdAt)],
             with: {
                 rosters: true,
+                community: true,
             }
         });
 
-        return NextResponse.json(userGames);
+        // Get unique owner IDs to fetch their names
+        const ownerIds = [...new Set(userGames.map(g => g.ownerId))];
+        const owners = await db.query.users.findMany({
+            where: inArray(users.id, ownerIds),
+        });
+        const ownerMap = new Map(owners.map(u => [u.id, { 
+            firstName: u.firstName, 
+            lastName: u.lastName,
+            email: u.email 
+        }]));
+
+        // Enrich games with owner name
+        const gamesWithOwner = userGames.map(game => {
+            const owner = ownerMap.get(game.ownerId);
+            const ownerName = owner?.firstName && owner?.lastName
+                ? `${owner.firstName} ${owner.lastName}`
+                : owner?.email || 'Unknown';
+            
+            return {
+                ...game,
+                ownerName,
+                isOwner: game.ownerId === userId,
+            };
+        });
+
+        return NextResponse.json(gamesWithOwner);
     } catch (error) {
         console.error('Error fetching games:', error);
         return NextResponse.json({ error: 'Failed to fetch games' }, { status: 500 });
@@ -39,7 +106,11 @@ export async function POST(request: Request) {
         const body = await request.json();
         console.log('Create game body:', JSON.stringify(body, null, 2));
         
-        const { homeTeamId, guestTeamId, homeTeamName, guestTeamName, mode, periodSeconds, totalPeriods, totalTimeouts, name, scheduledDate } = body;
+        const { homeTeamId, guestTeamId, homeTeamName, guestTeamName, mode, periodSeconds, totalPeriods, totalTimeouts, name, scheduledDate, visibility, communityId } = body;
+
+        // Validate visibility if provided
+        const validVisibilities = ['private', 'public_general', 'public_community'];
+        const gameVisibility = visibility && validVisibilities.includes(visibility) ? visibility : 'private';
 
         // Ensure team IDs are proper UUIDs or null (not 'adhoc' string)
         const safeHomeTeamId = homeTeamId && homeTeamId !== 'adhoc' ? homeTeamId : null;
@@ -47,6 +118,7 @@ export async function POST(request: Request) {
 
         const [newGame] = await db.insert(games).values({
             ownerId: userId,
+            communityId: communityId || null,
             homeTeamId: safeHomeTeamId,
             guestTeamId: safeGuestTeamId,
             homeTeamName: homeTeamName || 'Home',
@@ -55,6 +127,7 @@ export async function POST(request: Request) {
             scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
             status: 'scheduled',
             mode: mode || 'simple',
+            visibility: gameVisibility as 'private' | 'public_general' | 'public_community',
             periodSeconds: periodSeconds || 600,
             clockSeconds: periodSeconds || 600,
             totalPeriods: totalPeriods || 4,

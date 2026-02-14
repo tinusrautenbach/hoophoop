@@ -3,14 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, Edit2, History, User, Shield } from 'lucide-react';
+import { ArrowLeft, Calendar, Edit2, History, User, Shield, Globe } from 'lucide-react';
 
 type Player = {
     id: string;
     name: string;
+    firstName: string | null;
+    surname: string | null;
     email: string | null;
     birthDate: string | null;
     status: string;
+    isWorldAvailable: boolean;
+    community: { id: string; name: string } | null;
     createdAt: string;
 };
 
@@ -51,7 +55,7 @@ export default function PlayerProfilePage() {
     const [history, setHistory] = useState<HistoryEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
-    const [editForm, setEditForm] = useState({ name: '', email: '', birthDate: '' });
+    const [editForm, setEditForm] = useState({ firstName: '', surname: '', email: '', birthDate: '' });
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -65,7 +69,8 @@ export default function PlayerProfilePage() {
                 setMemberships(data.memberships || []);
                 setHistory(data.history || []);
                 setEditForm({
-                    name: data.name || '',
+                    firstName: data.firstName || data.name?.split(' ')[0] || '',
+                    surname: data.surname || data.name?.split(' ').slice(1).join(' ') || '',
                     email: data.email || '',
                     birthDate: data.birthDate || '',
                 });
@@ -82,7 +87,8 @@ export default function PlayerProfilePage() {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                name: editForm.name,
+                firstName: editForm.firstName,
+                surname: editForm.surname,
                 email: editForm.email || null,
                 birthDate: editForm.birthDate || null,
             }),
@@ -90,7 +96,7 @@ export default function PlayerProfilePage() {
 
         if (res.ok) {
             const updated = await res.json();
-            setPlayer(updated);
+            setPlayer({ ...player!, ...updated });
             setIsEditing(false);
         }
         setIsSaving(false);
@@ -111,13 +117,13 @@ export default function PlayerProfilePage() {
     return (
         <div className="max-w-4xl mx-auto p-6">
             <Link href="/teams" className="text-sm text-slate-400 hover:text-orange-500 mb-4 inline-block">
-                ← Back to Teams
+                &larr; Back to Teams
             </Link>
 
             <div className="grid md:grid-cols-3 gap-6">
                 {/* Player Info Card */}
                 <div className="md:col-span-1">
-                    <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                    <div className="bg-card/50 p-6 rounded-2xl border border-border">
                         <div className="w-20 h-20 bg-orange-500/20 rounded-full flex items-center justify-center mb-4 mx-auto">
                             <User size={40} className="text-orange-500" />
                         </div>
@@ -125,12 +131,21 @@ export default function PlayerProfilePage() {
                         {isEditing ? (
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">Name</label>
+                                    <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">First Name</label>
                                     <input
                                         type="text"
-                                        value={editForm.name}
-                                        onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm"
+                                        value={editForm.firstName}
+                                        onChange={e => setEditForm({ ...editForm, firstName: e.target.value })}
+                                        className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">Surname</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.surname}
+                                        onChange={e => setEditForm({ ...editForm, surname: e.target.value })}
+                                        className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm"
                                     />
                                 </div>
                                 <div>
@@ -139,7 +154,7 @@ export default function PlayerProfilePage() {
                                         type="email"
                                         value={editForm.email}
                                         onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm"
+                                        className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm"
                                     />
                                 </div>
                                 <div>
@@ -148,7 +163,7 @@ export default function PlayerProfilePage() {
                                         type="date"
                                         value={editForm.birthDate}
                                         onChange={e => setEditForm({ ...editForm, birthDate: e.target.value })}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm"
+                                        className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm"
                                     />
                                 </div>
                                 <div className="flex gap-2">
@@ -162,9 +177,14 @@ export default function PlayerProfilePage() {
                                     <button
                                         onClick={() => {
                                             setIsEditing(false);
-                                            setEditForm({ name: player.name, email: player.email || '', birthDate: player.birthDate || '' });
+                                            setEditForm({
+                                                firstName: player.firstName || player.name?.split(' ')[0] || '',
+                                                surname: player.surname || player.name?.split(' ').slice(1).join(' ') || '',
+                                                email: player.email || '',
+                                                birthDate: player.birthDate || '',
+                                            });
                                         }}
-                                        className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-sm font-medium"
+                                        className="flex-1 bg-muted hover:bg-slate-600 text-white py-2 rounded-lg text-sm font-medium"
                                     >
                                         Cancel
                                     </button>
@@ -172,23 +192,42 @@ export default function PlayerProfilePage() {
                             </div>
                         ) : (
                             <>
-                                <h1 className="text-xl font-bold text-center mb-2">{player.name}</h1>
+                                <h1 className="text-xl font-bold text-center mb-1">{player.name}</h1>
+                                {player.firstName && player.surname && (
+                                    <div className="text-xs text-slate-500 text-center mb-2">
+                                        {player.firstName} {player.surname}
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-center gap-2 text-sm text-slate-400 mb-4">
-                                    <span className={`px-2 py-0.5 rounded text-xs ${player.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400'}`}>
+                                    <span className={`px-2 py-0.5 rounded text-xs ${player.status === 'active' ? 'bg-green-500/20 text-green-400' : player.status === 'merged' ? 'bg-purple-500/20 text-purple-400' : 'bg-muted text-slate-400'}`}>
                                         {player.status}
                                     </span>
+                                    {player.isWorldAvailable && (
+                                        <span className="px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400 flex items-center gap-1">
+                                            <Globe size={10} /> World
+                                        </span>
+                                    )}
                                 </div>
 
                                 {player.email && (
                                     <div className="text-sm text-slate-400 text-center mb-2">{player.email}</div>
                                 )}
                                 {player.birthDate && (
-                                    <div className="text-sm text-slate-400 text-center mb-4">Born: {formatDate(player.birthDate)}</div>
+                                    <div className="text-sm text-slate-400 text-center mb-2 flex items-center justify-center gap-1">
+                                        <Calendar size={14} />
+                                        Born: {formatDate(player.birthDate)}
+                                    </div>
+                                )}
+                                {player.community && (
+                                    <div className="text-sm text-slate-400 text-center mb-4 flex items-center justify-center gap-1">
+                                        <Shield size={14} />
+                                        {player.community.name}
+                                    </div>
                                 )}
 
                                 <button
                                     onClick={() => setIsEditing(true)}
-                                    className="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+                                    className="w-full bg-muted hover:bg-slate-600 text-white py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
                                 >
                                     <Edit2 size={14} /> Edit Profile
                                 </button>
@@ -200,13 +239,13 @@ export default function PlayerProfilePage() {
                 {/* Team History */}
                 <div className="md:col-span-2 space-y-6">
                     {/* Current Teams */}
-                    <div className="bg-slate-800/30 rounded-2xl border border-slate-800 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-2">
+                    <div className="bg-card/30 rounded-2xl border border-border overflow-hidden">
+                        <div className="px-6 py-4 border-b border-border flex items-center gap-2">
                             <Shield size={18} className="text-orange-500" />
                             <h2 className="font-semibold">Team Memberships</h2>
                         </div>
                         <table className="w-full">
-                            <thead className="bg-slate-800/50 text-xs uppercase tracking-widest text-slate-400">
+                            <thead className="bg-card/50 text-xs uppercase tracking-widest text-slate-400">
                                 <tr>
                                     <th className="px-6 py-3 font-semibold">Team</th>
                                     <th className="px-6 py-3 font-semibold">Jersey</th>
@@ -216,7 +255,7 @@ export default function PlayerProfilePage() {
                             </thead>
                             <tbody className="divide-y divide-slate-800">
                                 {memberships.map(membership => (
-                                    <tr key={membership.id} className="hover:bg-slate-800/30">
+                                    <tr key={membership.id} className="hover:bg-card/30">
                                         <td className="px-6 py-4">
                                             <Link href={`/teams/${membership.team.id}`} className="font-medium hover:text-orange-500">
                                                 {membership.team.name}
@@ -228,7 +267,7 @@ export default function PlayerProfilePage() {
                                             {membership.endDate && ` - ${formatDate(membership.endDate)}`}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <span className={`text-xs px-2 py-0.5 rounded ${membership.isActive ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400'}`}>
+                                            <span className={`text-xs px-2 py-0.5 rounded ${membership.isActive ? 'bg-green-500/20 text-green-400' : 'bg-muted text-slate-400'}`}>
                                                 {membership.isActive ? 'Active' : 'Inactive'}
                                             </span>
                                         </td>
@@ -246,14 +285,14 @@ export default function PlayerProfilePage() {
                     </div>
 
                     {/* Activity History */}
-                    <div className="bg-slate-800/30 rounded-2xl border border-slate-800 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-2">
+                    <div className="bg-card/30 rounded-2xl border border-border overflow-hidden">
+                        <div className="px-6 py-4 border-b border-border flex items-center gap-2">
                             <History size={18} className="text-orange-500" />
                             <h2 className="font-semibold">Activity History</h2>
                         </div>
                         <div className="divide-y divide-slate-800">
                             {history.map(entry => (
-                                <div key={entry.id} className="px-6 py-4 hover:bg-slate-800/30">
+                                <div key={entry.id} className="px-6 py-4 hover:bg-card/30">
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <div className="font-medium capitalize">
@@ -263,7 +302,7 @@ export default function PlayerProfilePage() {
                                             {entry.notes && <div className="text-sm text-slate-400 mt-1">{entry.notes}</div>}
                                             {entry.previousValue && entry.newValue && (
                                                 <div className="text-sm text-slate-500 mt-1">
-                                                    #{entry.previousValue} → #{entry.newValue}
+                                                    #{entry.previousValue} &rarr; #{entry.newValue}
                                                 </div>
                                             )}
                                         </div>

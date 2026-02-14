@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { communities, communityMembers } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, or } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { logActivity } from '@/lib/activity-logger';
 
 // GET - List user's communities
@@ -44,6 +44,15 @@ export async function GET() {
     }
 }
 
+// Helper function to generate URL-friendly slug
+function generateSlug(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .substring(0, 50);
+}
+
 // POST - Create a new community
 export async function POST(request: Request) {
     const { userId } = await auth();
@@ -58,12 +67,16 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
+    // Generate slug from name
+    const slug = generateSlug(name);
+
     try {
         const [newCommunity] = await db.transaction(async (tx) => {
             // Create community
             const [community] = await tx.insert(communities)
                 .values({
                     name,
+                    slug,
                     type,
                     ownerId: userId,
                 })

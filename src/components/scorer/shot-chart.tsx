@@ -24,12 +24,12 @@ export function ShotChart() {
     };
 
     return (
-        <div className="relative w-full aspect-[15/14] bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden cursor-crosshair shadow-inner" ref={courtRef} onClick={handleCourtClick}>
+        <div className="relative w-full aspect-[15/14] bg-input rounded-3xl border border-border overflow-hidden cursor-crosshair shadow-inner" ref={courtRef} onClick={handleCourtClick}>
             {/* Court Markings */}
-            <div className="absolute inset-x-[10%] top-0 h-[40%] border-x border-b border-slate-700/50 rounded-b-xl" /> {/* Paint */}
-            <div className="absolute left-[50%] top-[40%] -translate-x-1/2 w-[30%] aspect-square border-2 border-slate-700/50 rounded-full" /> {/* Free Throw Circle */}
-            <div className="absolute left-[50%] top-0 -translate-x-1/2 w-[90%] aspect-[1/0.5] border-2 border-slate-700/50 rounded-b-[100%] border-t-0" /> {/* 3pt Line */}
-            <div className="absolute left-[50%] top-[5%] -translate-x-1/2 w-[10%] aspect-square bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
+            <div className="absolute inset-x-[10%] top-0 h-[40%] border-x border-b border-border/50 rounded-b-xl" /> {/* Paint */}
+            <div className="absolute left-[50%] top-[40%] -translate-x-1/2 w-[30%] aspect-square border-2 border-border/50 rounded-full" /> {/* Free Throw Circle */}
+            <div className="absolute left-[50%] top-0 -translate-x-1/2 w-[90%] aspect-[1/0.5] border-2 border-border/50 rounded-b-[100%] border-t-0" /> {/* 3pt Line */}
+            <div className="absolute left-[50%] top-[5%] -translate-x-1/2 w-[10%] aspect-square bg-card rounded-full flex items-center justify-center border border-border">
                 <div className="w-[60%] aspect-square border border-orange-500 rounded-full" /> {/* Hoop */}
             </div>
 

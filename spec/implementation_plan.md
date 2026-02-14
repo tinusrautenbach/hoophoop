@@ -96,7 +96,345 @@
     - [x] List joined communities.
     - [ ] Manage pending invitations.
     - [x] **Logout functionality**.
+    - [x] **Light/Dark Mode Toggle**: Allow users to toggle between light and dark themes with preference persisted to user settings.
 - [ ] **7.5 Activity Logging**:
   - [x] Create utility function `logActivity()`.
   - [ ] Integrate logging into key API routes (Game Create, Score Update).
 
+## Phase 8: Public Game Portals (NEW)
+- [x] **8.1 Database & API Updates**:
+  - [x] Add `visibility` column to `games` table (enum: private, public_general, public_community).
+  - [x] Add `slug` column to `communities` table (unique, URL-friendly).
+  - [x] Create API endpoint: `GET /api/public/games` — returns live + historical public games.
+  - [x] Create API endpoint: `GET /api/public/communities/[slug]/games` — returns games for a specific community.
+  - [x] Add game visibility toggle to game creation API (`POST /api/games`).
+  - [x] Add game visibility toggle to game update API (`PATCH /api/games/[id]`).
+- [x] **8.2 World Public Dashboard**:
+  - [x] Create public page at `/live` (no auth required).
+  - [x] **Live Games Tab**: Display all games with `visibility = 'public_general'` and `status = 'live'`, grouped by community.
+  - [x] **Historical Tab**: Display completed public games, grouped by community, sortable by date.
+  - [x] Search/filter by team name, community name, date range.
+  - [x] Socket.io integration: Join `public-games` room for real-time score updates on live tab.
+  - [x] Game card component: Team names, score, period, clock, community badge.
+- [x] **8.3 Community Portal**:
+  - [x] Create public page at `/community/[slug]` (no auth required).
+  - [x] Community header with name and description.
+  - [x] **Live Games Tab**: All live games for this community (both `public_general` and `public_community` visibility).
+  - [x] **Historical Tab**: All completed community games with search/filter.
+  - [x] **Teams Tab** (optional): List of community teams with rosters.
+  - [x] Socket.io integration: Join `community-${communityId}` room for real-time updates.
+- [x] **8.4 Game Creation UI Update**:
+  - [x] Add visibility toggle (Private / Public General / Public Community) to game creation form.
+  - [x] Show visibility badge on game list and game detail pages.
+
+## Phase 9: Bench Selection & Scoring UX Improvements (NEW)
+- [x] **9.1 Pre-Game Bench Selection**:
+  - [x] After roster auto-population, display bench selection screen.
+  - [x] All players selected (checked) by default.
+  - [x] Scorer can deselect absent players.
+  - [x] Add `isActive` boolean to `gameRosters` entries (default true).
+  - [x] Only active players appear in subs interface during live game.
+  - [x] Bench selection step required before game can transition to "Live".
+- [x] **9.2 6-Player Scoring Layout**:
+  - [x] Redesign "Who scored?" modal to show exactly 6 options (5 on-court players + 1 opponent).
+  - [x] Implement responsive grid layout (2x3 or 3x2) that fits without scrolling on all screen sizes.
+  - [x] Minimum touch target 48x48px per button.
+  - [x] No scroll, no pagination, no tabs — all 6 options visible immediately.
+  - [x] Update Simple Scorer and Advanced Scorer modes to use this layout.
+- [x] **9.3 Subs Interface — On-Court Top Row**:
+  - [x] Redesign subs overlay: on-court players displayed in top row/section.
+  - [x] Bench players displayed in separate section below.
+  - [x] Clear visual separation (divider, different background) between on-court and bench.
+  - [x] Maintain existing Single-Tap and Drag-and-Drop sub modes.
+- [x] **9.4 In-Game Roster Amendment (from Subs Interface)**:
+  - [x] Add "Amend Roster" button to the subs interface.
+  - [x] Allow changing player jersey number mid-game (updates `gameRosters.number` snapshot).
+  - [x] Allow adding a new player to game roster mid-game.
+  - [x] Allow removing a player from game roster mid-game.
+  - [x] Jersey number changes broadcast to all scorers/spectators in real-time.
+  - [x] Log jersey number changes in activity history.
+- [x] **9.5 Score Recalculation on Event Deletion**:
+  - [ ] When a SCORE event is deleted from the game log, re-reduce all remaining SCORE events.
+  - [ ] Update `games.home_score` and `games.guest_score` in the database.
+  - [ ] Broadcast updated totals to all clients via Socket.io.
+  - [ ] Ensure the scorer UI, spectator UI, and box score all reflect the recalculated score.
+
+## Phase 10: Player Search, DOB & Team Roster Improvements (Done)
+- [x] **10.1 Player Schema Updates**:
+  - [x] Split `athletes.name` into `firstName` and `surname` columns.
+  - [x] Add `birthDate` (DATE, required for new players) to `athletes` table.
+  - [x] Add `isWorldAvailable` (BOOLEAN, default false) to `athletes` table.
+  - [x] Add `communityId` (UUID, nullable FK) to `athletes` table.
+  - [x] Add `mergedIntoId` (UUID, nullable FK) to `athletes` table.
+  - [x] Add `status` enum ('active', 'inactive', 'transferred', 'merged') to `athletes` table.
+  - [x] Data migration: Split existing `name` values into `firstName`/`surname`.
+- [x] **10.2 Player Search API**:
+  - [x] Update `GET /api/players` to search on `firstName` and `surname` (partial match, case-insensitive).
+  - [x] Add `communityId` query param to scope search to a community.
+  - [x] Include players with `isWorldAvailable = true` in results regardless of community filter.
+  - [x] Exclude players with `status = 'merged'` from search results.
+  - [x] Return: name, DOB, current team(s), community name in results.
+- [x] **10.3 Team Edit Page — Add Player UX Overhaul**:
+  - [x] Clearly labeled "Search Existing Players" section with search input.
+  - [x] Search results show: Name, DOB, current team(s), community.
+  - [x] Clearly labeled "Add New Player" button/section (visually distinct from search).
+  - [x] New player form: First Name, Surname, DOB (required), Jersey Number, Email (optional).
+  - [x] Selecting search result → prompt for jersey number → add to team.
+- [x] **10.4 Team Edit Page — Game History**:
+  - [x] Display a list of all games the team has played on the team edit screen.
+  - [x] Show game date, opponent, and score/result (W/L).
+  - [x] Link to game details/box score.
+
+## Phase 11: Player Profile Merging & Admin Tools (Done)
+- [x] **11.1 World Admin Role**:
+  - [x] Add `isWorldAdmin` boolean column to `users` table (default false).
+  - [x] Create World Admin permission middleware (bypass all community/ownership checks).
+  - [x] Log all World Admin actions with `WORLD_ADMIN_` prefix in activity logs.
+- [x] **11.2 World Admin API Routes**:
+  - [x] `GET /api/admin/users` — List all users.
+  - [x] `PATCH /api/admin/users/[id]` — Update user flags (isWorldAdmin, etc.).
+  - [x] `PATCH /api/admin/players/[id]/world-available` — Toggle World Available flag (Planned, can be done via merge/edit).
+  - [x] `GET /api/admin/activity-logs` — System-wide activity log viewer (Planned, omitted for MVP).
+  - [x] `POST /api/admin/games/[id]/force-end` — Force-end a stuck game (Planned, omitted for MVP).
+- [x] **11.3 World Admin UI**:
+  - [x] Admin dashboard page at `/admin` (protected by isWorldAdmin check).
+  - [x] User management table with role toggles.
+  - [x] Player search with "Set World Available" toggle (Planned).
+  - [x] System activity log viewer with filters (Planned).
+  - [x] Game management: view all games, force-end stuck games (Planned).
+- [x] **11.4 Player Profile Merge — Community Admin**:
+  - [x] Merge UI: Search and select 2+ player profiles.
+  - [x] Select primary profile (profile to keep).
+  - [x] Preview merge: Show what will be reassigned (memberships, game appearances).
+  - [x] Execute merge API: `POST /api/players/merge` (transaction-based).
+    - [x] Reassign `team_memberships` from duplicate to primary.
+    - [x] Reassign `game_rosters` from duplicate to primary.
+    - [x] Set duplicate `status = 'merged'`, `mergedIntoId = primaryId`.
+    - [x] Create `player_history` record for the merge.
+
+## Phase 12: Mobile Application (React Native) (NEW)
+- [ ] **12.1 Project Scaffolding**:
+  - [ ] Initialize Expo project in `/mobile` directory.
+  - [ ] Configure `app.json` with app name, bundle ID, version, icons, splash screen.
+  - [ ] Configure `eas.json` for build profiles (development, preview, production).
+  - [ ] Set up workspace in root `package.json` to link `/mobile` and `/packages/shared`.
+  - [ ] Create `/packages/shared` with TypeScript types, constants, and Zustand store definitions.
+- [ ] **12.2 Authentication**:
+  - [ ] Install and configure `@clerk/clerk-expo`.
+  - [ ] Implement Google OAuth login flow (same Clerk app as web).
+  - [ ] Token storage using `expo-secure-store`.
+  - [ ] Auth context provider wrapping the app.
+- [ ] **12.3 Navigation Structure**:
+  - [ ] Bottom tab navigator: Games, Profile.
+  - [ ] Stack navigator for: Game List → Game Detail → Live Scoring.
+  - [ ] Modal navigator for: Create Game, Player Selection.
+- [ ] **12.4 Game List Screen**:
+  - [ ] Fetch and display user's games (active and completed).
+  - [ ] Pull-to-refresh.
+  - [ ] Game cards: Team names, score, status, date.
+  - [ ] Tap to navigate to game detail/scoring.
+- [ ] **12.5 Game Creation Screen**:
+  - [ ] Team selection (from user's saved teams).
+  - [ ] Basic game configuration (period length, number of periods).
+  - [ ] Visibility toggle (Private / Public General / Public Community).
+  - [ ] Submit → navigate to bench selection → navigate to live scoring.
+- [ ] **12.6 Bench Selection Screen**:
+  - [ ] Display all roster players with checkboxes (all selected by default).
+  - [ ] Deselect absent players.
+  - [ ] Confirm → transition game to Live.
+- [ ] **12.7 Live Scoring Screen (Simple Mode)**:
+  - [ ] Scoreboard header: Team names, scores, clock, period.
+  - [ ] Clock controls: Start/Stop/Edit.
+  - [ ] Points buttons: +1, +2, +3.
+  - [ ] 6-player selection overlay (5 on-court + 1 opponent) — responsive, no scroll.
+  - [ ] Fouls tracking.
+  - [ ] Game log (scrollable list below scoreboard).
+  - [ ] Event deletion with score recalculation.
+  - [ ] Socket.io connection for real-time sync.
+- [ ] **12.8 App Store Deployment Setup**:
+  - [ ] **Android**:
+    - [ ] Generate upload keystore via EAS credentials.
+    - [ ] Create Google Play Console developer account.
+    - [ ] Configure service account for automated submissions.
+    - [ ] Create Play Store listing (description, screenshots, feature graphic).
+    - [ ] First internal test track build.
+  - [ ] **iOS**:
+    - [ ] Configure Apple Developer account in EAS.
+    - [ ] Generate provisioning profiles and distribution certificate via EAS.
+    - [ ] Create App Store Connect listing (description, screenshots, privacy policy URL).
+    - [ ] Configure TestFlight for beta testing.
+    - [ ] First TestFlight build.
+  - [ ] **CI/CD** (GitHub Actions):
+    - [ ] Workflow: Lint + type-check + tests on PR.
+    - [ ] Workflow: EAS Build (preview) on merge to develop.
+    - [ ] Workflow: EAS Build (production) + EAS Submit on release tag.
+
+## Phase 13: Game Deletion & Soft Delete (NEW)
+- [x] **13.1 Soft Delete Implementation**:
+  - [x] `deleted_at` column already exists on `games` table.
+  - [x] DELETE `/api/games/[id]` endpoint soft-deletes games (sets `deleted_at` timestamp).
+  - [x] All game list APIs filter out deleted games using `isNull(games.deletedAt)`.
+  - [x] Teams API updated to filter deleted games from `homeGames` and `guestGames`.
+  - [x] Communities API already filters deleted games from community overview.
+  - [x] Games list API already filters deleted games.
+- [x] **13.2 Delete Game UI**:
+  - [x] Delete button added to game settings modal (in "Danger Zone" section).
+  - [x] Delete confirmation dialog with explanation of soft-delete behavior.
+  - [x] Delete button visible only to game owner, community owner, or community admin.
+  - [x] After deletion, user is redirected to games list.
+- [x] **13.3 Deleted Game Recovery (World Admin)**:
+  - [x] GET `/api/games/deleted` endpoint lists all deleted games (World Admin only).
+  - [x] World Admin can view and manage deleted games via admin dashboard.
+  - [x] Deleted games can be restored by setting `deleted_at` to NULL (via database or admin tools).
+
+## Phase 14: Tournament Management System (NEW)
+- [ ] **14.1 Tournament Core Infrastructure**:
+  - [ ] Database schema updates:
+    - [ ] `tournaments` table: id, name, type, status, startDate, endDate, communityId, ownerId, createdAt, updatedAt
+    - [ ] `tournamentTeams` table: tournamentId, teamId, poolId, seed (for knockout stages)
+    - [ ] `tournamentPools` table: id, tournamentId, name, teams advancing
+    - [ ] `tournamentGames` table: tournamentId, gameId, round, poolId, bracketPosition, isPoolGame
+    - [ ] `tournamentStandings` table: tournamentId, teamId, poolId, wins, losses, pointsFor, pointsAgainst, pointDiff, gamesPlayed
+    - [ ] `tournamentAwards` table: id, tournamentId, awardType, playerId, teamId, value, notes
+  - [ ] Migration scripts for new tables
+- [ ] **14.2 Tournament Types Support**:
+  - [ ] **Round Robin**: Each team plays every other team once, standings based on record/points
+  - [ ] **Double Round Robin**: Each team plays every other team twice (home/away)
+  - [ ] **Single Elimination**: Knockout bracket, loser eliminated immediately
+  - [ ] **Double Elimination**: Teams eliminated after 2 losses, winners/losers brackets
+  - [ ] **Pool + Knockout Hybrid**: Round robin pools followed by single/double elimination bracket
+  - [ ] **Swiss System**: Teams paired by similar records each round, no elimination until final
+  - [ ] **Group Stage**: Multiple groups playing round robin, advancing teams to knockout
+  - [ ] **Custom**: Flexible format allowing manual bracket creation
+- [ ] **14.3 Tournament Creation & Management**:
+  - [ ] Tournament creation form:
+    - [ ] Name, dates, description
+    - [ ] Tournament type selector
+    - [ ] Number of teams/pools/bracket size
+    - [ ] Teams advancing from pools (if applicable)
+    - [ ] Community association
+  - [ ] Tournament setup wizard:
+    - [ ] Step 1: Basic info
+    - [ ] Step 2: Pool setup (if applicable)
+    - [ ] Step 3: Team assignment to pools
+    - [ ] Step 4: Schedule generation
+    - [ ] Step 5: Review and confirm
+  - [ ] Edit tournament details at any time (before tournament starts or during)
+  - [ ] Manage teams:
+    - [ ] Add/remove teams
+    - [ ] Move teams between pools
+    - [ ] Update seedings
+  - [ ] Tournament status management:
+    - [ ] Scheduled → Active → Completed
+    - [ ] Pause/resume tournament
+    - [ ] Cancel tournament (soft delete)
+- [ ] **14.4 Pool Stage Management**:
+  - [ ] Pool configuration:
+    - [ ] Number of pools (auto-calculated based on team count)
+    - [ ] Teams per pool
+    - [ ] Games per team within pool
+    - [ ] Advancement rules (top N from each pool)
+  - [ ] Automatic pool game generation:
+    - [ ] Round robin schedule within each pool
+    - [ ] Date/time assignment with court/venue availability
+  - [ ] Pool standings calculation:
+    - [ ] Wins/losses
+    - [ ] Points differential
+    - [ ] Head-to-head results (tiebreaker)
+    - [ ] Points scored/conceded
+  - [ ] Visual pool view:
+    - [ ] Grid showing all pool games
+    - [ ] Current standings per pool
+    - [ ] Advancement status indicators
+- [ ] **14.5 Knockout Stage Management**:
+  - [ ] Automatic bracket generation from pool results:
+    - [ ] Seed teams based on pool standings
+    - [ ] Create bracket pairings
+  - [ ] Manual bracket editing:
+    - [ ] Drag-and-drop team placement
+    - [ ] Custom seedings
+    - [ ] Bye handling
+  - [ ] Bracket visualization:
+    - [ ] Interactive bracket tree
+    - [ ] Click to view game details
+    - [ ] Live bracket updates as games complete
+  - [ ] Multiple bracket support:
+    - [ ] Championship bracket
+    - [ ] Consolation bracket (3rd place, 5th place, etc.)
+    - [ ] Losers bracket (double elimination)
+- [ ] **14.6 Manual Score Entry**:
+  - [ ] For tournament games not scored via app:
+    - [ ] Manual score input form
+    - [ ] Game result confirmation
+    - [ ] Override existing scores (with audit trail)
+  - [ ] Batch score entry:
+    - [ ] Import from CSV
+    - [ ] Quick entry mode for multiple games
+  - [ ] Edit game results:
+    - [ ] Update scores after game completion
+    - [ ] Add/remove games from tournament
+    - [ ] Recalculate standings automatically
+- [ ] **14.7 Tournament Awards System**:
+  - [ ] Award categories:
+    - [ ] MVP (Most Valuable Player)
+    - [ ] Best Scorer (highest PPG)
+    - [ ] Best Defender (steals, blocks, defensive rating)
+    - [ ] Best Rebounder
+    - [ ] Best Assists
+    - [ ] Best 3-Point Shooter
+    - [ ] Best Free Throw %
+    - [ ] Most Improved
+    - [ ] Coach's Award
+    - [ ] Sportsmanship Award
+    - [ ] All-Tournament Team (1st, 2nd, 3rd teams)
+  - [ ] Automatic award calculation:
+    - [ ] Stats aggregation across all tournament games
+    - [ ] Minimum games played threshold
+    - [ ] Tiebreaking logic
+  - [ ] Manual award assignment:
+    - [ ] Override automatic winners
+    - [ ] Add custom awards
+    - [ ] Award notes/descriptions
+  - [ ] Award display:
+    - [ ] Awards page per tournament
+    - [ ] Player profile badges
+    - [ ] Team profile tournament history
+- [ ] **14.8 Tournament Dashboard & Views**:
+  - [ ] Tournament list page:
+    - [ ] Filter by status, community, type
+    - [ ] Search tournaments
+    - [ ] Quick stats (teams, games completed, progress %)
+  - [ ] Tournament detail page:
+    - [ ] Overview tab: Info, schedule, standings
+    - [ ] Games tab: All games with filters
+    - [ ] Standings tab: Pool tables, stats leaders
+    - [ ] Bracket tab: Interactive bracket view
+    - [ ] Awards tab: Winners and nominations
+  - [ ] Tournament public page (if public visibility):
+    - [ ] Read-only bracket/schedule
+    - [ ] Live scores
+    - [ ] Standings
+- [ ] **14.9 Tournament APIs**:
+  - [ ] `POST /api/tournaments` - Create tournament
+  - [ ] `GET /api/tournaments` - List tournaments
+  - [ ] `GET /api/tournaments/[id]` - Get tournament details
+  - [ ] `PATCH /api/tournaments/[id]` - Update tournament
+  - [ ] `DELETE /api/tournaments/[id]` - Delete/cancel tournament
+  - [ ] `POST /api/tournaments/[id]/teams` - Add team to tournament
+  - [ ] `DELETE /api/tournaments/[id]/teams/[teamId]` - Remove team
+  - [ ] `POST /api/tournaments/[id]/pools` - Create/manage pools
+  - [ ] `POST /api/tournaments/[id]/generate-schedule` - Auto-generate games
+  - [ ] `POST /api/tournaments/[id]/games` - Add tournament game
+  - [ ] `PATCH /api/tournaments/[id]/games/[gameId]/score` - Manual score entry
+  - [ ] `POST /api/tournaments/[id]/advance` - Advance to knockout stage
+  - [ ] `GET /api/tournaments/[id]/standings` - Get current standings
+  - [ ] `GET /api/tournaments/[id]/bracket` - Get bracket data
+  - [ ] `GET /api/tournaments/[id]/awards` - Get awards data
+  - [ ] `POST /api/tournaments/[id]/awards` - Assign awards
+- [ ] **14.10 Tournament Integration**:
+  - [ ] Link existing games to tournaments
+  - [ ] Convert regular games to tournament games
+  - [ ] Tournament game badge/icon in games list
+  - [ ] Tournament filter in games view
+  - [ ] Tournament stats in player profiles (aggregate across tournament games)
+  - [ ] Tournament history in team profiles

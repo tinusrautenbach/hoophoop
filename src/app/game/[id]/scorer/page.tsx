@@ -8,14 +8,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Trophy, Clock, Users, ArrowLeft, RotateCcw, ShieldAlert,
     MoreHorizontal, Share2, QrCode, Copy, Check, X, Target, Move, Timer,
-    Home, Flag, Table
+    Home, Flag, Table, Eye, Globe, Users2, Settings, Trash2
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SimpleScorer } from '@/components/scorer/simple-scorer';
 import { AdvancedScorer } from '@/components/scorer/advanced-scorer';
+import { BenchSelection } from '@/components/scorer/bench-selection';
+import { ScoringModal } from '@/components/scorer/scoring-modal';
+import { SubsModal } from '@/components/scorer/subs-modal';
+import { AmendRosterModal } from '@/components/scorer/amend-roster-modal';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
 import { ScorerManager } from '@/components/scorer/scorer-manager';
+import { GameSettingsModal } from '@/components/scorer/game-settings-modal';
 import QRCode from 'react-qr-code';
 
 function cn(...inputs: ClassValue[]) {
@@ -42,6 +47,8 @@ type Scorer = {
 type Game = {
     id: string;
     ownerId: string;
+    name: string | null;
+    scheduledDate: string | null;
     homeTeamName: string;
     guestTeamName: string;
     homeScore: number;
@@ -57,10 +64,18 @@ type Game = {
     totalTimeouts: number;
     possession: 'home' | 'guest' | null;
     mode: 'simple' | 'advanced';
+    visibility: 'private' | 'public_general' | 'public_community';
     status: 'scheduled' | 'live' | 'final';
     isTimerRunning: boolean;
     rosters: RosterEntry[];
     scorers?: Scorer[];
+    communityId?: string | null;
+    community?: {
+        id: string;
+        name: string;
+        ownerId: string;
+        members?: { userId: string; role: string }[];
+    } | null;
 };
 
 export default function ScorerPage() {
@@ -83,9 +98,14 @@ export default function ScorerPage() {
     const [isTimeoutOpen, setIsTimeoutOpen] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [isScorersOpen, setIsScorersOpen] = useState(false);
+    const [isAmendRosterOpen, setIsAmendRosterOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const [isEndGameOpen, setIsEndGameOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [scorers, setScorers] = useState<Scorer[]>([]);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (userId && socket) {
@@ -157,7 +177,10 @@ export default function ScorerPage() {
         socket.on('timer-started', handleTimerStarted);
         socket.on('timer-stopped', handleTimerStopped);
 
-        socket.on('game-updated', (updates: Partial<Game>) => {
+        socket.on('game-updated', (updates: any) => {
+            if (updates.deleteEventId) {
+                setEvents(prev => prev.filter(e => e.id !== updates.deleteEventId));
+            }
             setGame(prev => prev ? { ...prev, ...updates } : null);
         });
         socket.on('event-added', (event: GameEvent) => {
@@ -276,10 +299,21 @@ export default function ScorerPage() {
             });
 
             if (res.ok) {
+                const data = await res.json();
                 setEvents(prev => prev.filter(e => e.id !== eventId));
+                
+                // If the server returned updated game state (scores/fouls), update local state
+                // and broadcast it along with the deletion signal
+                const updates: any = { deleteEventId: eventId };
+                
+                if (data.game) {
+                    setGame(prev => prev ? { ...prev, ...data.game } : null);
+                    Object.assign(updates, data.game);
+                }
+
                 socket?.emit('update-game', {
                     gameId: id,
-                    updates: { deleteEventId: eventId }
+                    updates
                 });
             }
         } catch (error) {
@@ -539,6 +573,91 @@ export default function ScorerPage() {
         setIsEndGameOpen(false);
     };
 
+    const handleAddRosterPlayer = async (player: { name: string, number: string, team: 'home' | 'guest' }) => {
+        try {
+            const res = await fetch(`/api/games/${id}/roster`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(player)
+            });
+            if (res.ok) {
+                const newPlayer = await res.json();
+                // Optimistically update or wait for socket? 
+                // Socket update usually comes from 'game-updated' but creating roster entry might not trigger it unless backend does.
+                // The API I wrote DOES insert an event, but doesn't explicitly broadcast 'game-updated' with new roster list.
+                // However, I should probably trigger a game reload or manual update.
+                // For now, let's update local state manually to feel responsive.
+                setGame(prev => prev ? {
+                    ...prev,
+                    rosters: [...prev.rosters, { ...newPlayer, points: 0, fouls: 0, isActive: false }]
+                } : null);
+                
+                // Also need to broadcast this change via socket if backend doesn't.
+                // Ideally backend should broadcast. My API implementation didn't emit socket events.
+                // I should assume the `game-updated` event might not fire for roster ADDITION unless I added that logic.
+                // But creating an EVENT (sub) usually triggers 'event-added'.
+                
+                // Let's emit a signal to refresh game state or just broadcast the roster change manually?
+                // Simpler: Just rely on local update and maybe socket 'game-updated' if I implement it in API.
+                // Since I didn't implement socket emit in the API route (it's serverless/next api route, hard to get socket.io instance directly without a separate server component or using the global io if initialized).
+                // Actually `server.ts` initializes io. Using it in Next.js API routes is tricky.
+                // So client-side emit is often easier for immediate feedback if security allows.
+                
+                socket?.emit('update-game', {
+                    gameId: id,
+                    updates: { 
+                        // Force a re-fetch or just send the new roster list?
+                        // Sending the whole roster list is heavy but safe.
+                        rosters: [...(game?.rosters || []), { ...newPlayer, points: 0, fouls: 0, isActive: false }]
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Failed to add player:', error);
+        }
+    };
+
+    const handleUpdateRosterPlayer = async (rosterId: string, updates: { number?: string, name?: string }) => {
+        try {
+            const res = await fetch(`/api/games/${id}/roster`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: rosterId, ...updates })
+            });
+            if (res.ok) {
+                const updatedPlayer = await res.json();
+                const newRosters = game?.rosters.map(r => r.id === rosterId ? { ...r, ...updatedPlayer } : r) || [];
+                setGame(prev => prev ? { ...prev, rosters: newRosters } : null);
+                
+                socket?.emit('update-game', {
+                    gameId: id,
+                    updates: { rosters: newRosters }
+                });
+            }
+        } catch (error) {
+            console.error('Failed to update player:', error);
+        }
+    };
+
+    const handleRemoveRosterPlayer = async (rosterId: string) => {
+        try {
+            const res = await fetch(`/api/games/${id}/roster?rosterId=${rosterId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                const newRosters = game?.rosters.filter(r => r.id !== rosterId) || [];
+                setGame(prev => prev ? { ...prev, rosters: newRosters } : null);
+                
+                socket?.emit('update-game', {
+                    gameId: id,
+                    updates: { rosters: newRosters }
+                });
+            }
+        } catch (error) {
+            console.error('Failed to remove player:', error);
+        }
+    };
+
     const updateGame = (updates: Partial<Game> & { isTimerRunning?: boolean }) => {
         if (!socket || !game) return;
         const newState = { ...game, ...updates };
@@ -561,12 +680,105 @@ export default function ScorerPage() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    const handleSaveSettings = async (settings: Partial<Game>) => {
+        if (!game) return;
+        setIsSavingSettings(true);
+        try {
+            console.log('Saving settings:', settings);
+            
+            const res = await fetch(`/api/games/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings),
+            });
+            
+            if (res.ok) {
+                updateGame(settings);
+                setIsSettingsOpen(false);
+            } else {
+                const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+                console.error('Failed to save settings:', errorData);
+                alert(`Failed to save settings: ${errorData.error || 'Unknown error'}`);
+            }
+        } catch (err) {
+            console.error('Failed to save settings:', err);
+            alert('Failed to save settings: Network error');
+        } finally {
+            setIsSavingSettings(false);
+        }
+    };
+
+    const handleStartGame = (updatedRosters: RosterEntry[]) => {
+        if (!game) return;
+        updateGame({
+            rosters: updatedRosters,
+            status: 'live'
+        });
+    };
+
+    // Check if current user can edit game settings (game owner, community owner, community admin, or world admin)
+    // Note: World admin status is checked on the API side
+    const canEditSettings = () => {
+        if (!game || !userId) return false;
+        const isGameOwner = game.ownerId === userId;
+        const isCommunityOwner = game.community?.ownerId === userId;
+        const isCommunityAdmin = game.community?.members?.some(
+            m => m.userId === userId && m.role === 'admin'
+        );
+        // Always allow the button to show - API will enforce world admin permissions
+        // This covers: game owner, community owner, community admin, and world admin (enforced by API)
+        return true;
+    };
+
+    // Check if current user can delete this game
+    const canDeleteGame = () => {
+        if (!game || !userId) return false;
+        const isGameOwner = game.ownerId === userId;
+        const isCommunityOwner = game.community?.ownerId === userId;
+        const isCommunityAdmin = game.community?.members?.some(
+            m => m.userId === userId && m.role === 'admin'
+        );
+        return isGameOwner || isCommunityOwner || isCommunityAdmin;
+    };
+
+    const handleDeleteGame = async () => {
+        if (!canDeleteGame()) return;
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/games/${id}`, {
+                method: 'DELETE',
+            });
+            if (res.ok) {
+                router.push('/games');
+            } else {
+                console.error('Failed to delete game');
+                alert('Failed to delete game');
+            }
+        } catch (err) {
+            console.error('Failed to delete game:', err);
+            alert('Failed to delete game');
+        } finally {
+            setIsDeleting(false);
+            setIsDeleteConfirmOpen(false);
+        }
+    };
+
     if (loading || !game) return <div className="p-8 text-center text-slate-500 italic">Entering Arena...</div>;
 
+    if (game.status === 'scheduled') {
+        return (
+            <BenchSelection 
+                game={game} 
+                onStartGame={handleStartGame}
+                onCancel={() => router.push('/games')}
+            />
+        );
+    }
+
     return (
-        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col font-sans select-none touch-none overflow-hidden">
+        <div className="fixed inset-0 z-[100] bg-background flex flex-col font-sans select-none touch-none overflow-hidden">
             {/* Top Header - THE DISPLAY */}
-            <div className="bg-black/40 border-b border-slate-800 p-2 landscape:p-1 flex items-center justify-between shrink-0">
+            <div className="bg-black/40 border-b border-border p-2 landscape:p-1 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-1">
                     <button onClick={() => router.back()} className="p-2 text-slate-500 hover:text-white landscape:p-1">
                         <ArrowLeft size={20} />
@@ -588,13 +800,25 @@ export default function ScorerPage() {
                     </div>
 
                     <div className="flex flex-col items-center">
-                        <button
-                            onClick={nextPeriod}
-                            className="text-[10px] landscape:text-[8px] uppercase tracking-widest text-slate-500 font-bold mb-0.5 flex items-center gap-1 hover:text-white transition-colors"
-                        >
-                            <div className={cn("w-2 h-2 landscape:w-1.5 landscape:h-1.5 rounded-full", isConnected ? "bg-green-500" : "bg-red-500")} />
-                            P{game.currentPeriod}
-                        </button>
+                        <div className="flex items-center gap-1 mb-0.5">
+                            <button
+                                onClick={nextPeriod}
+                                className="text-[10px] landscape:text-[8px] uppercase tracking-widest text-slate-500 font-bold flex items-center gap-1 hover:text-white transition-colors"
+                            >
+                                <div className={cn("w-2 h-2 landscape:w-1.5 landscape:h-1.5 rounded-full", isConnected ? "bg-green-500" : "bg-red-500")} />
+                                P{game.currentPeriod}
+                            </button>
+                            {/* Visibility Badge */}
+                            <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                game.visibility === 'private' ? 'bg-card text-slate-500' :
+                                game.visibility === 'public_general' ? 'bg-green-500/20 text-green-500' :
+                                'bg-blue-500/20 text-blue-500'
+                            }`}>
+                                {game.visibility === 'private' ? <Eye size={8} /> :
+                                 game.visibility === 'public_general' ? <Globe size={8} /> :
+                                 <Users2 size={8} />}
+                            </div>
+                        </div>
                         <button
                             onClick={() => {
                                 const mins = Math.floor(game.clockSeconds / 60);
@@ -616,6 +840,16 @@ export default function ScorerPage() {
                 </div>
 
                 <div className="flex items-center gap-1">
+                    {/* Settings - Owner only */}
+                    {canEditSettings() && (
+                        <button
+                            onClick={() => setIsSettingsOpen(true)}
+                            className="p-2 text-slate-500 hover:text-orange-500 transition-colors landscape:p-1"
+                            title="Game Settings"
+                        >
+                            <Settings size={18} />
+                        </button>
+                    )}
                     {/* Multi-Scorer Presence Indicator */}
                     <button
                         onClick={() => setIsScorersOpen(true)}
@@ -641,6 +875,16 @@ export default function ScorerPage() {
                     >
                         <RotateCcw size={18} className={cn(game.possession === 'home' && "text-orange-500 rotate-180", game.possession === 'guest' && "text-slate-300")} />
                     </button>
+                    {/* Delete Game Button (Owner/Admin only) */}
+                    {canDeleteGame() && (
+                        <button
+                            onClick={() => setIsDeleteConfirmOpen(true)}
+                            className="p-2 text-slate-500 hover:text-red-500 transition-colors landscape:p-1"
+                            title="Delete Game"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -668,7 +912,7 @@ export default function ScorerPage() {
                     </div>
 
                     {/* Game Log - Scrollable at Bottom */}
-                    <div className="px-4 py-2 border-t border-white/5 bg-slate-900/40">
+                    <div className="px-4 py-2 border-t border-white/5 bg-input/40">
                         <GameLog
                             events={events}
                             limit={5}
@@ -679,14 +923,14 @@ export default function ScorerPage() {
                     </div>
 
                     {/* Bottom Controls (Portrait) */}
-                    <div className="h-20 bg-slate-900 border-t border-slate-800 grid grid-cols-4 gap-1 p-1 shrink-0">
+                    <div className="h-20 bg-input border-t border-border grid grid-cols-4 gap-1 p-1 shrink-0">
                         <button
                             onClick={() => handleTimeout()}
-                            className="bg-slate-800/50 rounded-xl font-bold text-[10px] uppercase text-slate-400 flex flex-col items-center justify-center hover:bg-slate-800 transition-colors"
+                            className="bg-card/50 rounded-xl font-bold text-[10px] uppercase text-slate-400 flex flex-col items-center justify-center hover:bg-card transition-colors"
                         >
                             <div className="flex gap-1 mb-1">
                                 {Array.from({ length: game.totalTimeouts }).map((_, i) => (
-                                    <div key={i} className={cn("w-3 h-1 rounded-full", i < game.homeTimeouts ? "bg-orange-500" : "bg-slate-700")} />
+                                    <div key={i} className={cn("w-3 h-1 rounded-full", i < game.homeTimeouts ? "bg-orange-500" : "bg-muted")} />
                                 ))}
                             </div>
                             Timeouts
@@ -705,14 +949,14 @@ export default function ScorerPage() {
                         </button>
                         <button
                             onClick={handleSub}
-                            className="bg-slate-800/50 rounded-xl font-bold text-[10px] uppercase text-slate-400 flex flex-col items-center justify-center hover:bg-slate-800 transition-colors"
+                            className="bg-card/50 rounded-xl font-bold text-[10px] uppercase text-slate-400 flex flex-col items-center justify-center hover:bg-card transition-colors"
                         >
                             <Users size={16} className="mb-1" />
                             Subs
                         </button>
                         <button
                             onClick={() => router.push(`/game/${id}/box-score`)}
-                            className="bg-slate-800/50 rounded-xl font-bold text-[10px] uppercase text-slate-400 flex flex-col items-center justify-center hover:bg-slate-800 transition-colors"
+                            className="bg-card/50 rounded-xl font-bold text-[10px] uppercase text-slate-400 flex flex-col items-center justify-center hover:bg-card transition-colors"
                         >
                             <Table size={16} className="mb-1" />
                             Box Score
@@ -734,7 +978,7 @@ export default function ScorerPage() {
                             </button>
                             <button
                                 onClick={() => handleScore(3, undefined, true)}
-                                className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all group opacity-60 hover:opacity-100"
+                                className="bg-input border border-border rounded-2xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group opacity-60 hover:opacity-100"
                             >
                                 <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-3</span>
                                 <span className="text-[7px] uppercase font-black tracking-widest text-slate-600">Miss</span>
@@ -744,14 +988,14 @@ export default function ScorerPage() {
                         <div className="grid grid-cols-[1fr_0.6fr] gap-2">
                             <button
                                 onClick={() => handleScore(2)}
-                                className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all group"
+                                className="bg-input border border-border rounded-2xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group"
                             >
                                 <span className="text-4xl font-black text-slate-200 group-hover:scale-110 transition-transform">+2</span>
                                 <span className="text-[8px] uppercase font-black tracking-[0.2em] text-slate-500">Field Goal</span>
                             </button>
                             <button
                                 onClick={() => handleScore(2, undefined, true)}
-                                className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all group opacity-60 hover:opacity-100"
+                                className="bg-input border border-border rounded-2xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group opacity-60 hover:opacity-100"
                             >
                                 <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-2</span>
                                 <span className="text-[7px] uppercase font-black tracking-widest text-slate-600">Miss</span>
@@ -761,14 +1005,14 @@ export default function ScorerPage() {
                         <div className="grid grid-cols-[1fr_0.6fr] gap-2">
                             <button
                                 onClick={() => handleScore(1)}
-                                className="bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all group"
+                                className="bg-input/50 border border-border rounded-2xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group"
                             >
                                 <span className="text-3xl font-black text-slate-400 group-hover:scale-110 transition-transform">+1</span>
                                 <span className="text-[8px] uppercase font-black tracking-[0.2em] text-slate-600">Free Throw</span>
                             </button>
                             <button
                                 onClick={() => handleScore(1, undefined, true)}
-                                className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all group opacity-60 hover:opacity-100"
+                                className="bg-input border border-border rounded-2xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group opacity-60 hover:opacity-100"
                             >
                                 <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-1</span>
                                 <span className="text-[7px] uppercase font-black tracking-widest text-slate-600">Miss</span>
@@ -802,7 +1046,7 @@ export default function ScorerPage() {
                             </button>
                             <button
                                 onClick={() => handleFoul('guest')}
-                                className="bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all"
+                                className="bg-input border border-border rounded-xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all"
                             >
                                 <span className="text-[9px] font-black uppercase text-slate-500 text-center leading-tight px-1">Guest Foul</span>
                                 <div className="text-xs font-mono font-black text-slate-300">{game.guestFouls}</div>
@@ -813,18 +1057,18 @@ export default function ScorerPage() {
                         <div className="grid grid-cols-2 gap-2 flex-1">
                             <button
                                 onClick={handleSub}
-                                className="bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all"
+                                className="bg-input border border-border rounded-xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all"
                             >
                                 <Users size={14} className="text-slate-500 mb-0.5" />
                                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Subs</span>
                             </button>
                             <button
                                 onClick={() => handleTimeout()}
-                                className="bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-center justify-center hover:bg-slate-800 active:scale-95 transition-all"
+                                className="bg-input border border-border rounded-xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all"
                             >
                                 <div className="flex gap-0.5 mb-1">
                                     {Array.from({ length: game.totalTimeouts }).map((_, i) => (
-                                        <div key={i} className={cn("w-2 h-0.5 rounded-full", i < game.homeTimeouts ? "bg-orange-500" : "bg-slate-700")} />
+                                        <div key={i} className={cn("w-2 h-0.5 rounded-full", i < game.homeTimeouts ? "bg-orange-500" : "bg-muted")} />
                                     ))}
                                 </div>
                                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">TO</span>
@@ -846,7 +1090,7 @@ export default function ScorerPage() {
                         {/* Box Score Button */}
                         <button
                             onClick={() => router.push(`/game/${id}/box-score`)}
-                            className="flex-1 rounded-xl flex flex-col items-center justify-center bg-slate-900 border border-slate-800 hover:bg-slate-800 transition-all active:scale-95"
+                            className="flex-1 rounded-xl flex flex-col items-center justify-center bg-input border border-border hover:bg-card transition-all active:scale-95"
                         >
                             <Table size={16} className="text-slate-400 mb-0.5" />
                             <span className="text-[8px] font-black tracking-widest uppercase text-slate-500">Box Score</span>
@@ -858,338 +1102,84 @@ export default function ScorerPage() {
             {/* Subs Overlay */}
             <AnimatePresence>
                 {isSubsOpen && game && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                        className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl p-6 flex flex-col"
-                    >
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-2xl font-black uppercase tracking-tight">Substitution Manager</h3>
-                            <button onClick={() => setIsSubsOpen(false)} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-full">
-                                <ArrowLeft size={20} className="rotate-90" />
-                            </button>
-                        </div>
+                    <SubsModal
+                        game={game}
+                        onClose={() => setIsSubsOpen(false)}
+                        onSub={(playerId) => {
+                            const player = game.rosters.find(r => r.id === playerId);
+                            if (player) {
+                                const updatedRosters = game.rosters.map(r =>
+                                    r.id === player.id ? { ...r, isActive: !r.isActive } : r
+                                );
+                                updateGame({ rosters: updatedRosters });
+                                addEvent({
+                                    type: 'sub',
+                                    team: player.team,
+                                    player: player.name,
+                                    description: `${player.name} ${player.isActive ? 'Benched' : 'In'}`
+                                });
+                            }
+                        }}
+                        onAmendRoster={() => {
+                            setIsSubsOpen(false);
+                            setIsAmendRosterOpen(true);
+                        }}
+                    />
+                )}
+            </AnimatePresence>
 
-                        <div className="flex-1 overflow-y-auto space-y-8 pb-20">
-                            {/* Home Team Subs */}
-                            <div className="space-y-4">
-                                <h4 className="text-xs font-black text-orange-500 uppercase tracking-widest px-2">{game.homeTeamName}</h4>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    {game.rosters.filter(r => r.team === 'home').map(player => (
-                                        <button
-                                            key={player.id}
-                                            onClick={() => {
-                                                const updatedRosters = game.rosters.map(r =>
-                                                    r.id === player.id ? { ...r, isActive: !r.isActive } : r
-                                                );
-                                                updateGame({ rosters: updatedRosters });
-                                                addEvent({
-                                                    type: 'sub',
-                                                    team: 'home',
-                                                    player: player.name,
-                                                    description: `${player.name} ${player.isActive ? 'Benched' : 'In'}`
-                                                });
-                                            }}
-                                            className={cn(
-                                                "p-3 rounded-2xl border transition-all flex flex-col items-center gap-1",
-                                                player.isActive
-                                                    ? "bg-orange-500/20 border-orange-500 text-orange-100"
-                                                    : "bg-slate-900 border-slate-800 text-slate-500"
-                                            )}
-                                        >
-                                            <div className="text-xl font-black leading-none">{player.number}</div>
-                                            <div className="text-[10px] font-bold truncate w-full text-center">{player.name}</div>
-                                            <div className="text-[8px] uppercase tracking-tighter opacity-70">
-                                                {player.isActive ? 'ACTIVE' : 'BENCH'}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Guest Team Subs */}
-                            <div className="space-y-4">
-                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">{game.guestTeamName}</h4>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    {game.rosters.filter(r => r.team === 'guest').map(player => (
-                                        <button
-                                            key={player.id}
-                                            onClick={() => {
-                                                const updatedRosters = game.rosters.map(r =>
-                                                    r.id === player.id ? { ...r, isActive: !r.isActive } : r
-                                                );
-                                                updateGame({ rosters: updatedRosters });
-                                                addEvent({
-                                                    type: 'sub',
-                                                    team: 'guest',
-                                                    player: player.name,
-                                                    description: `${player.name} ${player.isActive ? 'Benched' : 'In'}`
-                                                });
-                                            }}
-                                            className={cn(
-                                                "p-3 rounded-2xl border transition-all flex flex-col items-center gap-1",
-                                                player.isActive
-                                                    ? "bg-slate-100 border-white text-slate-950"
-                                                    : "bg-slate-900 border-slate-800 text-slate-500"
-                                            )}
-                                        >
-                                            <div className="text-xl font-black leading-none">{player.number}</div>
-                                            <div className="text-[10px] font-bold truncate w-full text-center">{player.name}</div>
-                                            <div className="text-[8px] uppercase tracking-tighter opacity-70">
-                                                {player.isActive ? 'ACTIVE' : 'BENCH'}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={() => setIsSubsOpen(false)}
-                            className="bg-orange-600 font-black py-4 rounded-2xl shadow-xl shadow-orange-600/20"
-                        >
-                            DONE
-                        </button>
-                    </motion.div>
+            {/* Amend Roster Modal */}
+            <AnimatePresence>
+                {isAmendRosterOpen && game && (
+                    <AmendRosterModal
+                        game={game}
+                        onClose={() => setIsAmendRosterOpen(false)}
+                        onAddPlayer={handleAddRosterPlayer}
+                        onUpdatePlayer={handleUpdateRosterPlayer}
+                        onRemovePlayer={handleRemoveRosterPlayer}
+                    />
                 )}
             </AnimatePresence>
 
             {/* Roster Selection Overlay (for Simple Mode Home Team or Advanced Mode Both) */}
             <AnimatePresence>
                 {scoringFor && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl p-8 flex flex-col"
-                    >
-                        <div className="flex justify-between items-center mb-8">
-                            <h3 className="text-3xl font-black flex items-center gap-3">
-                                <span className={cn(scoringFor.isMiss ? "text-slate-500" : "text-orange-500")}>
-                                    {scoringFor.isMiss ? '-' : '+'}{scoringFor.points}
-                                </span>
-                                {scoringFor.isMiss ? 'WHO MISSED?' : (game.rosters && game.rosters.length > 0 ? 'WHO SCORED?' : 'WHICH TEAM?')}
-                            </h3>
-                            <button onClick={() => setScoringFor(null)} className="p-4 text-slate-400 hover:text-white bg-slate-800 rounded-full transition-all active:scale-95">
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        {/* If no rosters for home, show simple team selection for home */}
-                        {(!game.rosters || game.rosters.filter(r => r.team === 'home' && r.isActive).length === 0) ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <button
-                                    onClick={() => {
-                                        const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
-                                        if (scoringFor.isMiss) {
-                                            addEvent({ 
-                                                type: 'miss', 
-                                                team: 'home', 
-                                                value: scoringFor.points,
-                                                metadata: { shotType }, 
-                                                description: `${game.homeTeamName} Miss (Team)` 
-                                            });
-                                        } else {
-                                            updateGame({ homeScore: game.homeScore + scoringFor.points });
-                                            addEvent({ 
-                                                type: 'score', 
-                                                team: 'home', 
-                                                value: scoringFor.points, 
-                                                metadata: { shotType, points: scoringFor.points },
-                                                player: game.homeTeamName, 
-                                                description: `${game.homeTeamName} (Team)` 
-                                            });
-                                        }
-                                        setScoringFor(null);
-                                    }}
-                                    className={cn(
-                                        "bg-gradient-to-br active:scale-95 transition-all rounded-3xl p-12 flex flex-col items-center justify-center gap-4",
-                                        scoringFor.isMiss
-                                            ? "from-slate-800 to-slate-900 border-2 border-dashed border-orange-500/50 shadow-none"
-                                            : "from-orange-600 to-orange-700 shadow-[0_0_40px_rgba(234,88,12,0.3)]"
-                                    )}
-                                >
-                                    <div className={cn("text-6xl font-black", scoringFor.isMiss ? "text-orange-500/50" : "text-white")}>
-                                        {scoringFor.isMiss ? '-' : '+'}{scoringFor.points}
-                                    </div>
-                                    <div className="text-2xl font-black uppercase tracking-wider">{game.homeTeamName}</div>
-                                    <div className="text-xs text-orange-300 font-bold uppercase tracking-widest">
-                                        {scoringFor.isMiss ? 'Team Miss' : 'Team Score'}
-                                    </div>
-                                </button>
-                                {(!scoringFor.side || scoringFor.side === 'guest') && game.rosters && game.rosters.filter(r => r.team === 'guest' && r.isActive).length > 0 ? null : (
-                                <button
-                                        onClick={() => {
-                                            const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
-                                            if (scoringFor.isMiss) {
-                                                addEvent({ 
-                                                    type: 'miss', 
-                                                    team: 'guest', 
-                                                    value: scoringFor.points,
-                                                    metadata: { shotType },
-                                                    description: `${game.guestTeamName} Miss (Team)` 
-                                                });
-                                            } else {
-                                                updateGame({ guestScore: game.guestScore + scoringFor.points });
-                                                addEvent({ 
-                                                    type: 'score', 
-                                                    team: 'guest', 
-                                                    value: scoringFor.points,
-                                                    metadata: { shotType, points: scoringFor.points },
-                                                    player: game.guestTeamName, 
-                                                    description: `${game.guestTeamName} (Team)` 
-                                                });
-                                            }
-                                            setScoringFor(null);
-                                        }}
-                                        className={cn(
-                                            "bg-gradient-to-br active:scale-95 transition-all rounded-3xl p-12 flex flex-col items-center justify-center gap-4",
-                                            scoringFor.isMiss
-                                                ? "from-slate-800 to-slate-900 border-2 border-dashed border-slate-700 shadow-none"
-                                                : "from-slate-700 to-slate-800 shadow-[0_0_40px_rgba(100,116,139,0.3)]"
-                                        )}
-                                    >
-                                        <div className={cn("text-6xl font-black", scoringFor.isMiss ? "text-slate-600" : "text-white")}>
-                                            {scoringFor.isMiss ? '-' : '+'}{scoringFor.points}
-                                        </div>
-                                        <div className="text-2xl font-black uppercase tracking-wider text-slate-300">{game.guestTeamName}</div>
-                                        <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-                                            {scoringFor.isMiss ? 'Team Miss' : 'Team Score'}
-                                        </div>
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto pb-12">
-                                {/* Home Side */}
-                                {(!scoringFor.side || scoringFor.side === 'home') && (
-                                    <div className="space-y-4">
-                                        <h4 className="text-sm font-black text-orange-500 uppercase tracking-widest px-2">
-                                            {game.homeTeamName}
-                                        </h4>
-                                        <div className={cn("grid gap-2", scoringFor.isMiss ? "grid-cols-2" : "grid-cols-3")}>
-                                            {game.rosters
-                                                .filter(r => r.team === 'home' && r.isActive)
-                                                .slice(0, scoringFor.isMiss ? 5 : 99)
-                                                .map(entry => (
-                                                    <button
-                                                        key={entry.id}
-                                                        onClick={() => handlePlayerScore(entry.id)}
-                                                        className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center hover:border-orange-500 transition-all active:scale-95 group"
-                                                    >
-                                                        <div className="text-2xl font-black text-slate-500 group-hover:text-orange-500 mb-1">{entry.number}</div>
-                                                        <div className="text-[10px] font-bold truncate w-full text-center">{entry.name}</div>
-                                                    </button>
-                                                ))}
-                                            {scoringFor.isMiss ? (
-                                                <button
-                                                    onClick={() => {
-                                                        const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
-                                                        addEvent({
-                                                            type: 'miss',
-                                                            team: 'home',
-                                                            description: `${game.homeTeamName} Miss (Team)`,
-                                                            value: scoringFor.points,
-                                                            metadata: { shotType }
-                                                        });
-                                                        setScoringFor(null);
-                                                    }}
-                                                    className="bg-slate-900/50 border border-slate-800 border-dashed p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-500 text-xs"
-                                                >
-                                                    Team Miss
-                                                </button>
-                                            ) : null}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Guest Side */}
-                                {(!scoringFor.side || scoringFor.side === 'guest') && (
-                                    <div className="space-y-4">
-                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest px-2">
-                                            {game.guestTeamName}
-                                        </h4>
-                                        {game.rosters && game.rosters.filter(r => r.team === 'guest' && r.isActive).length > 0 ? (
-                                            <div className={cn("grid gap-2", scoringFor.isMiss ? "grid-cols-2" : "grid-cols-3")}>
-                                                {game.rosters
-                                                    .filter(r => r.team === 'guest' && r.isActive)
-                                                    .slice(0, scoringFor.isMiss ? 5 : 99)
-                                                    .map(entry => (
-                                                        <button
-                                                            key={entry.id}
-                                                            onClick={() => handlePlayerScore(entry.id)}
-                                                            className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center hover:border-white transition-all active:scale-95 group"
-                                                        >
-                                                            <div className="text-2xl font-black text-slate-500 group-hover:text-white mb-1">{entry.number}</div>
-                                                            <div className="text-[10px] font-bold truncate w-full text-center">{entry.name}</div>
-                                                        </button>
-                                                    ))}
-                                                {scoringFor.isMiss ? (
-                                                    <button
-                                                        onClick={() => {
-                                                            const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
-                                                            addEvent({
-                                                                type: 'miss',
-                                                                team: 'guest',
-                                                                description: `${game.guestTeamName} Miss (Team)`,
-                                                                value: scoringFor.points,
-                                                                metadata: { shotType }
-                                                            });
-                                                            setScoringFor(null);
-                                                        }}
-                                                        className="bg-slate-900/50 border border-slate-800 border-dashed p-4 rounded-2xl flex flex-col items-center justify-center italic text-slate-500 text-xs"
-                                                    >
-                                                        Team Miss
-                                                    </button>
-                                                ) : null}
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => {
-                                                    const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
-                                                    if (scoringFor.isMiss) {
-                                                        addEvent({ 
-                                                            type: 'miss', 
-                                                            team: 'guest', 
-                                                            value: scoringFor.points,
-                                                            metadata: { shotType },
-                                                            description: `${game.guestTeamName} Miss (Team)` 
-                                                        });
-                                                    } else {
-                                                        updateGame({ guestScore: game.guestScore + scoringFor.points });
-                                                        addEvent({ 
-                                                            type: 'score', 
-                                                            team: 'guest', 
-                                                            value: scoringFor.points, 
-                                                            metadata: { shotType, points: scoringFor.points },
-                                                            player: game.guestTeamName, 
-                                                            description: `${game.guestTeamName} (Team)` 
-                                                        });
-                                                    }
-                                                    setScoringFor(null);
-                                                }}
-                                                className={cn(
-                                                    "bg-gradient-to-br active:scale-95 transition-all rounded-3xl p-12 flex flex-col items-center justify-center gap-4",
-                                                    scoringFor.isMiss 
-                                                        ? "from-slate-800 to-slate-900 border-2 border-dashed border-slate-700 shadow-none" 
-                                                        : "from-slate-700 to-slate-800 shadow-[0_0_40px_rgba(100,116,139,0.3)]"
-                                                )}
-                                            >
-                                                <div className={cn("text-6xl font-black", scoringFor.isMiss ? "text-slate-600" : "text-white")}>
-                                                    {scoringFor.isMiss ? '-' : '+'}{scoringFor.points}
-                                                </div>
-                                                <div className="text-2xl font-black uppercase tracking-wider text-slate-300">{game.guestTeamName}</div>
-                                                <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-                                                    {scoringFor.isMiss ? 'Team Miss' : 'Team Score'}
-                                                </div>
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </motion.div>
+                    <ScoringModal
+                        game={game}
+                        scoringFor={scoringFor}
+                        onClose={() => setScoringFor(null)}
+                        onScore={(playerId, team) => {
+                            if (playerId) {
+                                handlePlayerScore(playerId);
+                            } else {
+                                // Fallback for team score if we ever add it back
+                                const shotType = scoringFor.points === 1 ? 'ft' : scoringFor.points === 3 ? '3pt' : '2pt';
+                                if (scoringFor.isMiss) {
+                                    addEvent({
+                                        type: 'miss',
+                                        team,
+                                        description: `${team === 'home' ? game.homeTeamName : game.guestTeamName} Miss (Team)`,
+                                        value: scoringFor.points,
+                                        metadata: { shotType }
+                                    });
+                                } else {
+                                    const update = team === 'home' 
+                                        ? { homeScore: game.homeScore + scoringFor.points } 
+                                        : { guestScore: game.guestScore + scoringFor.points };
+                                    updateGame(update);
+                                    addEvent({
+                                        type: 'score',
+                                        team,
+                                        value: scoringFor.points,
+                                        metadata: { shotType, points: scoringFor.points },
+                                        player: team === 'home' ? game.homeTeamName : game.guestTeamName,
+                                        description: `${team === 'home' ? game.homeTeamName : game.guestTeamName} (Team)`
+                                    });
+                                }
+                                setScoringFor(null);
+                            }
+                        }}
+                    />
                 )}
             </AnimatePresence>
 
@@ -1200,11 +1190,11 @@ export default function ScorerPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
-                        className="fixed inset-0 z-[110] bg-slate-950/95 backdrop-blur-xl p-6 flex flex-col"
+                        className="fixed inset-0 z-[110] bg-background/95 backdrop-blur-xl p-6 flex flex-col"
                     >
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-2xl font-black uppercase tracking-tight">Edit Event</h3>
-                            <button onClick={() => setEditingEvent(null)} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-full">
+                            <button onClick={() => setEditingEvent(null)} className="p-2 text-slate-400 hover:text-white bg-card rounded-full">
                                 <X size={20} />
                             </button>
                         </div>
@@ -1216,15 +1206,15 @@ export default function ScorerPage() {
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                     {game.rosters
                                         .filter(r => r.team === editingEvent.team)
-                                        .map(player => (
+                                        .map((player, idx) => (
                                             <button
-                                                key={player.id}
+                                                key={player.id || `player-${idx}`}
                                                 onClick={() => setEditingEvent({ ...editingEvent, player: player.name })}
                                                 className={cn(
                                                     "p-3 rounded-2xl border transition-all flex flex-col items-center gap-1",
                                                     editingEvent.player === player.name
                                                         ? "bg-orange-500/20 border-orange-500 text-orange-100"
-                                                        : "bg-slate-900 border-slate-800 text-slate-500"
+                                                        : "bg-input border-border text-slate-500"
                                                 )}
                                             >
                                                 <div className="text-xl font-black leading-none">{player.number}</div>
@@ -1247,7 +1237,7 @@ export default function ScorerPage() {
                                                     "flex-1 py-4 rounded-2xl border-2 font-black transition-all",
                                                     editingEvent.value === val
                                                         ? "border-orange-500 bg-orange-500 text-white"
-                                                        : "border-slate-800 bg-slate-900 text-slate-500"
+                                                        : "border-border bg-input text-slate-500"
                                                 )}
                                             >
                                                 +{val}
@@ -1265,7 +1255,7 @@ export default function ScorerPage() {
                                     value={editingEvent.description || ''}
                                     onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
                                     placeholder="Add a note (e.g. 'Fast break', 'Three pointer')"
-                                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-4 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    className="w-full bg-input border border-border rounded-2xl px-4 py-4 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
                                 />
                             </div>
                         </div>
@@ -1273,7 +1263,7 @@ export default function ScorerPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <button
                                 onClick={() => setEditingEvent(null)}
-                                className="bg-slate-800 text-slate-400 font-bold py-4 rounded-2xl"
+                                className="bg-card text-slate-400 font-bold py-4 rounded-2xl"
                             >
                                 CANCEL
                             </button>
@@ -1295,14 +1285,14 @@ export default function ScorerPage() {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="fixed inset-0 z-[110] bg-slate-950/95 backdrop-blur-xl p-8 flex flex-col"
+                        className="fixed inset-0 z-[110] bg-background/95 backdrop-blur-xl p-8 flex flex-col"
                     >
                         <div className="flex justify-between items-center mb-8">
                             <h3 className="text-3xl font-black flex items-center gap-3">
                                 <ShieldAlert size={32} className="text-red-500" />
                                 <span className="uppercase tracking-tight">WHO FOULED?</span>
                             </h3>
-                            <button onClick={() => setFoulingFor(null)} className="p-4 text-slate-400 hover:text-white bg-slate-800 rounded-full">
+                            <button onClick={() => setFoulingFor(null)} className="p-4 text-slate-400 hover:text-white bg-card rounded-full">
                                 <X size={20} />
                             </button>
                         </div>
@@ -1346,15 +1336,15 @@ export default function ScorerPage() {
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                         {game?.rosters
                                             .filter(r => r.team === foulingFor && r.isActive)
-                                            .map(entry => (
+                                            .map((entry, idx) => (
                                                 <button
-                                                    key={entry.id}
+                                                    key={entry.id || `foul-entry-${idx}`}
                                                     onClick={() => handlePlayerFoul(entry.id)}
-                                                    className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col items-center hover:border-red-500 transition-all active:scale-95 group shadow-xl"
+                                                    className="bg-input border border-border p-6 rounded-2xl flex flex-col items-center hover:border-red-500 transition-all active:scale-95 group shadow-xl"
                                                 >
                                                     <div className="text-4xl font-black text-slate-500 group-hover:text-white mb-1 transition-colors">{entry.number}</div>
                                                     <div className="text-sm font-bold truncate w-full text-center group-hover:text-white transition-colors">{entry.name}</div>
-                                                    <div className="mt-2 text-[10px] font-black text-slate-700 bg-slate-950 px-2 py-0.5 rounded uppercase group-hover:bg-red-500/10 group-hover:text-red-400 transition-all">
+                                                    <div className="mt-2 text-[10px] font-black text-slate-700 bg-background px-2 py-0.5 rounded uppercase group-hover:bg-red-500/10 group-hover:text-red-400 transition-all">
                                                         {entry.fouls} Fouls
                                                     </div>
                                                 </button>
@@ -1375,7 +1365,7 @@ export default function ScorerPage() {
                                                 });
                                                 setFoulingFor(null);
                                             }}
-                                            className="bg-slate-800 border-dashed border-2 border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-xs gap-1 hover:border-slate-500 hover:text-white transition-all active:scale-95 shadow-xl"
+                                            className="bg-card border-dashed border-2 border-border p-6 rounded-2xl flex flex-col items-center justify-center italic text-slate-400 text-xs gap-1 hover:border-slate-500 hover:text-white transition-all active:scale-95 shadow-xl"
                                         >
                                             <ShieldAlert size={20} />
                                             <div className="font-black uppercase">Technical</div>
@@ -1388,7 +1378,7 @@ export default function ScorerPage() {
 
                         <button
                             onClick={() => setFoulingFor(null)}
-                            className="bg-slate-800 text-white font-black py-5 rounded-3xl shadow-lg active:scale-95 transition-all text-sm tracking-widest uppercase mb-4"
+                            className="bg-card text-white font-black py-5 rounded-3xl shadow-lg active:scale-95 transition-all text-sm tracking-widest uppercase mb-4"
                         >
                             CANCEL
                         </button>
@@ -1403,7 +1393,7 @@ export default function ScorerPage() {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="fixed inset-0 z-[120] bg-slate-950/95 backdrop-blur-xl p-8 flex flex-col items-center justify-center"
+                        className="fixed inset-0 z-[120] bg-background/95 backdrop-blur-xl p-8 flex flex-col items-center justify-center"
                     >
                         <div className="max-w-md w-full space-y-8">
                             <div className="text-center space-y-2">
@@ -1419,7 +1409,7 @@ export default function ScorerPage() {
                                         "p-8 rounded-[32px] border-2 flex flex-col items-center gap-2 transition-all active:scale-95",
                                         game.homeTimeouts > 0
                                             ? "bg-orange-600/10 border-orange-500/50 hover:bg-orange-600/20"
-                                            : "bg-slate-900/50 border-slate-800 opacity-50 grayscale cursor-not-allowed"
+                                            : "bg-input/50 border-border opacity-50 grayscale cursor-not-allowed"
                                     )}
                                 >
                                     <div className="text-sm font-black text-orange-500 uppercase tracking-widest">{game.homeTeamName}</div>
@@ -1433,8 +1423,8 @@ export default function ScorerPage() {
                                     className={cn(
                                         "p-8 rounded-[32px] border-2 flex flex-col items-center gap-2 transition-all active:scale-95",
                                         game.guestTimeouts > 0
-                                            ? "bg-slate-900 border-white/10 hover:bg-slate-800"
-                                            : "bg-slate-900/50 border-slate-800 opacity-50 grayscale cursor-not-allowed"
+                                            ? "bg-input border-white/10 hover:bg-card"
+                                            : "bg-input/50 border-border opacity-50 grayscale cursor-not-allowed"
                                     )}
                                 >
                                     <div className="text-sm font-black text-slate-400 uppercase tracking-widest">{game.guestTeamName}</div>
@@ -1458,16 +1448,17 @@ export default function ScorerPage() {
             <AnimatePresence>
                 {isShareOpen && (
                     <motion.div
+                        key="share-modal"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6"
+                        className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-xl flex items-center justify-center p-6"
                     >
                         <motion.div
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
-                            className="bg-slate-900 border border-white/10 rounded-[32px] p-8 max-w-sm w-full relative shadow-2xl"
+                            className="bg-input border border-white/10 rounded-[32px] p-8 max-w-sm w-full relative shadow-2xl"
                         >
                             <button
                                 onClick={() => setIsShareOpen(false)}
@@ -1498,7 +1489,7 @@ export default function ScorerPage() {
                                             setCopied(true);
                                             setTimeout(() => setCopied(false), 2000);
                                         }}
-                                        className="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"
+                                        className="w-full bg-card hover:bg-muted p-4 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95"
                                     >
                                         {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
                                         {copied ? 'COPIED!' : 'COPY URL'}
@@ -1527,16 +1518,17 @@ export default function ScorerPage() {
 
                 {isTimeEditing && (
                     <motion.div
+                        key="time-edit-modal"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6"
+                        className="fixed inset-0 z-[120] bg-background/90 backdrop-blur-xl flex items-center justify-center p-6"
                     >
                         <motion.div
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
-                            className="bg-slate-900 border border-white/10 rounded-[32px] p-8 max-w-sm w-full relative shadow-2xl"
+                            className="bg-input border border-white/10 rounded-[32px] p-8 max-w-sm w-full relative shadow-2xl"
                         >
                             <button
                                 onClick={() => setIsTimeEditing(false)}
@@ -1557,7 +1549,7 @@ export default function ScorerPage() {
                                         type="number"
                                         value={tempTime.min}
                                         onChange={(e) => setTempTime({ ...tempTime, min: e.target.value })}
-                                        className="w-24 h-24 bg-black/40 border border-slate-700 rounded-2xl text-5xl font-mono font-black text-center focus:outline-none focus:border-orange-500 transition-colors"
+                                        className="w-24 h-24 bg-black/40 border border-border rounded-2xl text-5xl font-mono font-black text-center focus:outline-none focus:border-orange-500 transition-colors"
                                     />
                                 </div>
                                 <div className="text-4xl font-black text-slate-600 mb-6">:</div>
@@ -1567,7 +1559,7 @@ export default function ScorerPage() {
                                         type="number"
                                         value={tempTime.sec}
                                         onChange={(e) => setTempTime({ ...tempTime, sec: e.target.value })}
-                                        className="w-24 h-24 bg-black/40 border border-slate-700 rounded-2xl text-5xl font-mono font-black text-center focus:outline-none focus:border-orange-500 transition-colors"
+                                        className="w-24 h-24 bg-black/40 border border-border rounded-2xl text-5xl font-mono font-black text-center focus:outline-none focus:border-orange-500 transition-colors"
                                     />
                                 </div>
                             </div>
@@ -1579,7 +1571,7 @@ export default function ScorerPage() {
                                     updateGame({ clockSeconds: (mins * 60) + secs });
                                     setIsTimeEditing(false);
                                 }}
-                                className="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl font-bold mb-4 transition-all active:scale-95 text-white"
+                                className="w-full bg-card hover:bg-muted p-4 rounded-2xl font-bold mb-4 transition-all active:scale-95 text-white"
                             >
                                 Update Time
                             </button>
@@ -1607,7 +1599,7 @@ export default function ScorerPage() {
                                 className={cn(
                                     "w-full p-4 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2",
                                     game?.status === 'final'
-                                        ? "bg-slate-800 text-slate-600 cursor-not-allowed"
+                                        ? "bg-card text-slate-600 cursor-not-allowed"
                                         : "bg-red-950/30 border border-red-500/30 text-red-400 hover:bg-red-900/40"
                                 )}
                             >
@@ -1621,16 +1613,17 @@ export default function ScorerPage() {
                 {/* End Game Confirmation Modal */}
                 {isEndGameOpen && (
                     <motion.div
+                        key="end-game-modal"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[130] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6"
+                        className="fixed inset-0 z-[130] bg-background/90 backdrop-blur-xl flex items-center justify-center p-6"
                     >
                         <motion.div
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
-                            className="bg-slate-900 border border-white/10 rounded-[32px] p-8 max-w-sm w-full relative shadow-2xl"
+                            className="bg-input border border-white/10 rounded-[32px] p-8 max-w-sm w-full relative shadow-2xl"
                         >
                             <div className="flex flex-col items-center text-center">
                                 <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-6">
@@ -1643,7 +1636,7 @@ export default function ScorerPage() {
                                 </p>
 
                                 <div className="w-full space-y-3">
-                                    <div className="bg-slate-800/50 rounded-2xl p-4 mb-6">
+                                    <div className="bg-card/50 rounded-2xl p-4 mb-6">
                                         <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Final Score</div>
                                         <div className="flex items-center justify-center gap-4">
                                             <div className="text-center">
@@ -1660,7 +1653,7 @@ export default function ScorerPage() {
 
                                     <button
                                         onClick={() => setIsEndGameOpen(false)}
-                                        className="w-full bg-slate-800 hover:bg-slate-700 p-4 rounded-2xl font-bold transition-all active:scale-95"
+                                        className="w-full bg-card hover:bg-muted p-4 rounded-2xl font-bold transition-all active:scale-95"
                                     >
                                         Cancel
                                     </button>
@@ -1680,6 +1673,7 @@ export default function ScorerPage() {
 
                 {/* Scorer Manager Modal */}
                 <ScorerManager
+                    key="scorer-manager"
                     gameId={id as string}
                     ownerId={game.ownerId}
                     currentUserId={userId}
@@ -1689,6 +1683,47 @@ export default function ScorerPage() {
                     onAddScorer={handleAddScorer}
                     onRemoveScorer={handleRemoveScorer}
                 />
+
+                {/* Game Settings Modal */}
+                {isSettingsOpen && game && (
+                    <div key="settings-modal">
+                        <GameSettingsModal
+                            game={game}
+                            onClose={() => setIsSettingsOpen(false)}
+                            onSave={handleSaveSettings}
+                            isSaving={isSavingSettings}
+                            canDelete={canDeleteGame()}
+                            onDelete={handleDeleteGame}
+                        />
+                    </div>
+                )}
+                {/* Delete Confirmation Modal */}
+                {isDeleteConfirmOpen && (
+                    <div key="delete-modal" className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                        <div className="bg-input border border-border rounded-2xl p-6 max-w-md w-full">
+                            <h3 className="text-xl font-bold text-white mb-4">Delete Game?</h3>
+                            <p className="text-slate-400 mb-6">
+                                Are you sure you want to delete this game? This will soft-delete the game and it can be restored by a community admin or world admin.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsDeleteConfirmOpen(false)}
+                                    className="flex-1 bg-muted hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-colors"
+                                    disabled={isDeleting}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeleteGame}
+                                    className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
+                                    disabled={isDeleting}
+                                >
+                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </AnimatePresence>
         </div>
     );

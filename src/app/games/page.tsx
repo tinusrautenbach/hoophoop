@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trophy, Clock, Users, ArrowRight, Calendar, Settings } from 'lucide-react';
+import { Trophy, Clock, Users, ArrowRight, Calendar, Settings, Eye, Globe, Users2 } from 'lucide-react';
 import Link from 'next/link';
 
 type Game = {
@@ -13,7 +13,14 @@ type Game = {
     guestScore: number;
     status: 'scheduled' | 'live' | 'final';
     mode: 'simple' | 'advanced';
+    visibility: 'private' | 'public_general' | 'public_community';
     createdAt: string;
+    ownerName: string;
+    isOwner: boolean;
+    community?: {
+        id: string;
+        name: string;
+    } | null;
 };
 
 export default function GamesPage() {
@@ -36,7 +43,7 @@ export default function GamesPage() {
         <div className="max-w-4xl mx-auto p-6 space-y-8">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-black tracking-tighter uppercase italic text-orange-500">
-                    My Games
+                    Games
                 </h1>
                 <Link
                     href="/"
@@ -47,9 +54,9 @@ export default function GamesPage() {
             </div>
 
             {games.length === 0 ? (
-                <div className="bg-slate-800/40 p-12 rounded-3xl border border-slate-700 text-center space-y-4">
+                <div className="bg-card/40 p-12 rounded-3xl border border-border text-center space-y-4">
                     <Trophy size={48} className="mx-auto text-slate-600" />
-                    <p className="text-slate-400">No games found. Start your first game today!</p>
+                    <p className="text-slate-400">No games found. Create a new game or join a community to see games!</p>
                 </div>
             ) : (
                 <div className="grid gap-4">
@@ -57,7 +64,7 @@ export default function GamesPage() {
                         <Link
                             key={game.id}
                             href={`/game/${game.id}/scorer`}
-                            className="bg-slate-800/40 border border-slate-700 hover:border-orange-500/50 p-6 rounded-3xl transition-all group relative overflow-hidden"
+                            className="bg-card/40 border border-border hover:border-orange-500/50 p-6 rounded-3xl transition-all group relative overflow-hidden"
                         >
                             <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <ArrowRight className="text-orange-500" />
@@ -75,7 +82,7 @@ export default function GamesPage() {
                                             {game.homeScore} - {game.guestScore}
                                         </div>
                                         <div className={`text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded mt-1 ${game.status === 'live' ? 'bg-red-500 text-white animate-pulse' :
-                                                game.status === 'final' ? 'bg-slate-700 text-slate-300' : 'bg-slate-800 text-slate-500'
+                                                game.status === 'final' ? 'bg-muted text-slate-300' : 'bg-card text-slate-500'
                                             }`}>
                                             {game.status}
                                         </div>
@@ -87,7 +94,7 @@ export default function GamesPage() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-6 border-l border-slate-700/50 pl-6 h-full text-slate-500">
+                                <div className="flex items-center gap-6 border-l border-border/50 pl-6 h-full text-slate-500">
                                     <div className="flex flex-col items-end">
                                         <div className="flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest">
                                             <Calendar size={12} />
@@ -97,6 +104,28 @@ export default function GamesPage() {
                                             <Settings size={12} />
                                             {game.mode} Mode
                                         </div>
+                                        <div className={`flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest mt-1 px-1.5 py-0.5 rounded ${
+                                            game.visibility === 'private' ? 'bg-card text-slate-500' :
+                                            game.visibility === 'public_general' ? 'bg-green-900/30 text-green-500' :
+                                            'bg-blue-900/30 text-blue-500'
+                                        }`}>
+                                            {game.visibility === 'private' ? <Eye size={10} /> :
+                                             game.visibility === 'public_general' ? <Globe size={10} /> :
+                                             <Users2 size={10} />}
+                                            {game.visibility === 'private' ? 'Private' :
+                                             game.visibility === 'public_general' ? 'Public' : 'Community'}
+                                        </div>
+                                        {!game.isOwner && (
+                                            <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-1">
+                                                <span>by {game.ownerName}</span>
+                                            </div>
+                                        )}
+                                        {game.community && (
+                                            <div className="flex items-center gap-1 text-[10px] text-orange-500 mt-1">
+                                                <Users2 size={10} />
+                                                <span>{game.community.name}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { SignedIn, SignedOut, SignInButton } from '@/components/auth-provider';
+import { SignedIn, SignedOut, SignInButton, useAuth } from '@/components/auth-provider';
 import Link from 'next/link';
-import { School } from 'lucide-react';
+import { School, Radio } from 'lucide-react';
 
 type Team = {
   id: string;
   name: string;
   shortCode: string | null;
+  communityId: string | null;
   _count?: {
     memberships: number;
   };
@@ -17,6 +18,7 @@ type Team = {
 
 export default function LandingPage() {
   const router = useRouter();
+  const { userId } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -28,6 +30,7 @@ export default function LandingPage() {
   const [gameName, setGameName] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
   const [mode, setMode] = useState<'simple' | 'advanced'>('simple');
+  const [visibility, setVisibility] = useState<'private' | 'public_general' | 'public_community'>('private');
   const [isCreating, setIsCreating] = useState(false);
   const [periodSeconds, setPeriodSeconds] = useState(600); // 10 mins
   const [customMinutes, setCustomMinutes] = useState('10');
@@ -40,18 +43,22 @@ export default function LandingPage() {
     // Set default date to today in YYYY-MM-DD format
     setScheduledDate(new Date().toISOString().split('T')[0]);
 
-    fetch('/api/teams')
-      .then(res => res.json())
-      .then(data => {
-        console.log('Teams fetched:', data);
-        if (Array.isArray(data)) setTeams(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Failed to fetch teams:', err);
-        setLoading(false);
-      });
-  }, []);
+    if (userId) {
+      fetch('/api/teams')
+        .then(res => res.json())
+        .then(data => {
+          console.log('Teams fetched:', data);
+          if (Array.isArray(data)) setTeams(data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('Failed to fetch teams:', err);
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, [userId]);
 
   const handleCreateGame = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +78,21 @@ export default function LandingPage() {
 
     setIsCreating(true);
 
+    // Determine communityId from selected teams
+    let gameCommunityId = null;
+    if (homeTeamId && homeTeamId !== 'adhoc') {
+      const homeTeam = teams.find(t => t.id === homeTeamId);
+      if (homeTeam?.communityId) {
+        gameCommunityId = homeTeam.communityId;
+      }
+    }
+    if (!gameCommunityId && guestTeamId && guestTeamId !== 'adhoc') {
+      const guestTeam = teams.find(t => t.id === guestTeamId);
+      if (guestTeam?.communityId) {
+        gameCommunityId = guestTeam.communityId;
+      }
+    }
+
     const res = await fetch('/api/games', {
       method: 'POST',
       body: JSON.stringify({
@@ -81,6 +103,8 @@ export default function LandingPage() {
         name: gameName,
         scheduledDate,
         mode,
+        visibility,
+        communityId: gameCommunityId,
         periodSeconds: isCustomTime ? Number(customMinutes) * 60 : Number(periodSeconds),
         totalPeriods: Number(totalPeriods),
         totalTimeouts: Number(totalTimeouts),
@@ -118,16 +142,22 @@ export default function LandingPage() {
         </div>
 
         <SignedIn>
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center gap-4 mb-8 flex-wrap">
             <Link href="/communities">
-              <button className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border border-slate-700">
+              <button className="bg-card hover:bg-muted text-muted-foreground hover:text-white px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border border-border">
                 <School size={16} />
                 Manage Communities
               </button>
             </Link>
+            <Link href="/live">
+              <button className="bg-card hover:bg-muted text-orange-400 hover:text-orange-300 px-6 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all border border-border hover:border-orange-500/50">
+                <Radio size={16} />
+                Live Scores
+              </button>
+            </Link>
           </div>
 
-          <div className="bg-slate-800/40 p-10 rounded-3xl border border-slate-700 backdrop-blur-sm shadow-2xl relative overflow-hidden group">
+          <div className="bg-card/40 p-10 rounded-3xl border border-border backdrop-blur-sm shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-orange-600/20 transition-all duration-700"></div>
 
             <h2 className="text-2xl font-bold mb-8 text-left border-l-4 border-orange-500 pl-4">Setup New Game</h2>
@@ -147,7 +177,7 @@ export default function LandingPage() {
                       placeholder="e.g. Championship Final"
                       value={gameName}
                       onChange={e => setGameName(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                      className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-white"
                     />
                   </div>
                   <div className="space-y-4">
@@ -156,7 +186,7 @@ export default function LandingPage() {
                       type="date"
                       value={scheduledDate}
                       onChange={e => setScheduledDate(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-white"
+                      className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-white"
                     />
                   </div>
                 </div>
@@ -168,7 +198,7 @@ export default function LandingPage() {
                     <select
                       value={homeTeamId}
                       onChange={e => setHomeTeamId(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg"
+                      className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg text-white"
                     >
                       <option value="">Select a team...</option>
                       {teams.map(team => (
@@ -183,7 +213,7 @@ export default function LandingPage() {
                         placeholder="Enter Team Name"
                         value={homeTeamName}
                         onChange={e => setHomeTeamName(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 mt-2"
+                        className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 mt-2 text-white"
                         required
                       />
                     )}
@@ -195,7 +225,7 @@ export default function LandingPage() {
                     <select
                       value={guestTeamId}
                       onChange={e => setGuestTeamId(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg"
+                      className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg text-white"
                     >
                       <option value="">Select a team...</option>
                       {teams.map(team => (
@@ -213,7 +243,7 @@ export default function LandingPage() {
                         placeholder="Enter Opponent Name"
                         value={guestTeamName}
                         onChange={e => setGuestTeamName(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 mt-2"
+                        className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 mt-2 text-white"
                         required
                       />
                     )}
@@ -227,7 +257,7 @@ export default function LandingPage() {
                     <button
                       type="button"
                       onClick={() => setMode('simple')}
-                      className={`flex-1 p-4 rounded-2xl border-2 transition-all text-left ${mode === 'simple' ? 'border-orange-500 bg-orange-500/10' : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'}`}
+                      className={`flex-1 p-4 rounded-2xl border-2 transition-all text-left ${mode === 'simple' ? 'border-orange-500 bg-orange-500/10' : 'border-border bg-card/50 hover:border-muted'}`}
                     >
                       <div className={`font-bold ${mode === 'simple' ? 'text-orange-500' : 'text-slate-300'}`}>Simple</div>
                       <div className="text-[10px] text-slate-500 leading-tight mt-1">Score per individual (Home), Team score (Guest), Fouls, Time.</div>
@@ -235,10 +265,41 @@ export default function LandingPage() {
                     <button
                       type="button"
                       onClick={() => setMode('advanced')}
-                      className={`flex-1 p-4 rounded-2xl border-2 transition-all text-left ${mode === 'advanced' ? 'border-orange-500 bg-orange-500/10' : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'}`}
+                      className={`flex-1 p-4 rounded-2xl border-2 transition-all text-left ${mode === 'advanced' ? 'border-orange-500 bg-orange-500/10' : 'border-border bg-card/50 hover:border-muted'}`}
                     >
                       <div className={`font-bold ${mode === 'advanced' ? 'text-orange-500' : 'text-slate-300'}`}>Advanced</div>
                       <div className="text-[10px] text-slate-500 leading-tight mt-1">Full stats, substitution tracking, shot charting, periods.</div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Visibility Selection */}
+                <div className="space-y-4">
+                  <label className="text-xs uppercase font-bold tracking-widest text-slate-400">Game Visibility</label>
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setVisibility('private')}
+                      className={`flex-1 p-4 rounded-2xl border-2 transition-all text-left ${visibility === 'private' ? 'border-orange-500 bg-orange-500/10' : 'border-border bg-card/50 hover:border-muted'}`}
+                    >
+                      <div className={`font-bold ${visibility === 'private' ? 'text-orange-500' : 'text-slate-300'}`}>Private</div>
+                      <div className="text-[10px] text-slate-500 leading-tight mt-1">Only you and invited scorers can view and score.</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVisibility('public_general')}
+                      className={`flex-1 p-4 rounded-2xl border-2 transition-all text-left ${visibility === 'public_general' ? 'border-orange-500 bg-orange-500/10' : 'border-border bg-card/50 hover:border-muted'}`}
+                    >
+                      <div className={`font-bold ${visibility === 'public_general' ? 'text-orange-500' : 'text-slate-300'}`}>Public</div>
+                      <div className="text-[10px] text-slate-500 leading-tight mt-1">Visible to everyone on the live scores page.</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVisibility('public_community')}
+                      className={`flex-1 p-4 rounded-2xl border-2 transition-all text-left ${visibility === 'public_community' ? 'border-orange-500 bg-orange-500/10' : 'border-border bg-card/50 hover:border-muted'}`}
+                    >
+                      <div className={`font-bold ${visibility === 'public_community' ? 'text-orange-500' : 'text-slate-300'}`}>Community</div>
+                      <div className="text-[10px] text-slate-500 leading-tight mt-1">Visible on community portal if linked to one.</div>
                     </button>
                   </div>
                 </div>
@@ -249,7 +310,7 @@ export default function LandingPage() {
                     <select
                       value={totalPeriods}
                       onChange={e => setTotalPeriods(Number(e.target.value))}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg"
+                      className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg text-white"
                     >
                       <option value={1}>1 (Straight)</option>
                       <option value={2}>2 Halves</option>
@@ -261,7 +322,7 @@ export default function LandingPage() {
                     <select
                       value={totalTimeouts}
                       onChange={e => setTotalTimeouts(Number(e.target.value))}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg"
+                      className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg text-white"
                     >
                       {[1, 2, 3, 4, 5, 6, 7].map(num => (
                         <option key={num} value={num}>{num}</option>
@@ -280,7 +341,7 @@ export default function LandingPage() {
                           setPeriodSeconds(Number(e.target.value));
                         }
                       }}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg"
+                      className="w-full bg-input border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 appearance-none shadow-lg text-white"
                     >
                       <option value={300}>5 Mins</option>
                       <option value={480}>8 Mins</option>
@@ -295,7 +356,7 @@ export default function LandingPage() {
                           placeholder="Minutes"
                           value={customMinutes}
                           onChange={e => setCustomMinutes(e.target.value)}
-                          className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                          className="flex-1 bg-input border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-white"
                           min="1"
                         />
                         <span className="text-[10px] uppercase font-bold text-slate-500">Mins</span>
@@ -318,11 +379,19 @@ export default function LandingPage() {
 
         <SignedOut>
           <div className="space-y-6 pt-8">
-            <SignInButton mode="modal">
-              <button className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-12 rounded-2xl transition-all shadow-xl hover:shadow-orange-500/20 text-lg scale-105 active:scale-95">
-                Get Started Now
-              </button>
-            </SignInButton>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <SignInButton mode="modal">
+                <button className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-12 rounded-2xl transition-all shadow-xl hover:shadow-orange-500/20 text-lg scale-105 active:scale-95">
+                  Get Started Now
+                </button>
+              </SignInButton>
+              <Link href="/live">
+                <button className="bg-card hover:bg-muted text-orange-400 hover:text-orange-300 font-bold py-4 px-8 rounded-2xl transition-all border border-border hover:border-orange-500/50 text-lg flex items-center gap-2">
+                  <Radio size={18} />
+                  View Live Scores
+                </button>
+              </Link>
+            </div>
             <div className="text-slate-500 text-sm">
               Free to use. Real-time updates. Pro stats.
             </div>

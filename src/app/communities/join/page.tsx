@@ -83,7 +83,7 @@ function JoinContent() {
                     <p className="text-slate-500 mb-6">{error}</p>
                     <button 
                         onClick={() => router.push('/communities')}
-                        className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-bold transition-colors"
+                        className="bg-card hover:bg-muted text-white px-6 py-3 rounded-xl font-bold transition-colors"
                     >
                         Back to Communities
                     </button>

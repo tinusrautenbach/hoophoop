@@ -21,7 +21,19 @@ export default function TeamsPage() {
         fetch('/api/teams')
             .then(res => res.json())
             .then(data => {
-                setTeams(data);
+                if (Array.isArray(data)) {
+                    setTeams(data);
+                } else if (data.error) {
+                    console.error('Error fetching teams:', data.error);
+                    setTeams([]);
+                } else {
+                    setTeams([]);
+                }
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error('Failed to fetch teams:', err);
+                setTeams([]);
                 setLoading(false);
             });
     }, []);
@@ -55,7 +67,7 @@ export default function TeamsPage() {
 
             <div className="grid md:grid-cols-3 gap-6">
                 {/* Create Team Card */}
-                <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                <div className="bg-card/50 p-6 rounded-2xl border border-border">
                     <h2 className="text-xl font-semibold mb-4 text-orange-500">New Team</h2>
                     <form onSubmit={handleCreateTeam} className="space-y-4">
                         <div>
@@ -65,7 +77,7 @@ export default function TeamsPage() {
                                 value={name}
                                 onChange={e => setName(e.target.value)}
                                 placeholder="e.g. Bulls"
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
                                 required
                             />
                         </div>
@@ -77,7 +89,7 @@ export default function TeamsPage() {
                                 onChange={e => setShortCode(e.target.value)}
                                 placeholder="e.g. CHI"
                                 maxLength={3}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
                             />
                         </div>
                         <button
@@ -92,8 +104,8 @@ export default function TeamsPage() {
                 {/* Teams List */}
                 {teams.map(team => (
                     <Link key={team.id} href={`/teams/${team.id}`} className="group">
-                        <div className="bg-slate-800/30 p-6 rounded-2xl border border-slate-700 hover:border-orange-500 transition-all hover:scale-[1.02] h-full flex flex-col items-center justify-center text-center">
-                            <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center text-2xl font-bold mb-3 group-hover:bg-orange-500/20 group-hover:text-orange-500 transition-colors">
+                        <div className="bg-card/30 p-6 rounded-2xl border border-border hover:border-orange-500 transition-all hover:scale-[1.02] h-full flex flex-col items-center justify-center text-center">
+                            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center text-2xl font-bold mb-3 group-hover:bg-orange-500/20 group-hover:text-orange-500 transition-colors">
                                 {team.shortCode || team.name.slice(0, 3).toUpperCase()}
                             </div>
                             <h3 className="font-semibold text-lg">{team.name}</h3>

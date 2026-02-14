@@ -92,8 +92,8 @@ export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick, hideHe
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             className={cn(
-                                "flex flex-col bg-slate-900/40 rounded-xl border border-white/5 overflow-hidden transition-all",
-                                expandedId === event.id ? "ring-1 ring-orange-500/50 bg-slate-900 shadow-lg shadow-orange-500/10" : "hover:bg-slate-900/60"
+                                "flex flex-col bg-input/40 rounded-xl border border-white/5 overflow-hidden transition-all",
+                                expandedId === event.id ? "ring-1 ring-orange-500/50 bg-input shadow-lg shadow-orange-500/10" : "hover:bg-input/60"
                             )}
                         >
                             <div
@@ -129,7 +129,7 @@ export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick, hideHe
                                         {onEdit && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onEdit(event.id); }}
-                                                className="flex-1 py-6 flex flex-col items-center gap-2 bg-slate-800 hover:bg-slate-700 rounded-2xl text-slate-300 font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl ring-1 ring-white/10"
+                                                className="flex-1 py-6 flex flex-col items-center gap-2 bg-card hover:bg-muted rounded-2xl text-slate-300 font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl ring-1 ring-white/10"
                                             >
                                                 <Edit2 size={24} className="mb-1" />
                                                 Edit Action

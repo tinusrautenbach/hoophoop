@@ -50,6 +50,8 @@ describe('Teams and Members API Integration Tests', () => {
             const [athlete] = await db.insert(athletes).values({
                 ownerId: testUserId,
                 name: 'Test Player',
+                firstName: 'Test',
+                surname: 'Player',
             }).returning();
 
             expect(athlete).toBeDefined();
@@ -114,7 +116,9 @@ describe('Teams and Members API Integration Tests', () => {
         });
 
         it('should fetch team members via API', async () => {
-            const response = await fetch(`http://localhost:3000/api/teams/${apiTestTeamId}/members`);
+            const response = await fetch(`http://localhost:3030/api/teams/${apiTestTeamId}/members`, {
+                headers: { 'x-test-auth': 'true' }
+            });
             expect(response.status).toBe(200);
 
             const data = await response.json();
@@ -122,9 +126,12 @@ describe('Teams and Members API Integration Tests', () => {
         });
 
         it('should add a member via API', async () => {
-            const response = await fetch(`http://localhost:3000/api/teams/${apiTestTeamId}/members`, {
+            const response = await fetch(`http://localhost:3030/api/teams/${apiTestTeamId}/members`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-test-auth': 'true'
+                },
                 body: JSON.stringify({ name: 'API Test Player', number: '88' }),
             });
 
@@ -136,7 +143,9 @@ describe('Teams and Members API Integration Tests', () => {
         });
 
         it('should fetch members after adding', async () => {
-            const response = await fetch(`http://localhost:3000/api/teams/${apiTestTeamId}/members`);
+            const response = await fetch(`http://localhost:3030/api/teams/${apiTestTeamId}/members`, {
+                headers: { 'x-test-auth': 'true' }
+            });
             const data = await response.json();
 
             expect(data.length).toBeGreaterThan(0);

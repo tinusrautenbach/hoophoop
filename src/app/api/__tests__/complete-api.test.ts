@@ -19,7 +19,7 @@ describe('Complete Basketball App API Test Suite', () => {
     const testUserId = 'user_mock_123';
     let testTeamId: string;
     let testTeam2Id: string;
-    let testAthleteIds: string[] = [];
+    const testAthleteIds: string[] = [];
     let testMembershipIds: string[] = [];
     let testGameId: string;
 
@@ -121,17 +121,19 @@ describe('Complete Basketball App API Test Suite', () => {
     describe('Athletes API', () => {
         it('should create multiple athletes', async () => {
             const athleteData = [
-                { name: 'Test Player 1' },
-                { name: 'Test Player 2' },
-                { name: 'Test Player 3' },
-                { name: 'Test Player 4' },
-                { name: 'Test Player 5' },
+                { name: 'Test Player 1', firstName: 'Test', surname: 'Player 1' },
+                { name: 'Test Player 2', firstName: 'Test', surname: 'Player 2' },
+                { name: 'Test Player 3', firstName: 'Test', surname: 'Player 3' },
+                { name: 'Test Player 4', firstName: 'Test', surname: 'Player 4' },
+                { name: 'Test Player 5', firstName: 'Test', surname: 'Player 5' },
             ];
 
             for (const data of athleteData) {
                 const [athlete] = await db.insert(athletes).values({
                     ownerId: testUserId,
                     name: data.name,
+                    firstName: data.firstName,
+                    surname: data.surname,
                 }).returning();
 
                 expect(athlete).toBeDefined();
@@ -445,6 +447,8 @@ describe('Complete Basketball App API Test Suite', () => {
             const [freeAgent] = await db.insert(athletes).values({
                 ownerId: testUserId,
                 name: 'Free Agent',
+                firstName: 'Free',
+                surname: 'Agent',
             }).returning();
 
             const memberships = await db.query.teamMemberships.findMany({

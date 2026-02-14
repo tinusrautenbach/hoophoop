@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, POST } from '../route';
 import { db } from '@/db';
-import { athletes, playerHistory } from '@/db/schema';
+import { athletes, playerHistory, teamMemberships } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -46,11 +46,11 @@ describe('Players API Route', () => {
             expect(data).toEqual([]);
         });
 
-        it('should search players by query', async () => {
+        it('should search players by query on firstName/surname/name', async () => {
             (auth as any).mockReturnValue({ userId: 'user_123' });
             const mockPlayers = [
-                { id: 'player-1', name: 'Michael Jordan' },
-                { id: 'player-2', name: 'Jordan Poole' }
+                { id: 'player-1', name: 'Michael Jordan', firstName: 'Michael', surname: 'Jordan' },
+                { id: 'player-2', name: 'Jordan Poole', firstName: 'Jordan', surname: 'Poole' }
             ];
             (db.query.athletes.findMany as any).mockResolvedValue(mockPlayers);
 
@@ -62,17 +62,30 @@ describe('Players API Route', () => {
             expect(db.query.athletes.findMany).toHaveBeenCalled();
         });
 
+        it('should scope search to community when communityId provided', async () => {
+            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findMany as any).mockResolvedValue([
+                { id: 'player-1', name: 'Community Player', firstName: 'Community', surname: 'Player', communityId: 'comm-1' }
+            ]);
+
+            const response = await GET(new Request('http://localhost/api/players?q=Community&communityId=comm-1'));
+            const data = await response.json();
+
+            expect(response.status).toBe(200);
+            expect(db.query.athletes.findMany).toHaveBeenCalled();
+        });
+
         it('should filter inactive players by default', async () => {
             (auth as any).mockReturnValue({ userId: 'user_123' });
             (db.query.athletes.findMany as any).mockResolvedValue([
-                { id: 'player-1', name: 'Active Player', status: 'active' }
+                { id: 'player-1', name: 'Active Player', firstName: 'Active', surname: 'Player', status: 'active' }
             ]);
 
             const response = await GET(new Request('http://localhost/api/players'));
             expect(response.status).toBe(200);
         });
 
-        it('should include inactive players when requested', async () => {
+        it('should include inactive players when requested (but exclude merged)', async () => {
             (auth as any).mockReturnValue({ userId: 'user_123' });
             (db.query.athletes.findMany as any).mockResolvedValue([
                 { id: 'player-1', name: 'Active Player', status: 'active' },
@@ -89,12 +102,12 @@ describe('Players API Route', () => {
             (auth as any).mockReturnValue({ userId: null });
             const response = await POST(new Request('http://localhost/api/players', {
                 method: 'POST',
-                body: JSON.stringify({ name: 'New Player' })
+                body: JSON.stringify({ firstName: 'New', surname: 'Player' })
             }));
             expect(response.status).toBe(401);
         });
 
-        it('should return 400 if name is missing', async () => {
+        it('should return 400 if firstName and name are both missing', async () => {
             (auth as any).mockReturnValue({ userId: 'user_123' });
             const response = await POST(new Request('http://localhost/api/players', {
                 method: 'POST',
@@ -103,11 +116,13 @@ describe('Players API Route', () => {
             expect(response.status).toBe(400);
         });
 
-        it('should create a new player', async () => {
+        it('should create a new player with firstName and surname', async () => {
             (auth as any).mockReturnValue({ userId: 'user_123' });
             const mockPlayer = {
                 id: 'player-1',
                 name: 'New Player',
+                firstName: 'New',
+                surname: 'Player',
                 email: null,
                 birthDate: null,
                 status: 'active',
@@ -122,12 +137,40 @@ describe('Players API Route', () => {
 
             const response = await POST(new Request('http://localhost/api/players', {
                 method: 'POST',
-                body: JSON.stringify({ name: 'New Player' })
+                body: JSON.stringify({ firstName: 'New', surname: 'Player' })
             }));
             const data = await response.json();
 
             expect(response.status).toBe(200);
             expect(data.name).toBe('New Player');
+            expect(data.firstName).toBe('New');
+            expect(data.surname).toBe('Player');
+        });
+
+        it('should create a player with legacy name field (backward compat)', async () => {
+            (auth as any).mockReturnValue({ userId: 'user_123' });
+            const mockPlayer = {
+                id: 'player-1',
+                name: 'Legacy Player',
+                firstName: 'Legacy',
+                surname: 'Player',
+                status: 'active'
+            };
+
+            (db.insert as any).mockReturnValue({
+                values: vi.fn().mockReturnValue({
+                    returning: vi.fn().mockResolvedValue([mockPlayer]),
+                }),
+            });
+
+            const response = await POST(new Request('http://localhost/api/players', {
+                method: 'POST',
+                body: JSON.stringify({ name: 'Legacy Player' })
+            }));
+            const data = await response.json();
+
+            expect(response.status).toBe(200);
+            expect(data.name).toBe('Legacy Player');
         });
 
         it('should create player with optional fields', async () => {
@@ -135,6 +178,8 @@ describe('Players API Route', () => {
             const mockPlayer = {
                 id: 'player-1',
                 name: 'Test Player',
+                firstName: 'Test',
+                surname: 'Player',
                 email: 'test@example.com',
                 birthDate: '2000-01-01',
                 status: 'active'
@@ -149,7 +194,8 @@ describe('Players API Route', () => {
             const response = await POST(new Request('http://localhost/api/players', {
                 method: 'POST',
                 body: JSON.stringify({
-                    name: 'Test Player',
+                    firstName: 'Test',
+                    surname: 'Player',
                     email: 'test@example.com',
                     birthDate: '2000-01-01'
                 })

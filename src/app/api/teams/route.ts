@@ -15,6 +15,15 @@ export async function GET() {
         const userTeams = await db.query.teams.findMany({
             where: eq(teams.ownerId, userId),
             orderBy: (teams, { desc }) => [desc(teams.createdAt)],
+            columns: {
+                id: true,
+                ownerId: true,
+                name: true,
+                shortCode: true,
+                color: true,
+                createdAt: true,
+                communityId: true,
+            },
         });
 
         return NextResponse.json(userTeams);

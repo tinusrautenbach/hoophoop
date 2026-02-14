@@ -13,7 +13,7 @@ export const SignedOut = ({ children }: { children: React.ReactNode }) => {
 
 export const UserButton = () => {
     return (
-        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold">
+        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
             JD
         </div>
     );

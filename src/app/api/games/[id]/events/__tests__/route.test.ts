@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST, DELETE, PATCH } from '../route';
 import { db } from '@/db';
-import { games, gameEvents } from '@/db/schema';
+import { games, gameEvents, gameRosters } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -11,6 +11,9 @@ vi.mock('@/db', () => ({
                 findFirst: vi.fn(),
             },
             gameEvents: {
+                findFirst: vi.fn(),
+            },
+            gameRosters: {
                 findFirst: vi.fn(),
             },
         },
@@ -186,6 +189,46 @@ describe('Games [id] Events API Route', () => {
 
             expect(response.status).toBe(200);
             expect(db.delete).toHaveBeenCalled();
+        });
+
+        it('should recalculate score when score event is deleted', async () => {
+            (auth as any).mockReturnValue({ userId: 'user_owner' });
+            
+            // Mock finding the event with its game
+            const mockEvent = {
+                id: 'event-1',
+                gameId: 'game-1',
+                type: 'score',
+                team: 'home',
+                value: 2,
+                player: 'Player 1',
+                game: { 
+                    ownerId: 'user_owner',
+                    homeScore: 10,
+                    guestScore: 5
+                }
+            };
+            
+            (db.query.gameEvents.findFirst as any).mockResolvedValue(mockEvent);
+
+            // Mock finding the roster entry
+            (db.query.gameRosters.findFirst as any).mockResolvedValue({
+                id: 'roster-1',
+                gameId: 'game-1',
+                name: 'Player 1',
+                points: 10
+            });
+
+            const response = await DELETE(new Request('http://localhost?eventId=event-1'), { 
+                params: Promise.resolve({ id: 'game-1' }) 
+            });
+
+            expect(response.status).toBe(200);
+            
+            // Should update game score
+            expect(db.update).toHaveBeenCalledWith(games);
+            // Should update roster points
+            expect(db.update).toHaveBeenCalledWith(gameRosters);
         });
     });
 

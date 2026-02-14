@@ -4,8 +4,8 @@ import Link from 'next/link';
 export default function OpenSourcePage() {
     return (
         <div className="flex flex-col items-center justify-center min-h-[80vh] p-6 text-center">
-            <div className="bg-slate-800/50 p-12 rounded-3xl border border-slate-700 backdrop-blur-sm max-w-lg w-full">
-                <div className="bg-slate-700/50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="bg-card/50 p-12 rounded-3xl border border-border backdrop-blur-sm max-w-lg w-full">
+                <div className="bg-muted/50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
                     <Github className="w-10 h-10 text-white" />
                 </div>
                 <h1 className="text-4xl font-bold mb-4">Open Source</h1>

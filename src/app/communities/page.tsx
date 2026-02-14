@@ -48,8 +48,8 @@ export default function CommunitiesPage() {
             </div>
 
             {communities.length === 0 ? (
-                <div className="text-center py-12 bg-slate-900/50 rounded-3xl border border-white/5">
-                    <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="text-center py-12 bg-input/50 rounded-3xl border border-white/5">
+                    <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mx-auto mb-4">
                         <School size={32} className="text-slate-500" />
                     </div>
                     <h3 className="text-xl font-bold mb-2">No Communities Yet</h3>
@@ -66,12 +66,12 @@ export default function CommunitiesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {communities.map((community) => (
                         <Link key={community.id} href={`/communities/${community.id}`}>
-                            <div className="bg-slate-900 border border-slate-800 hover:border-orange-500/50 p-6 rounded-2xl transition-all group">
+                            <div className="bg-input border border-border hover:border-orange-500/50 p-6 rounded-2xl transition-all group">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
                                         <Trophy size={24} className="text-orange-500" />
                                     </div>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest bg-slate-800 text-slate-400 px-2 py-1 rounded">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest bg-card text-slate-400 px-2 py-1 rounded">
                                         {community.type}
                                     </span>
                                 </div>

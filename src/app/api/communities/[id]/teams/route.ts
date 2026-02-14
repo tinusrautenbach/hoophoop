@@ -11,28 +11,33 @@ export async function GET(
     const { userId } = await auth();
     const { id: communityId } = await params;
 
-    if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     try {
-        const membership = await db.query.communityMembers.findFirst({
-            where: and(
-                eq(communityMembers.communityId, communityId),
-                eq(communityMembers.userId, userId)
-            ),
-        });
+        // Check if request is for public portal (no auth header from middleware)
+        const isPublicRequest = !userId;
+        
+        if (!isPublicRequest) {
+            // For authenticated requests, check membership
+            const membership = await db.query.communityMembers.findFirst({
+                where: and(
+                    eq(communityMembers.communityId, communityId),
+                    eq(communityMembers.userId, userId)
+                ),
+            });
 
-        if (!membership) {
-            return NextResponse.json({ error: 'Not a community member' }, { status: 403 });
+            if (!membership) {
+                return NextResponse.json({ error: 'Not a community member' }, { status: 403 });
+            }
         }
 
         const communityTeams = await db.query.teams.findMany({
             where: eq(teams.communityId, communityId),
             orderBy: (teams, { desc }) => [desc(teams.createdAt)],
+            with: {
+                memberships: true,
+            }
         });
 
-        return NextResponse.json(communityTeams);
+        return NextResponse.json({ teams: communityTeams });
     } catch (error) {
         console.error('Error fetching community teams:', error);
         return NextResponse.json({ error: 'Failed to fetch teams' }, { status: 500 });

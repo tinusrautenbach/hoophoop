@@ -147,7 +147,7 @@ export function AdvancedScorer({ game, updateGame, handleScore, addEvent }: Adva
     };
 
     return (
-        <div className="flex-1 flex flex-col overflow-hidden bg-slate-950">
+        <div className="flex-1 flex flex-col overflow-hidden bg-background">
             <DndContext onDragEnd={handleDragEnd}>
                 <div className="flex-1 overflow-y-auto p-4 space-y-6">
                     {/* On Court Section */}
@@ -202,7 +202,7 @@ export function AdvancedScorer({ game, updateGame, handleScore, addEvent }: Adva
                     </section>
 
                     {/* Action Palette */}
-                    <section className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800">
+                    <section className="bg-input/50 rounded-2xl p-4 border border-border">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Quick Actions</h3>
                             {selectedPlayerId && (
@@ -216,15 +216,15 @@ export function AdvancedScorer({ game, updateGame, handleScore, addEvent }: Adva
                             <ActionButton icon={<span className="text-xl font-black">+2</span>} label="2PT" color="bg-orange-600" onClick={() => handleAction('score-2')} disabled={false} />
                             <ActionButton icon={<span className="text-xl font-black">+3</span>} label="3PT" color="bg-orange-700" onClick={() => handleAction('score-3')} disabled={false} />
 
-                            <ActionButton icon={<span className="text-xl font-black text-slate-400">-1</span>} label="Miss FT" color="bg-slate-800" onClick={() => handleAction('miss-1')} disabled={false} />
-                            <ActionButton icon={<span className="text-xl font-black text-slate-400">-2</span>} label="Miss 2" color="bg-slate-800" onClick={() => handleAction('miss-2')} disabled={false} />
-                            <ActionButton icon={<span className="text-xl font-black text-slate-400">-3</span>} label="Miss 3" color="bg-slate-800" onClick={() => handleAction('miss-3')} disabled={false} />
+                            <ActionButton icon={<span className="text-xl font-black text-slate-400">-1</span>} label="Miss FT" color="bg-card" onClick={() => handleAction('miss-1')} disabled={false} />
+                            <ActionButton icon={<span className="text-xl font-black text-slate-400">-2</span>} label="Miss 2" color="bg-card" onClick={() => handleAction('miss-2')} disabled={false} />
+                            <ActionButton icon={<span className="text-xl font-black text-slate-400">-3</span>} label="Miss 3" color="bg-card" onClick={() => handleAction('miss-3')} disabled={false} />
 
                             <ActionButton icon={<Target size={18} />} label="Rebound" color="bg-blue-600" onClick={() => handleAction('Rebound')} disabled={!selectedPlayerId} />
                             <ActionButton icon={<Move size={18} />} label="Assist" color="bg-green-600" onClick={() => handleAction('Assist')} disabled={!selectedPlayerId} />
                             <ActionButton icon={<ShieldAlert size={18} />} label="Steal" color="bg-purple-600" onClick={() => handleAction('Steal')} disabled={!selectedPlayerId} />
                             <ActionButton icon={<ShieldAlert size={18} />} label="Block" color="bg-red-600" onClick={() => handleAction('Block')} disabled={!selectedPlayerId} />
-                            <ActionButton icon={<RotateCcw size={18} />} label="Turnover" color="bg-slate-700" onClick={() => handleAction('Turnover')} disabled={!selectedPlayerId} />
+                            <ActionButton icon={<RotateCcw size={18} />} label="Turnover" color="bg-muted" onClick={() => handleAction('Turnover')} disabled={!selectedPlayerId} />
                             <ActionButton icon={<Timer size={18} />} label="Foul" color="bg-orange-600" onClick={() => handleAction('Foul')} disabled={!selectedPlayerId} />
                         </div>
                     </section>
@@ -246,7 +246,7 @@ function CourtSlot({ index, player, isSelected, onSelect, onBench }: { index: nu
             className={cn(
                 "aspect-square rounded-2xl border-2 flex flex-col items-center justify-center transition-all cursor-pointer",
                 isOver ? "border-orange-500 bg-orange-500/10 scale-105" :
-                    isSelected ? "border-orange-500 bg-orange-500/20 ring-2 ring-orange-500/50" : "border-slate-800 bg-slate-900",
+                    isSelected ? "border-orange-500 bg-orange-500/20 ring-2 ring-orange-500/50" : "border-border bg-input",
                 !player && "border-dashed opacity-50"
             )}
         >
@@ -257,7 +257,7 @@ function CourtSlot({ index, player, isSelected, onSelect, onBench }: { index: nu
 
                     <button
                         onClick={(e) => { e.stopPropagation(); onBench(); }}
-                        className="absolute -top-1 -right-1 bg-slate-800 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute -top-1 -right-1 bg-card rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                         <RotateCcw size={10} />
                     </button>
@@ -285,7 +285,7 @@ function DraggablePlayer({ player }: { player: RosterEntry }) {
             {...listeners}
             {...attributes}
             className={cn(
-                "bg-slate-800 border border-slate-700 px-3 py-2 rounded-xl flex items-center gap-3 active:scale-95 transition-all cursor-grab",
+                "bg-card border border-border px-3 py-2 rounded-xl flex items-center gap-3 active:scale-95 transition-all cursor-grab",
                 isDragging && "opacity-50 z-50 ring-2 ring-orange-500"
             )}
         >
@@ -301,7 +301,7 @@ function ActionButton({ icon, label, color, onClick, disabled }: { icon: React.R
             disabled={disabled}
             onClick={onClick}
             className={cn(
-                "flex flex-col items-center justify-center p-4 rounded-xl gap-2 active:scale-95 transition-all bg-slate-800 border border-slate-700 hover:border-slate-600",
+                "flex flex-col items-center justify-center p-4 rounded-xl gap-2 active:scale-95 transition-all bg-card border border-border hover:border-slate-600",
                 disabled && "opacity-20 grayscale pointer-events-none"
             )}
         >
