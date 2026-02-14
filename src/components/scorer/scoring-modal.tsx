@@ -41,6 +41,17 @@ export function ScoringModal({ game, scoringFor, onClose, onScore }: ScoringModa
 
     // Fill remaining slots if less than 5 active players (shouldn't happen with proper bench selection)
     const slots = [...activePlayers];
+
+    // When guest team is selected, skip player selection and score for team only
+    const handleTeamSelect = (team: 'home' | 'guest') => {
+        if (team === 'guest') {
+            // For opponent/guest team, skip player selection and score for team
+            onScore(null, team);
+        } else {
+            // For home team, show player selection
+            setSelectedTeam(team);
+        }
+    };
     
     return (
         <motion.div
@@ -71,18 +82,20 @@ export function ScoringModal({ game, scoringFor, onClose, onScore }: ScoringModa
                     /* Team Selection */
                     <div className="grid grid-cols-1 gap-4 flex-1">
                         <button
-                            onClick={() => setSelectedTeam('home')}
+                            onClick={() => handleTeamSelect('home')}
                             className="bg-orange-600/10 border-2 border-orange-500/50 hover:bg-orange-600/20 rounded-3xl p-8 flex flex-col items-center justify-center gap-4 transition-all active:scale-95"
                         >
                             <div className="text-4xl font-black text-orange-500">{game.homeTeamName}</div>
                             <div className="text-sm font-bold uppercase tracking-widest text-orange-500/50">Home Team</div>
+                            <div className="text-xs text-slate-500">Select player</div>
                         </button>
                         <button
-                            onClick={() => setSelectedTeam('guest')}
+                            onClick={() => handleTeamSelect('guest')}
                             className="bg-card/50 border-2 border-border hover:bg-card rounded-3xl p-8 flex flex-col items-center justify-center gap-4 transition-all active:scale-95"
                         >
                             <div className="text-4xl font-black text-slate-300">{game.guestTeamName}</div>
                             <div className="text-sm font-bold uppercase tracking-widest text-slate-500">Guest Team</div>
+                            <div className="text-xs text-orange-400">Quick score (no player)</div>
                         </button>
                     </div>
                 ) : (
@@ -112,17 +125,17 @@ export function ScoringModal({ game, scoringFor, onClose, onScore }: ScoringModa
                             </button>
                         ))}
 
-                        {/* 6th Slot: Opponent (Switch Team) */}
+                        {/* 6th Slot: Opponent (Switch to Guest and Score) */}
                         <button
-                            onClick={() => setSelectedTeam(selectedTeam === 'home' ? 'guest' : 'home')}
+                            onClick={() => onScore(null, 'guest')}
                             className="rounded-2xl flex flex-col items-center justify-center p-4 transition-all active:scale-95 bg-card border-2 border-dashed border-slate-600 group"
                         >
                             <ArrowLeftRight size={32} className="text-slate-500 mb-2 group-hover:text-white transition-colors" />
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 group-hover:text-white transition-colors">
                                 Opponent
                             </span>
-                            <span className="text-[8px] font-bold uppercase text-slate-600">
-                                Switch to {selectedTeam === 'home' ? game.guestTeamName : game.homeTeamName}
+                            <span className="text-[8px] font-bold uppercase text-orange-400">
+                                Quick score {game.guestTeamName}
                             </span>
                         </button>
                     </div>
