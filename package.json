@@ -7,9 +7,9 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "nodemon server.ts --workspaces=false",
-    "build": "next build --workspaces=false",
-    "start": "next start --workspaces=false",
+    "dev": "nodemon server.ts",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint",
     "test": "vitest"
   },
