@@ -58,6 +58,7 @@ type Game = {
 type PlayerStats = {
     points: number;
     fouls: number;
+    minutes: number;
     // Shooting stats
     fgMade: number;
     fgAttempted: number;
@@ -154,6 +155,7 @@ export default function BoxScorePage() {
             playerStats[player.name] = {
                 points: 0,
                 fouls: 0,
+                minutes: 0,
                 fgMade: 0,
                 fgAttempted: 0,
                 fgPercentage: 0,
@@ -181,6 +183,7 @@ export default function BoxScorePage() {
                 playerStats[playerName] = {
                     points: 0,
                     fouls: 0,
+                    minutes: 0,
                     fgMade: 0,
                     fgAttempted: 0,
                     fgPercentage: 0,
@@ -247,6 +250,83 @@ export default function BoxScorePage() {
                 }
             });
         }
+
+        // Calculate minutes played for each player
+        // Track when each player is on the court
+        const playerOnCourt: { [key: string]: { period: number; clockAt: number } | null } = {};
+        roster.forEach(player => {
+            playerOnCourt[player.name] = null;
+        });
+
+        // Get all team events sorted by time (oldest first)
+        const sortedEvents = [...events].sort((a, b) => {
+            if (a.period !== b.period) return a.period - b.period;
+            return b.clockAt - a.clockAt; // Higher clockAt = earlier in period
+        });
+
+        // Determine period length (default to 600 seconds = 10 minutes)
+        const periodLength = 600;
+
+        // Track active players at the start of each period
+        let lastPeriodEndClock: { [key: number]: number } = {};
+
+        sortedEvents.forEach(event => {
+            const playerName = event.player;
+            if (!playerName || !playerStats[playerName]) return;
+
+            if (event.type === 'period_start') {
+                // At period start, any active player starts playing
+                roster.filter(p => p.isActive).forEach(p => {
+                    playerOnCourt[p.name] = { period: event.period, clockAt: periodLength };
+                });
+            } else if (event.type === 'period_end') {
+                // At period end, all players stop playing
+                Object.keys(playerOnCourt).forEach(name => {
+                    if (playerOnCourt[name]) {
+                        const timeOnCourt = periodLength - event.clockAt;
+                        playerStats[name].minutes += timeOnCourt / 60;
+                        playerOnCourt[name] = null;
+                    }
+                });
+                lastPeriodEndClock[event.period] = event.clockAt;
+            } else if (event.type === 'sub') {
+                // Handle substitutions
+                const isSubbingIn = event.description?.includes(' In') || event.description?.endsWith(' In');
+                const isSubbingOut = event.description?.includes(' Benched') || event.description?.endsWith(' Benched');
+
+                if (isSubbingIn && !playerOnCourt[playerName]) {
+                    // Player entering the court
+                    playerOnCourt[playerName] = { period: event.period, clockAt: event.clockAt };
+                } else if (isSubbingOut && playerOnCourt[playerName]) {
+                    // Player leaving the court
+                    const startTime = playerOnCourt[playerName]!;
+                    if (startTime.period === event.period) {
+                        const timeOnCourt = startTime.clockAt - event.clockAt;
+                        playerStats[playerName].minutes += timeOnCourt / 60;
+                    }
+                    playerOnCourt[playerName] = null;
+                }
+            }
+        });
+
+        // Handle players still on court at game end
+        const lastPeriod = game.currentPeriod;
+        const lastClock = sortedEvents.length > 0 ? sortedEvents[sortedEvents.length - 1].clockAt : periodLength;
+        Object.keys(playerOnCourt).forEach(name => {
+            if (playerOnCourt[name]) {
+                const startTime = playerOnCourt[name]!;
+                if (startTime.period === lastPeriod) {
+                    const timeOnCourt = startTime.clockAt - lastClock;
+                    playerStats[name].minutes += timeOnCourt / 60;
+                }
+                playerOnCourt[name] = null;
+            }
+        });
+
+        // Round minutes to 1 decimal place
+        Object.keys(playerStats).forEach(name => {
+            playerStats[name].minutes = Math.round(playerStats[name].minutes * 10) / 10;
+        });
 
         // Calculate percentages for each player
         Object.keys(playerStats).forEach(playerName => {
@@ -435,7 +515,7 @@ export default function BoxScorePage() {
         }
         .table-header {
             display: grid;
-            grid-template-columns: 35px 1fr 45px 45px 55px 55px 55px;
+            grid-template-columns: 35px 1fr 45px 45px 45px 55px 55px 55px;
             gap: 6px;
             padding: 8px 0;
             border-bottom: 1px solid #334155;
@@ -452,7 +532,7 @@ export default function BoxScorePage() {
         }
         .player-row {
             display: grid;
-            grid-template-columns: 35px 1fr 45px 45px 55px 55px 55px;
+            grid-template-columns: 35px 1fr 45px 45px 45px 55px 55px 55px;
             gap: 6px;
             padding: 10px 0;
             border-bottom: 1px solid #334155;
@@ -612,15 +692,20 @@ export default function BoxScorePage() {
                         <div>Player</div>
                         <div>PTS</div>
                         <div>FL</div>
+                        <div>MIN</div>
                         <div>FG%</div>
                         <div>3PT%</div>
                         <div>FT%</div>
                     </div>
                     ${homeRoster
-                .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0) || parseInt(a.number) - parseInt(b.number))
+                .sort((a, b) => {
+                    const aStats = homeStats.playerStats[a.name] || { points: 0 };
+                    const bStats = homeStats.playerStats[b.name] || { points: 0 };
+                    return bStats.points - aStats.points || parseInt(a.number) - parseInt(b.number);
+                })
                 .map(p => {
                     const stats = homeStats.playerStats[p.name] || {
-                        points: 0, fouls: 0, fgMade: 0, fgAttempted: 0, fgPercentage: 0,
+                        points: 0, fouls: 0, minutes: 0, fgMade: 0, fgAttempted: 0, fgPercentage: 0,
                         threePtMade: 0, threePtAttempted: 0, threePtPercentage: 0,
                         ftMade: 0, ftAttempted: 0, ftPercentage: 0
                     };
@@ -633,6 +718,7 @@ export default function BoxScorePage() {
                             </div>
                             <div class="stat-cell" style="color: ${stats.points > 0 ? '#fb923c' : '#475569'};">${stats.points}</div>
                             <div class="stat-cell" style="color: ${stats.fouls >= 5 ? '#ef4444' : stats.fouls > 0 ? '#94a3b8' : '#475569'};">${stats.fouls}</div>
+                            <div class="stat-cell" style="color: ${stats.minutes > 0 ? '#fb923c' : '#475569'};">${stats.minutes}</div>
                             <div class="shooting-cell">
                                 <div class="shooting-made" style="color: ${stats.fgMade > 0 ? '#fb923c' : '#475569'};">${stats.fgMade}/${stats.fgAttempted}</div>
                                 <div class="shooting-pct">${stats.fgPercentage}%</div>
@@ -676,15 +762,20 @@ export default function BoxScorePage() {
                         <div>Player</div>
                         <div>PTS</div>
                         <div>FL</div>
+                        <div>MIN</div>
                         <div>FG%</div>
                         <div>3PT%</div>
                         <div>FT%</div>
                     </div>
                     ${guestRoster
-                .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0) || parseInt(a.number) - parseInt(b.number))
+                .sort((a, b) => {
+                    const aStats = guestStats.playerStats[a.name] || { points: 0 };
+                    const bStats = guestStats.playerStats[b.name] || { points: 0 };
+                    return bStats.points - aStats.points || parseInt(a.number) - parseInt(b.number);
+                })
                 .map(p => {
                     const stats = guestStats.playerStats[p.name] || {
-                        points: 0, fouls: 0, fgMade: 0, fgAttempted: 0, fgPercentage: 0,
+                        points: 0, fouls: 0, minutes: 0, fgMade: 0, fgAttempted: 0, fgPercentage: 0,
                         threePtMade: 0, threePtAttempted: 0, threePtPercentage: 0,
                         ftMade: 0, ftAttempted: 0, ftPercentage: 0
                     };
@@ -697,6 +788,7 @@ export default function BoxScorePage() {
                             </div>
                             <div class="stat-cell" style="color: ${stats.points > 0 ? '#fff' : '#475569'};">${stats.points}</div>
                             <div class="stat-cell" style="color: ${stats.fouls >= 5 ? '#ef4444' : stats.fouls > 0 ? '#94a3b8' : '#475569'};">${stats.fouls}</div>
+                            <div class="stat-cell" style="color: ${stats.minutes > 0 ? '#fff' : '#475569'};">${stats.minutes}</div>
                             <div class="shooting-cell">
                                 <div class="shooting-made" style="color: ${stats.fgMade > 0 ? '#fff' : '#475569'};">${stats.fgMade}/${stats.fgAttempted}</div>
                                 <div class="shooting-pct">${stats.fgPercentage}%</div>
@@ -886,20 +978,25 @@ export default function BoxScorePage() {
                     {/* Home Players Table */}
                     <div className="overflow-x-auto">
                         <div className="min-w-[600px]">
-                            <div className="grid grid-cols-[40px_1fr_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 py-2 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 text-center">
+                            <div className="grid grid-cols-[40px_1fr_50px_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 py-2 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 text-center">
                                 <div className="text-left">#</div>
                                 <div className="text-left">Player</div>
                                 <div>PTS</div>
                                 <div>FL</div>
+                                <div>MIN</div>
                                 <div>FG%</div>
                                 <div>3PT%</div>
                                 <div>FT%</div>
                             </div>
                             {homeRoster
-                                .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0) || parseInt(a.number) - parseInt(b.number))
+                                .sort((a, b) => {
+                                    const aStats = homeStats.playerStats[a.name] || { points: 0 };
+                                    const bStats = homeStats.playerStats[b.name] || { points: 0 };
+                                    return bStats.points - aStats.points || parseInt(a.number) - parseInt(b.number);
+                                })
                                 .map((player) => {
                                     const stats = homeStats.playerStats[player.name] || {
-                                        points: 0, fouls: 0, fgMade: 0, fgAttempted: 0, fgPercentage: 0,
+                                        points: 0, fouls: 0, minutes: 0, fgMade: 0, fgAttempted: 0, fgPercentage: 0,
                                         threePtMade: 0, threePtAttempted: 0, threePtPercentage: 0,
                                         ftMade: 0, ftAttempted: 0, ftPercentage: 0
                                     };
@@ -909,7 +1006,7 @@ export default function BoxScorePage() {
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             className={cn(
-                                                "grid grid-cols-[40px_1fr_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-3 rounded-lg sm:rounded-xl items-center text-center",
+                                                "grid grid-cols-[40px_1fr_50px_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-3 rounded-lg sm:rounded-xl items-center text-center",
                                                 player.isActive
                                                     ? "bg-orange-500/10 border border-orange-500/20"
                                                     : "bg-slate-900/30 border border-slate-800/50 opacity-60"
@@ -937,6 +1034,12 @@ export default function BoxScorePage() {
                                                 stats.fouls >= 5 ? "text-red-500" : stats.fouls > 0 ? "text-slate-300" : "text-slate-600"
                                             )}>
                                                 {stats.fouls}
+                                            </div>
+                                            <div className={cn(
+                                                "text-sm sm:text-base font-bold",
+                                                stats.minutes > 0 ? "text-orange-500" : "text-slate-600"
+                                            )}>
+                                                {stats.minutes}
                                             </div>
                                             {/* FG% */}
                                             <div className="text-center">
@@ -1000,20 +1103,25 @@ export default function BoxScorePage() {
                     {/* Guest Players Table */}
                     <div className="overflow-x-auto">
                         <div className="min-w-[600px]">
-                            <div className="grid grid-cols-[40px_1fr_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 py-2 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 text-center">
+                            <div className="grid grid-cols-[40px_1fr_50px_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 py-2 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 text-center">
                                 <div className="text-left">#</div>
                                 <div className="text-left">Player</div>
                                 <div>PTS</div>
                                 <div>FL</div>
+                                <div>MIN</div>
                                 <div>FG%</div>
                                 <div>3PT%</div>
                                 <div>FT%</div>
                             </div>
                             {guestRoster
-                                .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0) || parseInt(a.number) - parseInt(b.number))
+                                .sort((a, b) => {
+                                    const aStats = guestStats.playerStats[a.name] || { points: 0 };
+                                    const bStats = guestStats.playerStats[b.name] || { points: 0 };
+                                    return bStats.points - aStats.points || parseInt(a.number) - parseInt(b.number);
+                                })
                                 .map((player) => {
                                     const stats = guestStats.playerStats[player.name] || {
-                                        points: 0, fouls: 0, fgMade: 0, fgAttempted: 0, fgPercentage: 0,
+                                        points: 0, fouls: 0, minutes: 0, fgMade: 0, fgAttempted: 0, fgPercentage: 0,
                                         threePtMade: 0, threePtAttempted: 0, threePtPercentage: 0,
                                         ftMade: 0, ftAttempted: 0, ftPercentage: 0
                                     };
@@ -1023,7 +1131,7 @@ export default function BoxScorePage() {
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             className={cn(
-                                                "grid grid-cols-[40px_1fr_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-3 rounded-lg sm:rounded-xl items-center text-center",
+                                                "grid grid-cols-[40px_1fr_50px_50px_50px_70px_70px_70px] gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-3 rounded-lg sm:rounded-xl items-center text-center",
                                                 player.isActive
                                                     ? "bg-white/5 border border-white/10"
                                                     : "bg-slate-900/30 border border-slate-800/50 opacity-60"
@@ -1051,6 +1159,12 @@ export default function BoxScorePage() {
                                                 stats.fouls >= 5 ? "text-red-500" : stats.fouls > 0 ? "text-slate-300" : "text-slate-600"
                                             )}>
                                                 {stats.fouls}
+                                            </div>
+                                            <div className={cn(
+                                                "text-sm sm:text-base font-bold",
+                                                stats.minutes > 0 ? "text-white" : "text-slate-600"
+                                            )}>
+                                                {stats.minutes}
                                             </div>
                                             {/* FG% */}
                                             <div className="text-center">
