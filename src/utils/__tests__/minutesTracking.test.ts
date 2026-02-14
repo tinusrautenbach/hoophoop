@@ -486,4 +486,189 @@ describe('Minutes Tracking', () => {
             expect(totalMinutes).toBeCloseTo(50.0, 0);
         });
     });
+
+    describe('Bug Fixes and Regression Tests', () => {
+        it('should correctly calculate minutes for mid-period sub playing until period end', () => {
+            // This test verifies the bug fix where period_end was using periodLength
+            // instead of startTime.clockAt, causing incorrect minutes calculation
+            const roster = createRoster([
+                { name: 'Player 1', number: '1', isActive: false }
+            ]);
+
+            const events: GameEvent[] = [
+                createEvent('period_start', 1, 600, undefined, 'Period 1 Start'),
+                createEvent('sub', 1, 300, 'Player 1', 'Player 1 In'),  // Sub in at 5:00 mark
+                createEvent('period_end', 1, 0, undefined, 'Period 1 End'),  // Period ends at 0:00
+            ];
+
+            const minutes = calculatePlayerMinutes(events, roster, 600, 1);
+            
+            // Player should have exactly 5.0 minutes, not 10.0
+            // Bug would calculate: (600 - 0) / 60 = 10.0
+            // Correct calculation: (300 - 0) / 60 = 5.0
+            expect(minutes['Player 1']).toBe(5.0);
+        });
+
+        it('should handle 12-minute NBA quarters', () => {
+            const roster = createRoster([
+                { name: 'Player 1', number: '1', isActive: true }
+            ]);
+
+            const events: GameEvent[] = [
+                createEvent('period_start', 1, 720, undefined, 'Period 1 Start'),  // 720 seconds = 12 minutes
+                createEvent('sub', 1, 360, 'Player 1', 'Player 1 Benched'),  // Sub out at 6:00
+                createEvent('period_end', 1, 0, undefined, 'Period 1 End'),
+            ];
+
+            const minutes = calculatePlayerMinutes(events, roster, 720, 1);
+            
+            // Should be 6 minutes (from 12:00 to 6:00), not 5 minutes
+            expect(minutes['Player 1']).toBe(6.0);
+        });
+
+        it('should handle overtime periods correctly', () => {
+            const roster = createRoster([
+                { name: 'Player 1', number: '1', isActive: true }
+            ]);
+
+            const events: GameEvent[] = [
+                // Regulation ends
+                createEvent('period_end', 4, 0, undefined, 'Period 4 End'),
+                
+                // Overtime (5 minutes = 300 seconds)
+                createEvent('period_start', 5, 300, undefined, 'OT Start'),
+                createEvent('sub', 5, 150, 'Player 1', 'Player 1 Benched'),  // Play 2.5 minutes
+                createEvent('period_end', 5, 0, undefined, 'OT End'),
+            ];
+
+            const minutes = calculatePlayerMinutes(events, roster, 300, 5);
+            
+            // Should have 2.5 minutes from OT
+            expect(minutes['Player 1']).toBe(2.5);
+        });
+
+        it('should handle game still in progress with events from previous periods', () => {
+            // This tests that the "still on court" logic correctly filters to current period
+            const roster = createRoster([
+                { name: 'Player 1', number: '1', isActive: true }
+            ]);
+
+            const events: GameEvent[] = [
+                // Period 1 - player plays full period
+                createEvent('period_start', 1, 600, undefined, 'Period 1 Start'),
+                createEvent('period_end', 1, 0, undefined, 'Period 1 End'),
+                
+                // Period 2 - player subs in
+                createEvent('period_start', 2, 600, undefined, 'Period 2 Start'),
+                createEvent('sub', 2, 300, 'Player 1', 'Player 1 In'),  // At 5:00
+                // Game still in progress - last event is the sub in at clock 300
+                // Since last event clock (300) == start time clock (300), it plays to period end (0)
+            ];
+
+            const minutes = calculatePlayerMinutes(events, roster, 600, 2);
+            
+            // Should have 10 minutes from period 1 + 5 minutes from period 2 = 15 minutes
+            // (Subbed in at 5:00, played until period end = 5 minutes)
+            expect(minutes['Player 1']).toBe(15.0);
+        });
+
+        it('should handle game with no substitutions (starters play all)', () => {
+            const roster = createRoster([
+                { name: 'Starter 1', number: '1', isActive: true },
+                { name: 'Starter 2', number: '2', isActive: true },
+                { name: 'Starter 3', number: '3', isActive: true },
+                { name: 'Starter 4', number: '4', isActive: true },
+                { name: 'Starter 5', number: '5', isActive: true },
+            ]);
+
+            const events: GameEvent[] = [
+                createEvent('period_start', 1, 600, undefined, 'Period 1 Start'),
+                createEvent('period_end', 1, 0, undefined, 'Period 1 End'),
+            ];
+
+            const minutes = calculatePlayerMinutes(events, roster, 600, 1);
+            
+            // All 5 starters should have exactly 10 minutes
+            expect(minutes['Starter 1']).toBe(10.0);
+            expect(minutes['Starter 2']).toBe(10.0);
+            expect(minutes['Starter 3']).toBe(10.0);
+            expect(minutes['Starter 4']).toBe(10.0);
+            expect(minutes['Starter 5']).toBe(10.0);
+        });
+
+        it('should handle rapid substitutions correctly', () => {
+            const roster = createRoster([
+                { name: 'Player 1', number: '1', isActive: true }
+            ]);
+
+            const events: GameEvent[] = [
+                createEvent('sub', 1, 600, 'Player 1', 'Player 1 In'),
+                createEvent('sub', 1, 595, 'Player 1', 'Player 1 Benched'),  // 5 seconds
+                createEvent('sub', 1, 590, 'Player 1', 'Player 1 In'),       // 5 seconds later
+                createEvent('sub', 1, 585, 'Player 1', 'Player 1 Benched'),  // 5 seconds
+                createEvent('sub', 1, 580, 'Player 1', 'Player 1 In'),       // 5 seconds later
+                createEvent('sub', 1, 575, 'Player 1', 'Player 1 Benched'),  // 5 seconds
+            ];
+
+            const minutes = calculatePlayerMinutes(events, roster, 600, 1);
+            
+            // 3 stints of 5 seconds each = 15 seconds = 0.25 minutes
+            expect(minutes['Player 1']).toBe(0.3);  // Rounded to 1 decimal
+        });
+
+        it('should handle sub event with empty description', () => {
+            const roster = createRoster([
+                { name: 'Player 1', number: '1', isActive: true }
+            ]);
+
+            const events: GameEvent[] = [
+                createEvent('sub', 1, 600, 'Player 1', ''),  // Empty description
+                createEvent('sub', 1, 300, 'Player 1', ''),  // Empty description
+            ];
+
+            const minutes = calculatePlayerMinutes(events, roster, 600, 1);
+            
+            // With empty description, neither " In" nor " Benched" matches
+            // So player never actually gets tracked as on court
+            expect(minutes['Player 1']).toBe(0);
+        });
+
+        it('should handle malformed description patterns', () => {
+            const roster = createRoster([
+                { name: 'Player 1', number: '1', isActive: true }
+            ]);
+
+            const events: GameEvent[] = [
+                // These should not be recognized as valid sub patterns
+                // "Incoming" actually contains " In" so it will match!
+                // Use descriptions that truly don't match the patterns
+                createEvent('sub', 1, 600, 'Player 1', 'Player 1 arrives'),
+                createEvent('sub', 1, 300, 'Player 1', 'Player 1 departs'),
+            ];
+
+            const minutes = calculatePlayerMinutes(events, roster, 600, 1);
+            
+            // Neither pattern matches " In" or " Benched"
+            expect(minutes['Player 1']).toBe(0);
+        });
+
+        it('should handle description containing " In" as substring', () => {
+            // This test documents that the pattern matching is substring-based
+            const roster = createRoster([
+                { name: 'Player 1', number: '1', isActive: true }
+            ]);
+
+            const events: GameEvent[] = [
+                // "Incoming" contains " In" (space + In) as substring
+                createEvent('sub', 1, 600, 'Player 1', 'Player 1 Incoming'),
+                createEvent('sub', 1, 300, 'Player 1', 'Player 1 Outgoing'),
+            ];
+
+            const minutes = calculatePlayerMinutes(events, roster, 600, 1);
+            
+            // "Incoming" is recognized as " In" (space + In at position 9)
+            // So player gets credited with 5 minutes
+            expect(minutes['Player 1']).toBe(5.0);
+        });
+    });
 });
