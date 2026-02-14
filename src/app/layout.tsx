@@ -17,8 +17,14 @@ import Link from 'next/link'
 import { syncUser } from "@/lib/auth-server";
 
 export const metadata: Metadata = {
-  title: "Basketball Scorer",
-  description: "Real-time basketball scoring app",
+  title: "HoopHoop",
+  description: "Double the game. Live the score.",
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: '/icon.svg',
+  },
 };
 
 export default async function RootLayout({
@@ -38,16 +44,16 @@ export default async function RootLayout({
         <AuthProvider>
           <header className="border-b border-slate-800 p-4 flex justify-between items-center bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
             <Link href="/" className="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent italic">
-              BBALL SCORER
+              HOOPHOOP
             </Link>
-              <nav className="flex items-center gap-6">
-                <SignedIn>
-                  <Link href="/teams" className="text-sm font-medium hover:text-orange-500 transition-colors">Teams</Link>
-                  <Link href="/games" className="text-sm font-medium hover:text-orange-500 transition-colors">Games</Link>
-                  <Link href="/communities" className="text-sm font-medium hover:text-orange-500 transition-colors">Communities</Link>
-                  <Link href="/profile" className="text-sm font-medium hover:text-orange-500 transition-colors">Profile</Link>
-                  <UserButton />
-                </SignedIn>
+            <nav className="flex items-center gap-6">
+              <SignedIn>
+                <Link href="/teams" className="text-sm font-medium hover:text-orange-500 transition-colors">Teams</Link>
+                <Link href="/games" className="text-sm font-medium hover:text-orange-500 transition-colors">Games</Link>
+                <Link href="/communities" className="text-sm font-medium hover:text-orange-500 transition-colors">Communities</Link>
+                <Link href="/profile" className="text-sm font-medium hover:text-orange-500 transition-colors">Profile</Link>
+                <UserButton />
+              </SignedIn>
               <SignedOut>
                 <SignInButton mode="modal">
                   <button className="text-sm font-medium bg-orange-600 px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors">Sign In</button>
