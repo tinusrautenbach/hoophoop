@@ -43,8 +43,13 @@ export default async function RootLayout({
       >
         <AuthProvider>
           <header className="border-b border-slate-800 p-4 flex justify-between items-center bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
-            <Link href="/" className="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent italic">
-              HOOPHOOP
+            <Link href="/" className="flex items-center gap-2">
+              <div className="relative w-8 h-8">
+                <img src="/logo.svg" alt="HoopHoop Logo" className="w-full h-full object-contain" />
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent italic">
+                HOOPHOOP
+              </span>
             </Link>
             <nav className="flex items-center gap-6">
               <SignedIn>

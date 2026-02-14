@@ -105,7 +105,10 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col items-center justify-center p-6 min-h-[80vh]">
       <div className="max-w-2xl w-full text-center space-y-8">
-        <div className="space-y-4">
+        <div className="space-y-6 flex flex-col items-center">
+          <div className="w-24 h-24 sm:w-32 sm:h-32 relative mb-4 animate-bounce-slow">
+            <img src="/logo.svg" alt="HoopHoop Logo" className="w-full h-full object-contain drop-shadow-2xl" />
+          </div>
           <h1 className="text-5xl font-extrabold tracking-tighter sm:text-7xl bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent">
             Double the game. <span className="text-orange-500">Live the score.</span>
           </h1>
