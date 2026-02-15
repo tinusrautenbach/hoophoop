@@ -43,9 +43,9 @@ let isAdapterConnected = false;
  * Initialize Redis clients for Socket.io adapter
  */
 export async function initializeRedisAdapter(io: Server): Promise<boolean> {
-    // Skip if Redis is not configured
-    if (!process.env.REDIS_URL && process.env.NODE_ENV === 'development') {
-        console.log('[Redis] Skipping Redis adapter in development mode (REDIS_URL not set)');
+    // Skip if Redis is not configured or in testing mode
+    if ((!process.env.REDIS_URL && process.env.NODE_ENV === 'development') || process.env.VITEST) {
+        console.log('[Redis] Skipping Redis adapter (REDIS_URL not set or in testing mode)');
         return false;
     }
     
