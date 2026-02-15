@@ -32,10 +32,10 @@
     - [x] Edit/Delete modal for individual events.
   - [x] **3.2.3 Status Indicators**: Possession arrow, Foul Count alerts (Bonus indicators).
   - [x] **3.2.4 Points-First Flow**: Support for clicking points then selecting player/team.
-- [ ] **3.3 Roster Enforcement & Positioning**:
+- [x] **3.3 Roster Enforcement & Positioning**:
   - [x] Auto-populate game roster from team ID on game creation (API).
-  - [ ] Enforce roster requirement on game start button.
-  - [ ] Logic to ensure owner's team is always Home (Left).
+  - [x] Enforce roster requirement on game start button.
+  - [x] Logic to ensure owner's team is always Home (Left).
 
 ## Phase 4: Share & Public Views (Done)
 - [x] 4.1 Live Scoreboard (Public)

@@ -5,7 +5,7 @@ export default class MarkdownReporter {
   onFinished(files) {
     const testsDir = path.resolve(process.cwd(), 'tests');
     if (!fs.existsSync(testsDir)) {
-      fs.mkdirSync(testsDir);
+      fs.mkdirSync(testsDir, { recursive: true });
     }
 
     const totalFiles = files.length;
@@ -73,6 +73,10 @@ export default class MarkdownReporter {
 
     fs.writeFileSync(reportPath, reportContent);
     
-    console.log(`[MarkdownReporter] Updated results in ${testsDir}`);
+    // Log clearly to terminal
+    console.log('\n--- Markdown Report Generated ---');
+    console.log(`Updated: ${suiteResultsPath}`);
+    console.log(`Updated: ${reportPath}`);
+    console.log('--------------------------------\n');
   }
 }

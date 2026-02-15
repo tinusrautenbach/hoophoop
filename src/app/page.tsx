@@ -141,24 +141,47 @@ export default function LandingPage() {
     let gameCommunityId = null;
     let gameSeasonId = selectedSeasonId;
     
-    if (homeTeamId && homeTeamId !== 'adhoc') {
-      const homeTeam = teams.find(t => t.id === homeTeamId);
+    // Check if we need to swap Home/Guest to ensure Owner's team is Home (Left)
+    // Logic: If Guest is one of my teams, and Home is NOT (e.g. Adhoc or empty), swap them.
+    let finalHomeTeamId = homeTeamId && homeTeamId !== 'adhoc' ? homeTeamId : null;
+    let finalGuestTeamId = guestTeamId && guestTeamId !== 'adhoc' ? guestTeamId : null;
+    let finalHomeTeamName = (homeTeamId && homeTeamId !== 'adhoc' ? teams.find(t => t.id === homeTeamId)?.name : homeTeamName) || 'Home';
+    let finalGuestTeamName = (guestTeamId && guestTeamId !== 'adhoc' ? teams.find(t => t.id === guestTeamId)?.name : guestTeamName) || 'Guest';
+
+    const isGuestMyTeam = teams.some(t => t.id === guestTeamId);
+    const isHomeMyTeam = teams.some(t => t.id === homeTeamId);
+
+    if (isGuestMyTeam && !isHomeMyTeam) {
+        console.log('Swapping teams to ensure Owner team is Home');
+        // Swap IDs
+        const tempId = finalHomeTeamId;
+        finalHomeTeamId = finalGuestTeamId;
+        finalGuestTeamId = tempId;
+
+        // Swap Names
+        const tempName = finalHomeTeamName;
+        finalHomeTeamName = finalGuestTeamName;
+        finalGuestTeamName = tempName;
+    }
+    
+    if (finalHomeTeamId) {
+      const homeTeam = teams.find(t => t.id === finalHomeTeamId);
       if (homeTeam?.communityId) {
         gameCommunityId = homeTeam.communityId;
       }
     }
-    if (!gameCommunityId && guestTeamId && guestTeamId !== 'adhoc') {
-      const guestTeam = teams.find(t => t.id === guestTeamId);
+    if (!gameCommunityId && finalGuestTeamId) {
+      const guestTeam = teams.find(t => t.id === finalGuestTeamId);
       if (guestTeam?.communityId) {
         gameCommunityId = guestTeam.communityId;
       }
     }
     
     // If no season selected but teams have seasons, try to infer from teams
-    if (!gameSeasonId && (homeTeamId !== 'adhoc' || guestTeamId !== 'adhoc')) {
-      const selectedTeam = homeTeamId !== 'adhoc' 
-        ? teams.find(t => t.id === homeTeamId)
-        : teams.find(t => t.id === guestTeamId);
+    if (!gameSeasonId && (finalHomeTeamId || finalGuestTeamId)) {
+      const selectedTeam = finalHomeTeamId 
+        ? teams.find(t => t.id === finalHomeTeamId)
+        : teams.find(t => t.id === finalGuestTeamId);
       if (selectedTeam?.teamSeasons && selectedTeam.teamSeasons.length > 0) {
         // Use the most recent season
         const latestTeamSeason = selectedTeam.teamSeasons.sort(
@@ -171,10 +194,10 @@ export default function LandingPage() {
     const res = await fetch('/api/games', {
       method: 'POST',
       body: JSON.stringify({
-        homeTeamId: homeTeamId && homeTeamId !== 'adhoc' ? homeTeamId : null,
-        guestTeamId: guestTeamId && guestTeamId !== 'adhoc' ? guestTeamId : null,
-        homeTeamName: (homeTeamId && homeTeamId !== 'adhoc' ? teams.find(t => t.id === homeTeamId)?.name : homeTeamName) || 'Home',
-        guestTeamName: (guestTeamId && guestTeamId !== 'adhoc' ? teams.find(t => t.id === guestTeamId)?.name : guestTeamName) || 'Guest',
+        homeTeamId: finalHomeTeamId,
+        guestTeamId: finalGuestTeamId,
+        homeTeamName: finalHomeTeamName,
+        guestTeamName: finalGuestTeamName,
         name: gameName,
         scheduledDate,
         mode,

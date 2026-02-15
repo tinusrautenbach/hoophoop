@@ -24,6 +24,7 @@ type Game = {
     homeTeamName: string;
     guestTeamName: string;
     rosters: RosterEntry[];
+    mode: 'simple' | 'advanced';
 };
 
 interface BenchSelectionProps {
@@ -38,6 +39,19 @@ export function BenchSelection({ game, onStartGame, onCancel }: BenchSelectionPr
         game.rosters.map(r => ({ ...r, isActive: true }))
     );
 
+    const homeRoster = rosters.filter(r => r.team === 'home');
+    const guestRoster = rosters.filter(r => r.team === 'guest');
+    
+    // Roster Validation Logic
+    const activeHomePlayers = homeRoster.filter(r => r.isActive).length;
+    const activeGuestPlayers = guestRoster.filter(r => r.isActive).length;
+
+    const isHomeValid = activeHomePlayers > 0;
+    // In simple mode, guest roster is optional (score-only). In advanced, we need players.
+    const isGuestValid = game.mode === 'simple' ? true : activeGuestPlayers > 0;
+    
+    const isValid = isHomeValid && isGuestValid;
+
     const togglePlayer = (playerId: string) => {
         setRosters(prev => prev.map(r => 
             r.id === playerId ? { ...r, isActive: !r.isActive } : r
@@ -45,11 +59,9 @@ export function BenchSelection({ game, onStartGame, onCancel }: BenchSelectionPr
     };
 
     const handleStart = () => {
+        if (!isValid) return;
         onStartGame(rosters);
     };
-
-    const homeRoster = rosters.filter(r => r.team === 'home');
-    const guestRoster = rosters.filter(r => r.team === 'guest');
 
     return (
         <div className="fixed inset-0 z-[200] bg-background flex flex-col font-sans select-none touch-none overflow-hidden">
@@ -176,10 +188,22 @@ export function BenchSelection({ game, onStartGame, onCancel }: BenchSelectionPr
 
             {/* Footer Action */}
             <div className="p-4 bg-input border-t border-border shrink-0">
-                <div className="max-w-4xl mx-auto">
+                <div className="max-w-4xl mx-auto space-y-4">
+                    {!isValid && (
+                        <div className="text-center text-red-500 font-bold text-sm bg-red-500/10 p-2 rounded-xl border border-red-500/20">
+                            {!isHomeValid ? 'At least 1 active Home player required' : 
+                             !isGuestValid ? 'At least 1 active Guest player required (Advanced Mode)' : ''}
+                        </div>
+                    )}
                     <button
                         onClick={handleStart}
-                        className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black uppercase tracking-widest py-6 rounded-2xl shadow-xl shadow-orange-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-xl"
+                        disabled={!isValid}
+                        className={cn(
+                            "w-full font-black uppercase tracking-widest py-6 rounded-2xl shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-xl",
+                            isValid 
+                                ? "bg-orange-600 hover:bg-orange-500 text-white shadow-orange-900/20" 
+                                : "bg-slate-700 text-slate-500 cursor-not-allowed opacity-50"
+                        )}
                     >
                         Start Game
                         <ArrowRight size={24} strokeWidth={3} />
