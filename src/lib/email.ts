@@ -195,3 +195,156 @@ ${inviteLink}
 
   return sendEmail({ to, subject, html, text });
 }
+
+/**
+ * Send player claim request notification to community admin
+ */
+export async function sendPlayerClaimRequestEmail(
+  to: string,
+  adminName: string,
+  playerName: string,
+  claimantName: string,
+  communityName: string | null,
+  approveLink: string,
+  rejectLink: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const subject = `Player Profile Claim Request - ${playerName}`;
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player Claim Request</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #f97316; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .header h1 { color: white; margin: 0; font-size: 24px; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+    .button { display: inline-block; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 10px 5px; }
+    .approve { background: #22c55e; color: white; }
+    .reject { background: #ef4444; color: white; }
+    .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }
+    .details { background: #e5e7eb; padding: 15px; border-radius: 6px; margin: 15px 0; }
+    .details dt { font-weight: bold; color: #374151; }
+    .details dd { margin: 0 0 10px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🏀 Hoophoop Basketball</h1>
+    </div>
+    <div class="content">
+      <h2>Hello ${adminName}!</h2>
+      <p>A user has requested to claim a player profile in your community.</p>
+      
+      <dl class="details">
+        <dt>Player:</dt>
+        <dd>${playerName}</dd>
+        <dt>Claimant:</dt>
+        <dd>${claimantName}</dd>
+        <dt>Community:</dt>
+        <dd>${communityName || 'No Community'}</dd>
+      </dl>
+
+      <p>Please review and approve or reject this claim request:</p>
+      <div style="text-align: center; margin: 25px 0;">
+        <a href="${approveLink}" class="button approve">Approve Claim</a>
+        <a href="${rejectLink}" class="button reject">Reject Claim</a>
+      </div>
+      
+      <p>Or copy and paste these links into your browser:</p>
+      <p style="font-size: 12px; word-break: break-all;">Approve: ${approveLink}</p>
+      <p style="font-size: 12px; word-break: break-all;">Reject: ${rejectLink}</p>
+    </div>
+    <div class="footer">
+      <p>© ${new Date().getFullYear()} Hoophoop Basketball. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  const text = `
+Hello ${adminName}!
+
+A user has requested to claim a player profile in your community.
+
+Player: ${playerName}
+Claimant: ${claimantName}
+Community: ${communityName || 'No Community'}
+
+Please review and approve or reject this claim request:
+Approve: ${approveLink}
+Reject: ${rejectLink}
+
+© ${new Date().getFullYear()} Hoophoop Basketball
+  `;
+
+  return sendEmail({ to, subject, html, text });
+}
+
+/**
+ * Send claim result notification to claimant
+ */
+export async function sendPlayerClaimResultEmail(
+  to: string,
+  playerName: string,
+  approved: boolean,
+  reason?: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const subject = approved 
+    ? `Your player profile claim has been approved - ${playerName}`
+    : `Your player profile claim has been rejected - ${playerName}`;
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: ${approved ? '#22c55e' : '#ef4444'}; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .header h1 { color: white; margin: 0; font-size: 24px; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+    .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🏀 Hoophoop Basketball</h1>
+    </div>
+    <div class="content">
+      <h2>Hello!</h2>
+      <p>Your claim request for the player profile <strong>${playerName}</strong> has been <strong>${approved ? 'approved' : 'rejected'}</strong>.</p>
+      ${!approved && reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+      ${approved ? '<p>You can now view your player profile and stats.</p>' : '<p>You can try claiming again with a different profile or contact your community admin.</p>'}
+    </div>
+    <div class="footer">
+      <p>© ${new Date().getFullYear()} Hoophoop Basketball. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  const text = `
+Hello!
+
+Your claim request for the player profile ${playerName} has been ${approved ? 'approved' : 'rejected'}.
+${!approved && reason ? `Reason: ${reason}` : ''}
+${approved ? 'You can now view your player profile and stats.' : 'You can try claiming again with a different profile or contact your community admin.'}
+
+© ${new Date().getFullYear()} Hoophoop Basketball
+  `;
+
+  return sendEmail({ to, subject, html, text });
+}
+

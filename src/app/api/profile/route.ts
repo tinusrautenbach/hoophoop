@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-server';
 import { db } from '@/db';
-import { users, communityMembers, userActivityLogs, athletes, playerInvitations } from '@/db/schema';
+import { users, communityMembers, userActivityLogs, athletes, playerInvitations, playerClaimRequests } from '@/db/schema';
 import { eq, desc, and, gt } from 'drizzle-orm';
 
 export async function GET() {
@@ -63,6 +63,31 @@ export async function GET() {
             orderBy: [desc(playerInvitations.createdAt)],
         });
 
+        // Fetch pending claim requests made by user
+        const pendingClaimRequests = await db.query.playerClaimRequests.findMany({
+            where: and(
+                eq(playerClaimRequests.userId, userId),
+                eq(playerClaimRequests.status, 'pending')
+            ),
+            with: {
+                athlete: {
+                    columns: {
+                        id: true,
+                        name: true,
+                        firstName: true,
+                        surname: true,
+                    },
+                },
+                community: {
+                    columns: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
+            orderBy: [desc(playerClaimRequests.requestedAt)],
+        });
+
         return NextResponse.json({
             user: {
                 ...user,
@@ -75,6 +100,7 @@ export async function GET() {
             })),
             activity: recentActivity,
             pendingInvitations,
+            pendingClaimRequests,
         });
     } catch (error) {
         console.error('Failed to fetch profile:', error);

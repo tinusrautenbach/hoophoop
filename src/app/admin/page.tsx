@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
     Shield, Search, User, Check, ShieldAlert, ArrowRight, 
     Users, Building2, Trash2, Plus, Minus, ChevronDown, ChevronUp,
-    Crown, RotateCcw, Link2, Trophy
+    Crown, RotateCcw, Link2, Trophy, X
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -129,6 +129,22 @@ export default function AdminDashboard() {
     const [searchResults, setSearchResults] = useState<UserData[]>([]);
     const [selectedRole, setSelectedRole] = useState<'admin' | 'scorer' | 'viewer'>('scorer');
     
+    // Claim requests state
+    const [claimRequests, setClaimRequests] = useState<Array<{
+        id: string;
+        athleteId: string;
+        userId: string;
+        status: string;
+        requestedAt: string;
+        athleteName: string;
+        userFirstName: string | null;
+        userLastName: string | null;
+        userEmail: string;
+    }>>([]);
+    const [claimRequestsLoading, setClaimRequestsLoading] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
+    
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -144,6 +160,7 @@ export default function AdminDashboard() {
     useEffect(() => {
         if (selectedCommunity) {
             fetchCommunityMembers(selectedCommunity.id);
+            fetchClaimRequests(selectedCommunity.id);
         }
     }, [selectedCommunity]);
 
@@ -285,6 +302,70 @@ export default function AdminDashboard() {
             console.error(err);
         } finally {
             setMembersLoading(false);
+        }
+    };
+
+    const fetchClaimRequests = async (communityId: string) => {
+        setClaimRequestsLoading(true);
+        try {
+            const res = await fetch(`/api/admin/communities/${communityId}/claim-requests?status=pending`);
+            if (res.ok) {
+                const data = await res.json();
+                setClaimRequests(data.claims || []);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setClaimRequestsLoading(false);
+        }
+    };
+
+    const approveClaimRequest = async (requestId: string) => {
+        if (!selectedCommunity) return;
+        if (!confirm('Are you sure you want to approve this claim request?')) return;
+
+        try {
+            const res = await fetch(`/api/admin/communities/${selectedCommunity.id}/claim-requests/${requestId}`, {
+                method: 'POST',
+            });
+            if (res.ok) {
+                setClaimRequests(prev => prev.filter(r => r.id !== requestId));
+                alert('Claim request approved!');
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to approve claim request');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to approve claim request');
+        }
+    };
+
+    const rejectClaimRequest = async (requestId: string) => {
+        if (!selectedCommunity) return;
+        if (!rejectReason.trim()) {
+            alert('Please provide a reason for rejection');
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/admin/communities/${selectedCommunity.id}/claim-requests/${requestId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: rejectReason }),
+            });
+            if (res.ok) {
+                setClaimRequests(prev => prev.filter(r => r.id !== requestId));
+                setShowRejectModal(null);
+                setRejectReason('');
+                alert('Claim request rejected');
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to reject claim request');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to reject claim request');
         }
     };
 
@@ -897,6 +978,89 @@ export default function AdminDashboard() {
                             </table>
                         </div>
                     </div>
+
+                    {/* Pending Claim Requests Section */}
+                    <div className="bg-input border border-border rounded-2xl overflow-hidden mt-6">
+                        <div className="p-6 border-b border-border">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <Trophy size={18} className="text-yellow-500" />
+                                Pending Claim Requests ({claimRequests.length})
+                            </h3>
+                            <p className="text-slate-500 text-sm mt-1">User requests to claim player profiles</p>
+                        </div>
+
+                        {claimRequestsLoading ? (
+                            <div className="p-12 text-center text-slate-500">Loading...</div>
+                        ) : claimRequests.length === 0 ? (
+                            <div className="p-12 text-center text-slate-500">No pending claim requests</div>
+                        ) : (
+                            <div className="divide-y divide-slate-800">
+                                {claimRequests.map((request) => (
+                                    <div key={request.id} className="p-4 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center">
+                                                <Trophy className="w-5 h-5 text-yellow-500" />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-sm">{request.athleteName}</div>
+                                                <div className="text-xs text-slate-400">
+                                                    Requested by: {request.userFirstName} {request.userLastName} ({request.userEmail})
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                                    {new Date(request.requestedAt).toLocaleString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => approveClaimRequest(request.id)}
+                                                className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded transition-colors"
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                onClick={() => setShowRejectModal(request.id)}
+                                                className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded transition-colors"
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Reject Modal */}
+                    {showRejectModal && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md">
+                                <h3 className="font-bold text-lg mb-4">Reject Claim Request</h3>
+                                <p className="text-slate-400 text-sm mb-4">Please provide a reason for rejecting this claim request:</p>
+                                <textarea
+                                    value={rejectReason}
+                                    onChange={(e) => setRejectReason(e.target.value)}
+                                    placeholder="Reason for rejection..."
+                                    className="w-full bg-background border border-border rounded-lg p-3 text-sm focus:outline-none focus:border-orange-500 mb-4"
+                                    rows={3}
+                                />
+                                <div className="flex gap-2 justify-end">
+                                    <button
+                                        onClick={() => { setShowRejectModal(null); setRejectReason(''); }}
+                                        className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white text-sm font-bold rounded transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => rejectClaimRequest(showRejectModal)}
+                                        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded transition-colors"
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

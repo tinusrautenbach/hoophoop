@@ -16,6 +16,7 @@ type Player = {
   memberships: Array<{
     team: { name: string };
   }>;
+  hasPendingClaim?: boolean;
 };
 
 export default function PlayersSearchPage() {
@@ -51,7 +52,7 @@ export default function PlayersSearchPage() {
   }, [query]);
 
   const handleClaim = async (playerId: string) => {
-    if (!confirm('Are you sure you want to claim this profile? This will link it to your account.')) return;
+    if (!confirm('Are you sure you want to claim this profile? A community admin will need to approve your request before the profile is linked to your account.')) return;
     
     setClaimingId(playerId);
     try {
@@ -60,15 +61,15 @@ export default function PlayersSearchPage() {
       });
       
       if (res.ok) {
-        alert('Profile claimed successfully!');
-        router.push('/profile');
+        alert('Claim request submitted! You will be notified when a community admin approves your request.');
+        setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, hasPendingClaim: true } : p));
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to claim profile');
+        alert(data.error || 'Failed to submit claim request');
       }
     } catch (err) {
-      console.error('Failed to claim profile:', err);
-      alert('Failed to claim profile');
+      console.error('Failed to submit claim request:', err);
+      alert('Failed to submit claim request');
     } finally {
       setClaimingId(null);
     }
@@ -132,13 +133,17 @@ export default function PlayersSearchPage() {
                   <span className="bg-green-500/10 text-green-500 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 w-full sm:w-auto justify-center">
                     <Check size={14} /> Claimed
                   </span>
+                ) : player.hasPendingClaim ? (
+                  <span className="bg-yellow-500/10 text-yellow-500 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <Trophy size={14} /> Claim Pending
+                  </span>
                 ) : (
                   <button
                     onClick={() => handleClaim(player.id)}
                     disabled={claimingId !== null}
                     className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 w-full sm:w-auto justify-center shadow-lg shadow-orange-900/20"
                   >
-                    {claimingId === player.id ? 'Claiming...' : (
+                    {claimingId === player.id ? 'Submitting...' : (
                       <>
                         <UserPlus size={16} /> Claim Profile
                       </>

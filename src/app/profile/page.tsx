@@ -52,6 +52,22 @@ type ProfileData = {
             name: string;
         } | null;
     }>;
+    pendingClaimRequests?: Array<{
+        id: string;
+        athleteId: string;
+        status: string;
+        requestedAt: string;
+        athlete: {
+            id: string;
+            name: string;
+            firstName: string | null;
+            surname: string | null;
+        } | null;
+        community: {
+            id: string;
+            name: string;
+        } | null;
+    }>;
 };
 
 export default function ProfilePage() {
@@ -60,6 +76,7 @@ export default function ProfilePage() {
     const [data, setData] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [pendingInvitations, setPendingInvitations] = useState<ProfileData['pendingInvitations']>([]);
+    const [pendingClaimRequests, setPendingClaimRequests] = useState<ProfileData['pendingClaimRequests']>([]);
     const [managingInvitations, setManagingInvitations] = useState(false);
 
     useEffect(() => {
@@ -331,6 +348,39 @@ export default function ProfilePage() {
                                             >
                                                 <X size={16} />
                                             </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Pending Claim Requests */}
+                    {pendingClaimRequests && pendingClaimRequests.length > 0 && (
+                        <div className="space-y-4">
+                            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[var(--muted-foreground)] px-2 flex items-center gap-2">
+                                <Trophy size={16} className="text-orange-500" />
+                                Pending Claim Requests ({pendingClaimRequests.length})
+                            </h2>
+                            <div className="space-y-3">
+                                {pendingClaimRequests.map((request) => (
+                                    <div key={request.id} className="bg-[var(--card)] border border-[var(--border)] p-4 rounded-2xl flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center">
+                                                <Trophy className="w-5 h-5 text-yellow-500" />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-sm">{request.athlete?.name || 'Unknown Player'}</div>
+                                                <div className="text-xs text-[var(--muted-foreground)]">
+                                                    {request.community?.name || 'No Community'}
+                                                </div>
+                                                <div className="text-[10px] text-yellow-500 mt-0.5">
+                                                    Pending approval from admin
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] text-[var(--muted-foreground)]">
+                                            Requested: {new Date(request.requestedAt).toLocaleDateString()}
                                         </div>
                                     </div>
                                 ))}

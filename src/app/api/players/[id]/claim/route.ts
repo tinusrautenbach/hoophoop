@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { athletes } from '@/db/schema';
+import { athletes, playerClaimRequests, communityMembers, users } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
+import { sendPlayerClaimRequestEmail } from '@/lib/email';
 
 export async function POST(
     request: Request,
@@ -16,7 +17,6 @@ export async function POST(
     const { id: playerId } = await params;
 
     try {
-        // Find the player profile
         const player = await db.query.athletes.findFirst({
             where: eq(athletes.id, playerId),
         });
@@ -25,30 +25,88 @@ export async function POST(
             return NextResponse.json({ error: 'Player not found' }, { status: 404 });
         }
 
-        // Check if already claimed
         if (player.userId) {
             return NextResponse.json({ error: 'Player profile already claimed' }, { status: 400 });
         }
 
-        // Check if current user already has a linked profile
-        const existingProfile = await db.query.athletes.findFirst({
-            where: eq(athletes.userId, userId),
+        const existingRequest = await db.query.playerClaimRequests.findFirst({
+            where: and(
+                eq(playerClaimRequests.athleteId, playerId),
+                eq(playerClaimRequests.userId, userId),
+                eq(playerClaimRequests.status, 'pending')
+            ),
         });
 
-        if (existingProfile) {
-            return NextResponse.json({ error: 'You already have a linked player profile' }, { status: 400 });
+        if (existingRequest) {
+            return NextResponse.json({ error: 'You already have a pending claim request for this profile' }, { status: 400 });
         }
 
-        // Optional: Verification logic could go here (e.g. email check)
-        // For MVP, we'll allow claiming if it's unclaimed
+        const currentUser = await db.query.users.findFirst({
+            where: eq(users.id, userId),
+        });
 
-        await db.update(athletes)
-            .set({ userId })
-            .where(eq(athletes.id, playerId));
+        const claimRequest = await db.insert(playerClaimRequests)
+            .values({
+                athleteId: playerId,
+                userId,
+                status: 'pending',
+                communityId: player.communityId,
+            })
+            .returning();
 
-        return NextResponse.json({ success: true });
+        if (player.communityId) {
+            const communityAdmins = await db.query.communityMembers.findMany({
+                where: and(
+                    eq(communityMembers.communityId, player.communityId),
+                    eq(communityMembers.role, 'admin')
+                ),
+                with: {
+                    user: true
+                }
+            });
+
+            for (const admin of communityAdmins) {
+                if (admin.user?.email) {
+                    const approveLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/communities/${player.communityId}/claim-requests/${claimRequest[0].id}/approve`;
+                    const rejectLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/communities/${player.communityId}/claim-requests/${claimRequest[0].id}/reject`;
+
+                    await sendPlayerClaimRequestEmail(
+                        admin.user.email,
+                        `${admin.user.firstName || 'Admin'}`,
+                        player.name,
+                        `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim() || currentUser?.email || 'User',
+                        player.communityId ? 'Community' : null,
+                        approveLink,
+                        rejectLink
+                    );
+                }
+            }
+        } else {
+            const worldAdmins = await db.query.users.findMany({
+                where: eq(users.isWorldAdmin, true)
+            });
+
+            for (const admin of worldAdmins) {
+                if (admin.email) {
+                    const approveLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/claim-requests/${claimRequest[0].id}/approve`;
+                    const rejectLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/claim-requests/${claimRequest[0].id}/reject`;
+
+                    await sendPlayerClaimRequestEmail(
+                        admin.email,
+                        `${admin.firstName || 'Admin'}`,
+                        player.name,
+                        `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim() || currentUser?.email || 'User',
+                        null,
+                        approveLink,
+                        rejectLink
+                    );
+                }
+            }
+        }
+
+        return NextResponse.json({ success: true, requestId: claimRequest[0].id });
     } catch (error) {
-        console.error('Error claiming player profile:', error);
-        return NextResponse.json({ error: 'Failed to claim player profile' }, { status: 500 });
+        console.error('Error creating claim request:', error);
+        return NextResponse.json({ error: 'Failed to create claim request' }, { status: 500 });
     }
 }
