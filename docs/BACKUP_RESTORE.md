@@ -125,9 +125,65 @@ Create an IAM policy with minimal required permissions:
 
 ### Automated Daily Backups
 
-#### Option 1: Host-Level Cron (Recommended for Docker)
+#### Option 1: Docker Sidecar (Recommended for Production)
 
-For Docker deployments, the recommended approach is to run cron on the **host** system and trigger backups inside the container:
+The **backup sidecar container** is the recommended approach for Docker deployments. It's included in `docker-compose.prod.yml` and runs independently:
+
+**How it works:**
+- A separate container (`Dockerfile.backup`) runs cron daemon
+- Automatically backs up the database daily at 2 AM UTC
+- Uploads to S3 with retention policy
+- Logs to `/var/log/backup.log` inside the container
+
+**Starting the stack:**
+```bash
+# The backup service starts automatically with the app
+docker-compose -f docker-compose.prod.yml up -d
+
+# Verify backup service is running
+docker-compose -f docker-compose.prod.yml ps backup
+
+# View backup logs
+docker-compose -f docker-compose.prod.yml logs -f backup
+
+# Trigger manual backup
+docker-compose -f docker-compose.prod.yml exec backup /app/scripts/backup-db.sh --manual
+
+# Access container shell for debugging
+docker-compose -f docker-compose.prod.yml exec backup sh
+```
+
+**Architecture:**
+```
+┌─────────────────┐
+│   App Container │
+│   (Node.js)     │
+└────────┬────────┘
+         │
+         │ network
+         ▼
+┌─────────────────┐     ┌──────────────────┐
+│   DB Container  │◄────│  Backup Sidecar  │
+│  (PostgreSQL)   │     │   (Alpine + Cron)│
+└─────────────────┘     └─────────┬────────┘
+                                    │
+                                    ▼
+                           ┌──────────────────┐
+                           │   AWS S3 Bucket  │
+                           │ (bball-db-backups)│
+                           └──────────────────┘
+```
+
+**Benefits:**
+- ✅ Clean separation of concerns
+- ✅ No modifications to main app container
+- ✅ Independent scaling and updates
+- ✅ Self-contained (no host cron needed)
+- ✅ Follows Docker best practices
+
+#### Option 2: Host-Level Cron (Alternative for Docker)
+
+If you prefer using the host system's cron:
 
 **Quick Setup:**
 ```bash
@@ -144,19 +200,7 @@ sudo crontab -e
 0 2 * * * docker exec bball-app-1 /app/scripts/backup-db.sh >> /var/log/bball-backup.log 2>&1
 ```
 
-**Verify setup:**
-```bash
-# Check if cron job is scheduled
-sudo crontab -l | grep backup-db
-
-# Test the backup manually first
-docker exec bball-app-1 /app/scripts/backup-db.sh --manual
-
-# View logs
-tail -f /var/log/bball-backup.log
-```
-
-#### Option 2: Native Installation (Non-Docker)
+#### Option 3: Native Installation (Non-Docker)
 
 If running without Docker:
 
@@ -168,47 +212,9 @@ crontab -e
 0 2 * * * /path/to/project/scripts/backup-db.sh >> /path/to/project/logs/cron-backup.log 2>&1
 ```
 
-#### Option 3: Systemd Timer (Alternative)
+#### Option 4: Systemd Timer (Alternative)
 
-For systems using systemd, create a timer service:
-
-**1. Create backup service:**
-```ini
-# /etc/systemd/system/bball-backup.service
-[Unit]
-Description=Basketball App Database Backup
-After=docker.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/docker exec bball-app-1 /app/scripts/backup-db.sh
-StandardOutput=append:/var/log/bball-backup.log
-StandardError=append:/var/log/bball-backup.log
-```
-
-**2. Create timer:**
-```ini
-# /etc/systemd/system/bball-backup.timer
-[Unit]
-Description=Run Basketball App Database Backup daily
-
-[Timer]
-OnCalendar=*-*-* 02:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-**3. Enable and start:**
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable bball-backup.timer
-sudo systemctl start bball-backup.timer
-
-# Check status
-sudo systemctl list-timers --all
-```
+For systemd-based systems, create a timer service (see systemd documentation for details).
 
 ### Manual Backups
 
