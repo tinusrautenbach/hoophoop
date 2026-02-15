@@ -26,11 +26,21 @@ This file defines the strict rules and guidelines for this project. Antigravity 
 - **Docker**: The application must run via `docker-compose up`.
 - **Environment Variables**: All secrets must be in `.env`, never hardcoded.
 
-## 6. Version Control & Git Workflow
-- **Branch Strategy**: Feature branching is mandatory.
+## 6. Version Control & Git Workflow (REQUIRED)
+- **Branch Strategy**: Feature branching is mandatory for ALL new features.
   - Format: `feature/short-description` (e.g., `feature/auth-setup`, `feature/scorer-ui`).
-  - Never commit directly to `main` for substantial changes.
-- **Commit Messages**: Conventional Commits format is preferred (e.g., `feat: add login page`, `fix: correct scoring bug`).
+  - Never commit directly to `main` for any changes, including documentation updates.
+  - Always create a new branch before starting work on a feature.
+- **Pull Request Workflow** (Mandatory for all features):
+  1.  Create feature branch: `git checkout -b feature/description`
+  2.  Make changes and commit with Conventional Commits format (e.g., `feat: add login page`, `fix: correct scoring bug`, `docs: update rules`)
+  3.  Push branch to remote: `git push -u origin feature/description`
+  4.  Create Pull Request using `gh pr create` with descriptive title and body
+  5.  Wait for automated checks (tests, lint) to pass
+  6.  Request user review and approval
+  7.  Merge using `gh pr merge` (squash or merge commit based on preference)
+  8.  Delete feature branch after merge: `git branch -d feature/description` and `git push origin --delete feature/description`
+- **Commit Messages**: Conventional Commits format is required (e.g., `feat:`, `fix:`, `docs:`, `refactor:`, `test:`).
 - **Merge Criteria**:
   1.  Unit tests must pass.
   2.  Linter must pass.
