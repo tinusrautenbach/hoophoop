@@ -64,7 +64,7 @@ This file defines the strict rules and guidelines for this project. Antigravity 
 ## 9. Project Management
 - **Status Tracking**: The `spec/implementation_plan.md` file must be kept up-to-date.
 - **Completion**: When a task from the plan is completed, verify it and then mark it with `[x]`.
-- **Synchronization**: `spec/outstanding_tasks.md` is a subset of `spec/implementation_plan.md`. Both files must be kept in sync. When a task is marked as complete in one, it must be marked as complete in the other (or removed from the outstanding list).
+- **Synchronization**: `spec/outstanding_tasks.md` is a subset of `spec/implementation_plan.md`. Both files must be kept in sync. When a task is marked as complete in one, it must be removed from `spec/outstanding_tasks.md`.
 
 ## 10. MCP Configuration
 - **Database Access**: Always use the `dbhub-bball` MCP server for database operations instead of the general `dbhub` server.

@@ -7,7 +7,7 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         include: ['**/*.test.ts', '**/*.test.tsx'],
-        reporters: ['default', './tests/markdown-reporter.ts'],
+        reporters: ['default', path.resolve(__dirname, 'markdown-reporter.ts')],
         alias: {
             '@': path.resolve(__dirname, '../src'),
         },

@@ -1,9 +1,6 @@
 # Basketball Scoring App - Outstanding Tasks
 
 ## Phase 3: Frontend Core (Scorer Views)
-- [ ] **3.3 Roster Enforcement & Positioning**:
-  - [ ] Enforce roster requirement on game start button.
-  - [ ] Logic to ensure owner's team is always Home (Left).
 
 ## Phase 5: Multi-Scorer & Centralized Timer
 - [ ] **5.2 Multi-Scorer Support**:
