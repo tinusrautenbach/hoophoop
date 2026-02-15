@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
     Shield, Search, User, Check, ShieldAlert, ArrowRight, 
     Users, Building2, Trash2, Plus, Minus, ChevronDown, ChevronUp,
-    Crown, RotateCcw, Link2, Trophy, X
+    Crown, RotateCcw, Link2, Trophy, X, Mail
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -92,7 +92,7 @@ type LinkedAthlete = {
 
 export default function AdminDashboard() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'users' | 'communities' | 'deletedGames' | 'linkedAthletes'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'communities' | 'deletedGames' | 'linkedAthletes' | 'invitations'>('users');
     
     // Users state
     const [users, setUsers] = useState<UserData[]>([]);
@@ -144,6 +144,24 @@ export default function AdminDashboard() {
     const [claimRequestsLoading, setClaimRequestsLoading] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState('');
+
+    // Pending invitations state
+    const [pendingInvitations, setPendingInvitations] = useState<Array<{
+        id: string;
+        athleteId: string | null;
+        email: string;
+        token: string;
+        status: string;
+        expiresAt: string;
+        createdAt: string;
+        createdBy: string;
+        athleteName: string | null;
+        athleteFirstName: string | null;
+        athleteSurname: string | null;
+        creatorName: string;
+        creatorEmail: string | null;
+    }>>([]);
+    const [invitationsLoading, setInvitationsLoading] = useState(false);
     
     const [error, setError] = useState('');
 
@@ -167,6 +185,12 @@ export default function AdminDashboard() {
     useEffect(() => {
         if (activeTab === 'deletedGames') {
             fetchDeletedGames();
+        }
+    }, [activeTab]);
+
+    useEffect(() => {
+        if (activeTab === 'invitations') {
+            fetchPendingInvitations();
         }
     }, [activeTab]);
 
@@ -366,6 +390,62 @@ export default function AdminDashboard() {
         } catch (err) {
             console.error(err);
             alert('Failed to reject claim request');
+        }
+    };
+
+    const fetchPendingInvitations = async () => {
+        setInvitationsLoading(true);
+        try {
+            const res = await fetch('/api/admin/invitations?status=pending');
+            if (res.status === 403) {
+                setError('Unauthorized');
+                return;
+            }
+            if (res.ok) {
+                const data = await res.json();
+                setPendingInvitations(data.invitations || []);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setInvitationsLoading(false);
+        }
+    };
+
+    const cancelInvitation = async (token: string) => {
+        if (!confirm('Are you sure you want to cancel this invitation?')) return;
+        
+        try {
+            const res = await fetch(`/api/players/invitations/${token}/resend`, {
+                method: 'DELETE',
+            });
+            if (res.ok) {
+                setPendingInvitations(prev => prev.filter(inv => inv.token !== token));
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to cancel invitation');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to cancel invitation');
+        }
+    };
+
+    const resendInvitation = async (token: string) => {
+        try {
+            const res = await fetch(`/api/players/invitations/${token}/resend`, {
+                method: 'POST',
+            });
+            if (res.ok) {
+                alert('Invitation resent successfully');
+                fetchPendingInvitations();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to resend invitation');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to resend invitation');
         }
     };
 
@@ -591,6 +671,18 @@ export default function AdminDashboard() {
                     className={cn(
                         "px-6 py-3 font-bold uppercase tracking-widest text-sm transition-colors flex items-center gap-2",
                         activeTab === 'linkedAthletes' 
+                            ? "text-orange-500 border-b-2 border-orange-500" 
+                            : "text-slate-500 hover:text-slate-300"
+                    )}
+                >
+                    <Link2 size={16} />
+                    Linked Athletes
+                </button>
+                <button
+                    onClick={() => setActiveTab('invitations')}
+                    className={cn(
+                        "px-6 py-3 font-bold uppercase tracking-widest text-sm transition-colors flex items-center gap-2",
+                        activeTab === 'invitations' 
                             ? "text-orange-500 border-b-2 border-orange-500" 
                             : "text-slate-500 hover:text-slate-300"
                     )}
@@ -1258,6 +1350,72 @@ export default function AdminDashboard() {
                             >
                                 Next
                             </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Pending Invitations Tab */}
+            {activeTab === 'invitations' && (
+                <div className="bg-input border border-border rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-border">
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <Mail size={20} className="text-blue-500" />
+                            Pending Player Invitations
+                        </h2>
+                        <p className="text-slate-500 text-sm mt-1">
+                            {pendingInvitations.length} pending invitation{pendingInvitations.length !== 1 ? 's' : ''} awaiting acceptance
+                        </p>
+                    </div>
+
+                    {invitationsLoading ? (
+                        <div className="p-12 text-center text-slate-500">Loading invitations...</div>
+                    ) : pendingInvitations.length === 0 ? (
+                        <div className="p-12 text-center text-slate-500">
+                            <Mail size={48} className="mx-auto mb-4 text-slate-700" />
+                            <p>No pending player invitations.</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-800">
+                            {pendingInvitations.map((invitation) => (
+                                <div key={invitation.id} className="p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                                            <Mail className="w-5 h-5 text-blue-500" />
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-sm">
+                                                {invitation.athleteName || 'Unknown Player'}
+                                            </div>
+                                            <div className="text-xs text-slate-400">
+                                                Invited by: {invitation.creatorName} ({invitation.creatorEmail})
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                                To: {invitation.email}
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 mt-0.5">
+                                                Expires: {new Date(invitation.expiresAt).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => resendInvitation(invitation.token)}
+                                            className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-500 text-xs font-bold rounded transition-colors"
+                                            title="Resend invitation"
+                                        >
+                                            Resend
+                                        </button>
+                                        <button
+                                            onClick={() => cancelInvitation(invitation.token)}
+                                            className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-500 text-xs font-bold rounded transition-colors"
+                                            title="Cancel invitation"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
