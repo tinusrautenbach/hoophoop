@@ -1,0 +1,286 @@
+# Basketball Scoring App - Outstanding Tasks
+
+## Phase 2: Game Setup & Real-time
+- [ ] 2.5.4 Advanced Team UI (Bulk Paste, Color Picker)
+
+## Phase 3: Frontend Core (Scorer Views)
+- [ ] **3.3 Roster Enforcement & Positioning**:
+  - [ ] Enforce roster requirement on game start button.
+  - [ ] Logic to ensure owner's team is always Home (Left).
+
+## Phase 5: Multi-Scorer & Centralized Timer
+- [ ] **5.2 Multi-Scorer Support**:
+  - [ ] Add "Invite Scorer" UI functionality
+  - [ ] Add scorer presence indicators (show active scorers in UI)
+  - [ ] Add activity attribution (track which scorer performed each action)
+  - [ ] Build "Join as Scorer" flow UI
+- [ ] **5.3 Conflict Resolution**:
+  - [ ] Implement optimistic concurrency control for game state updates
+  - [ ] Add version/timestamp fields to detect stale updates
+  - [ ] Create conflict notification UI (when two scorers edit simultaneously)
+
+## Phase 6: Stats & Finalization
+- [ ] 6.2 Season Statistics
+
+## Phase 7: Community & Advanced User System
+- [ ] **7.2 Community Management API**:
+  - [ ] Invite system (Generate token, Send email - *mock for MVP*, Accept invite).
+  - [ ] Member management (Promote/Demote/Remove).
+- [ ] **7.3 Permission Middleware**:
+  - [ ] Update `auth()` checks to respect Community Roles.
+  - [ ] Implement `canManageGame(userId, gameId)` logic.
+- [ ] **7.4 Frontend - Community Hub**:
+  - [ ] Community Dashboard (Teams list).
+  - [ ] Manage pending invitations.
+- [ ] **7.5 Activity Logging**:
+  - [ ] Integrate logging into key API routes (Game Create, Score Update).
+
+## Phase 9: Bench Selection & Scoring UX Improvements
+- [ ] **9.5 Score Recalculation on Event Deletion**:
+  - [ ] When a SCORE event is deleted from the game log, re-reduce all remaining SCORE events.
+  - [ ] Update `games.home_score` and `games.guest_score` in the database.
+  - [ ] Broadcast updated totals to all clients via Socket.io.
+  - [ ] Ensure the scorer UI, spectator UI, and box score all reflect the recalculated score.
+
+## Phase 12: Mobile Application (React Native)
+- [ ] **12.1 Project Scaffolding**:
+  - [ ] Initialize Expo project in `/mobile` directory.
+  - [ ] Configure `app.json` with app name, bundle ID, version, icons, splash screen.
+  - [ ] Configure `eas.json` for build profiles (development, preview, production).
+  - [ ] Set up workspace in root `package.json` to link `/mobile` and `/packages/shared`.
+  - [ ] Create `/packages/shared` with TypeScript types, constants, and Zustand store definitions.
+- [ ] **12.2 Authentication**:
+  - [ ] Install and configure `@clerk/clerk-expo`.
+  - [ ] Implement Google OAuth login flow (same Clerk app as web).
+  - [ ] Token storage using `expo-secure-store`.
+  - [ ] Auth context provider wrapping the app.
+- [ ] **12.3 Navigation Structure**:
+  - [ ] Bottom tab navigator: Games, Profile.
+  - [ ] Stack navigator for: Game List → Game Detail → Live Scoring.
+  - [ ] Modal navigator for: Create Game, Player Selection.
+- [ ] **12.4 Game List Screen**:
+  - [ ] Fetch and display user's games (active and completed).
+  - [ ] Pull-to-refresh.
+  - [ ] Game cards: Team names, score, status, date.
+  - [ ] Tap to navigate to game detail/scoring.
+- [ ] **12.5 Game Creation Screen**:
+  - [ ] Team selection (from user's saved teams).
+  - [ ] Basic game configuration (period length, number of periods).
+  - [ ] Visibility toggle (Private / Public General / Public Community).
+  - [ ] Submit → navigate to bench selection → navigate to live scoring.
+- [ ] **12.6 Bench Selection Screen**:
+  - [ ] Display all roster players with checkboxes (all selected by default).
+  - [ ] Deselect absent players.
+  - [ ] Confirm → transition game to Live.
+- [ ] **12.7 Live Scoring Screen (Simple Mode)**:
+  - [ ] Scoreboard header: Team names, scores, clock, period.
+  - [ ] Clock controls: Start/Stop/Edit.
+  - [ ] Points buttons: +1, +2, +3.
+  - [ ] 6-player selection overlay (5 on-court + 1 opponent) — responsive, no scroll.
+  - [ ] Fouls tracking.
+  - [ ] Game log (scrollable list below scoreboard).
+  - [ ] Event deletion with score recalculation.
+  - [ ] Socket.io connection for real-time sync.
+- [ ] **12.8 App Store Deployment Setup**:
+  - [ ] **Android**:
+    - [ ] Generate upload keystore via EAS credentials.
+    - [ ] Create Google Play Console developer account.
+    - [ ] Configure service account for automated submissions.
+    - [ ] Create Play Store listing (description, screenshots, feature graphic).
+    - [ ] First internal test track build.
+  - [ ] **iOS**:
+    - [ ] Configure Apple Developer account in EAS.
+    - [ ] Generate provisioning profiles and distribution certificate via EAS.
+    - [ ] Create App Store Connect listing (description, screenshots, privacy policy URL).
+    - [ ] Configure TestFlight for beta testing.
+    - [ ] First TestFlight build.
+  - [ ] **CI/CD** (GitHub Actions):
+    - [ ] Workflow: Lint + type-check + tests on PR.
+    - [ ] Workflow: EAS Build (preview) on merge to develop.
+    - [ ] Workflow: EAS Build (production) + EAS Submit on release tag.
+
+## Phase 14: Tournament Management System
+- [ ] **14.2 Tournament Types Support**:
+  - [ ] Tournament type-specific logic and bracket generation algorithms
+- [ ] **14.3 Tournament Creation & Management (Basic)**:
+  - [ ] Tournament setup wizard:
+    - [ ] Step 1: Basic info
+    - [ ] Step 2: Pool setup (if applicable)
+    - [ ] Step 3: Team assignment to pools
+    - [ ] Step 4: Schedule generation
+    - [ ] Step 5: Review and confirm
+  - [ ] Edit tournament details at any time (before tournament starts or during)
+  - [ ] Manage teams:
+    - [ ] Move teams between pools (pending pool management UI)
+  - [ ] Tournament status management:
+    - [ ] Scheduled → Active → Completed
+    - [ ] Pause/resume tournament
+    - [ ] Cancel tournament (soft delete)
+- [ ] **14.4 Pool Stage Management**:
+  - [ ] Pool configuration:
+    - [ ] Number of pools (auto-calculated based on team count)
+    - [ ] Teams per pool
+    - [ ] Games per team within pool
+    - [ ] Advancement rules (top N from each pool)
+  - [ ] Automatic pool game generation:
+    - [ ] Round robin schedule within each pool
+    - [ ] Date/time assignment with court/venue availability
+  - [ ] Pool standings calculation:
+    - [ ] Wins/losses
+    - [ ] Points differential
+    - [ ] Head-to-head results (tiebreaker)
+    - [ ] Points scored/conceded
+  - [ ] Visual pool view:
+    - [ ] Grid showing all pool games
+    - [ ] Current standings per pool
+    - [ ] Advancement status indicators
+- [ ] **14.5 Knockout Stage Management**:
+  - [ ] Automatic bracket generation from pool results:
+    - [ ] Seed teams based on pool standings
+    - [ ] Create bracket pairings
+  - [ ] Manual bracket editing:
+    - [ ] Drag-and-drop team placement
+    - [ ] Custom seedings
+    - [ ] Bye handling
+  - [ ] Bracket visualization:
+    - [ ] Interactive bracket tree
+    - [ ] Click to view game details
+    - [ ] Live bracket updates as games complete
+  - [ ] Multiple bracket support:
+    - [ ] Championship bracket
+    - [ ] Consolation bracket (3rd place, 5th place, etc.)
+    - [ ] Losers bracket (double elimination)
+- [ ] **14.6 Manual Score Entry**:
+  - [ ] Game result confirmation dialog
+  - [ ] Override existing scores with audit trail logging
+  - [ ] Batch score entry:
+    - [ ] Import from CSV
+    - [ ] Quick entry mode for multiple games
+  - [ ] Edit game results:
+    - [ ] Recalculate standings automatically (depends on standings calculation)
+- [ ] **14.7 Tournament Awards System**:
+  - [ ] Award categories:
+    - [ ] MVP (Most Valuable Player)
+    - [ ] Best Scorer (highest PPG)
+    - [ ] Best Defender (steals, blocks, defensive rating)
+    - [ ] Best Rebounder
+    - [ ] Best Assists
+    - [ ] Best 3-Point Shooter
+    - [ ] Best Free Throw %
+    - [ ] Most Improved
+    - [ ] Coach's Award
+    - [ ] Sportsmanship Award
+    - [ ] All-Tournament Team (1st, 2nd, 3rd teams)
+  - [ ] Automatic award calculation:
+    - [ ] Stats aggregation across all tournament games
+    - [ ] Minimum games played threshold
+    - [ ] Tiebreaking logic
+  - [ ] Manual award assignment:
+    - [ ] Override automatic winners
+    - [ ] Add custom awards
+    - [ ] Award notes/descriptions
+  - [ ] Award display:
+    - [ ] Awards page per tournament
+    - [ ] Player profile badges
+    - [ ] Team profile tournament history
+- [ ] **14.8 Tournament Dashboard & Views**:
+  - [ ] Tournament detail page:
+    - [ ] Standings tab: Pool tables, stats leaders (auto-calculation pending)
+    - [ ] Bracket tab: Interactive bracket view (visualization pending)
+    - [ ] Awards tab: Winners and nominations (assignment pending)
+  - [ ] Tournament public page (if public visibility):
+    - [ ] Read-only bracket/schedule
+    - [ ] Live scores
+    - [ ] Standings
+- [ ] **14.9 Tournament APIs**:
+  - [ ] `POST /api/tournaments/[id]/pools` - Create/manage pools
+  - [ ] `POST /api/tournaments/[id]/generate-schedule` - Auto-generate games
+  - [ ] `POST /api/tournaments/[id]/advance` - Advance to knockout stage
+  - [ ] `GET /api/tournaments/[id]/standings` - Get current standings (calculation)
+  - [ ] `GET /api/tournaments/[id]/bracket` - Get bracket data
+  - [ ] `GET /api/tournaments/[id]/awards` - Get awards data
+  - [ ] `POST /api/tournaments/[id]/awards` - Assign awards
+- [ ] **14.10 Tournament Integration**:
+  - [ ] Tournament game badge/icon in games list
+  - [ ] Tournament filter in games view
+  - [ ] Tournament stats in player profiles (aggregate across tournament games)
+  - [ ] Tournament history in team profiles
+
+## Phase 15: Player Profiles, Seasons & Enhanced Search
+- [ ] **15.1 Player Invitation & Self-Service Profile**:
+  - [ ] Player sign-up flow:
+    - [ ] Merge duplicate profiles during claim process
+  - [ ] Player profile page:
+    - [ ] Privacy settings (what stats are public vs private)
+- [ ] **15.2 Player Statistics Dashboard**:
+  - [ ] Lifetime statistics:
+    - [ ] Career highs (best game stats)
+    - [ ] Total minutes played
+  - [ ] Team-specific statistics:
+    - [ ] Teammates played with most
+    - [ ] Jersey number history per team
+  - [ ] Season-specific statistics:
+    - [ ] Season rankings (e.g., "Top 10 scorer in Season 2025")
+    - [ ] Season awards/achievements
+    - [ ] Progress tracking (improvement over seasons)
+  - [ ] Visual statistics:
+    - [ ] Charts/graphs for stat trends
+    - [ ] Heat maps (shooting zones if advanced tracking)
+    - [ ] Compare stats to league/community averages
+- [ ] **15.3 Season Management**:
+  - [ ] Season creation & management:
+    - [ ] Archive old seasons (preserve data, hide from active lists)
+    - [ ] Duplicate season (copy structure for new year)
+  - [ ] Team-season association:
+    - [ ] Season-specific team rosters (players may change seasons)
+- [ ] **15.4 Enhanced Team Search & Filtering**:
+  - [ ] Global team search enhancements:
+    - [ ] Filter by team status (active, inactive)
+  - [ ] Team list views with filtering:
+    - [ ] Game creation: Team search with community/season filters
+    - [ ] Tournament setup: Team selection with filters
+    - [ ] Player assignment: Team search with filters
+  - [ ] Quick filters:
+    - [ ] "Current Season" filter
+    - [ ] "Active Teams Only" toggle
+    - [ ] Recent/Popular teams quick access
+  - [ ] Search UX improvements:
+    - [ ] Autocomplete suggestions
+    - [ ] Recent searches
+    - [ ] Saved filters
+    - [ ] Clear all filters button
+    - [ ] Filter count indicator
+- [ ] **15.8 UI Components**:
+  - [ ] Player profile page:
+    - [ ] Achievement/award display
+  - [ ] Season management UI:
+    - [ ] Season selector component (reusable)
+  - [ ] Enhanced team search UI:
+    - [ ] Search bar with autocomplete
+    - [ ] Filter dropdowns (community, season)
+    - [ ] Filter chips/badges
+    - [ ] Results list with team cards
+
+## Phase 16: Testing Infrastructure
+- [ ] **16.1 Load and Volume Test Suite**:
+  - [ ] Create load test for 10,000 concurrent spectators across 100 games
+  - [ ] Implement event generation at ~1 event per second per game rate
+  - [ ] Test server stability under sustained high load (30+ seconds)
+  - [ ] Validate connection handling (batch connections to avoid overwhelming server)
+  - [ ] Monitor memory usage during 10K concurrent connections (<500MB growth limit)
+  - [ ] Measure event propagation latency (<500ms average requirement)
+  - [ ] Stress test rapid connection/disconnection cycles
+  - [ ] Document load test execution and validation criteria in test policy
+  - [ ] Integrate load tests into CI/CD pipeline for production releases
+
+## Phase 17: Database Backup & S3 Storage
+- [ ] **17.2 S3 Storage Configuration**:
+  - [ ] Create dedicated S3 bucket for database backups (e.g., `bball-db-backups`)
+  - [ ] Enable S3 versioning for backup recovery
+  - [ ] Configure S3 lifecycle policy for cost optimization
+- [ ] **17.4 Backup Automation & Monitoring**:
+  - [ ] Alert on backup failures (email/Slack notification)
+  - [ ] Backup size monitoring and cost tracking dashboard
+- [ ] **17.5 Backup Restoration & Testing**:
+  - [ ] Monthly restore test to staging environment
+  - [ ] Point-in-time recovery capability (if using RDS)

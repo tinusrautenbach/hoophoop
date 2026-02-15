@@ -61,14 +61,15 @@ This file defines the strict rules and guidelines for this project. Antigravity 
   3.  Commit both the schema change and the new SQL migration file.
   4.  Never manually edit the database schema in production.
 
-## 8. Project Management
+## 9. Project Management
 - **Status Tracking**: The `spec/implementation_plan.md` file must be kept up-to-date.
 - **Completion**: When a task from the plan is completed, verify it and then mark it with `[x]`.
+- **Synchronization**: `spec/outstanding_tasks.md` is a subset of `spec/implementation_plan.md`. Both files must be kept in sync. When a task is marked as complete in one, it must be marked as complete in the other (or removed from the outstanding list).
 
-## 9. MCP Configuration
+## 10. MCP Configuration
 - **Database Access**: Always use the `dbhub-bball` MCP server for database operations instead of the general `dbhub` server.
 
-## 10. Security Testing Policy (REQUIRED)
+## 11. Security Testing Policy (REQUIRED)
 - **Reference**: See `spec/security_tests.md` for comprehensive security testing plan.
 - **Test Frequency Enforcement**:
   - **Every Commit**: Automated security tests must pass before merge (run `npm run test:security`)
