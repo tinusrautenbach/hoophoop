@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     ArrowLeft, Search, Plus, X, Edit2, Users, Shield, 
-    ChevronDown, Check, User, Trash2, Calendar, UserPlus, Globe, Trophy
+    ChevronDown, Check, User, Trash2, Calendar, UserPlus, Globe, Trophy, Activity
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -48,6 +48,32 @@ type TeamSeason = {
     };
 };
 
+type TeamStats = {
+    gamesPlayed: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    pointsFor: number;
+    pointsAgainst: number;
+    pointsDiff: number;
+    avgPointsFor: number;
+    avgPointsAgainst: number;
+    homeGames: number;
+    awayGames: number;
+};
+
+type TeamGame = {
+    id: string;
+    createdAt: string;
+    homeTeamId: string | null;
+    guestTeamId: string | null;
+    homeTeamName: string;
+    guestTeamName: string;
+    homeScore: number;
+    guestScore: number;
+    status: string;
+};
+
 type PlayerSearchResult = {
     id: string;
     name: string;
@@ -74,9 +100,11 @@ export default function TeamDetailsPage() {
     const [teamShortCode, setTeamShortCode] = useState('');
     const [teamColor, setTeamColor] = useState('');
     const [teamCommunityId, setTeamCommunityId] = useState<string | null>(null);
-    const [teamGames, setTeamGames] = useState<any[]>([]);
+    const [teamGames, setTeamGames] = useState<TeamGame[]>([]);
     const [teamSeasons, setTeamSeasons] = useState<TeamSeason[]>([]);
     const [communities, setCommunities] = useState<Community[]>([]);
+    const [teamStats, setTeamStats] = useState<TeamStats | null>(null);
+    const [selectedSeasonId, setSelectedSeasonId] = useState<string>('all-time');
 
     // Search existing player state
     const [searchQuery, setSearchQuery] = useState('');
@@ -187,6 +215,24 @@ export default function TeamDetailsPage() {
             setPlayerSearchResults([]);
         }
     }, [searchQuery, showPlayerSearch, teamCommunityId]);
+
+    useEffect(() => {
+        if (!teamId) return;
+
+        const params = new URLSearchParams();
+        if (selectedSeasonId !== 'all-time') {
+            params.set('seasonId', selectedSeasonId);
+        }
+
+        fetch(`/api/teams/${teamId}/stats?${params.toString()}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.stats) {
+                    setTeamStats(data.stats);
+                }
+            })
+            .catch(err => console.error('Failed to load team stats:', err));
+    }, [teamId, selectedSeasonId]);
 
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return '';
@@ -849,6 +895,51 @@ export default function TeamDetailsPage() {
                             </div>
                         </div>
                     )}
+
+                    {/* Team Stats */}
+                    <div className="bg-card/20 rounded-2xl border border-border overflow-hidden">
+                        <div className="px-6 py-4 bg-card/50 flex items-center justify-between">
+                            <div className="text-xs uppercase tracking-widest text-slate-400 font-semibold flex items-center gap-2">
+                                <Activity size={14} />
+                                Team Stats
+                            </div>
+                            
+                            {/* Season Selector */}
+                            <select 
+                                value={selectedSeasonId}
+                                onChange={(e) => setSelectedSeasonId(e.target.value)}
+                                className="bg-slate-800 text-xs rounded border border-slate-700 px-2 py-1 outline-none focus:border-orange-500"
+                            >
+                                <option value="all-time">All Time</option>
+                                {teamSeasons.map(ts => (
+                                    <option key={ts.id} value={ts.season.id}>{ts.season.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        {teamStats ? (
+                            <div className="p-6 grid grid-cols-2 gap-4">
+                                <div className="text-center">
+                                    <div className="text-2xl font-black text-white">{teamStats.gamesPlayed}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Games</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-black text-orange-500">{teamStats.avgPointsFor}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-slate-500">PPG</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-black text-green-500">{teamStats.wins}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Wins</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-black text-red-500">{teamStats.losses}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Losses</div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-6 text-center text-slate-500 text-sm">Loading stats...</div>
+                        )}
+                    </div>
 
                     {/* Game History */}
                     <div className="bg-card/20 rounded-2xl border border-border overflow-hidden">
