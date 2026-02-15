@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
     Shield, Search, User, Check, ShieldAlert, ArrowRight, 
     Users, Building2, Trash2, Plus, Minus, ChevronDown, ChevronUp,
-    Crown, RotateCcw
+    Crown, RotateCcw, Link2, Trophy
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -73,9 +73,26 @@ type DeletedGame = {
     } | null;
 };
 
+type LinkedAthlete = {
+    id: string;
+    name: string;
+    firstName: string | null;
+    surname: string | null;
+    status: string;
+    communityId: string | null;
+    createdAt: string;
+    user: {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        email: string;
+        createdAt: string;
+    } | null;
+};
+
 export default function AdminDashboard() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'users' | 'communities' | 'deletedGames'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'communities' | 'deletedGames' | 'linkedAthletes'>('users');
     
     // Users state
     const [users, setUsers] = useState<UserData[]>([]);
@@ -94,6 +111,14 @@ export default function AdminDashboard() {
     // Deleted games state
     const [deletedGames, setDeletedGames] = useState<DeletedGame[]>([]);
     const [deletedGamesLoading, setDeletedGamesLoading] = useState(false);
+
+    // Linked athletes state
+    const [linkedAthletes, setLinkedAthletes] = useState<LinkedAthlete[]>([]);
+    const [linkedAthletesSearch, setLinkedAthletesSearch] = useState('');
+    const [linkedAthletesFilter, setLinkedAthletesFilter] = useState<'all' | 'linked' | 'unlinked'>('all');
+    const [linkedAthletesPage, setLinkedAthletesPage] = useState(1);
+    const [linkedAthletesTotalPages, setLinkedAthletesTotalPages] = useState(1);
+    const [linkedAthletesLoading, setLinkedAthletesLoading] = useState(true);
     
     // Community members modal state
     const [selectedCommunity, setSelectedCommunity] = useState<CommunityData | null>(null);
@@ -127,6 +152,11 @@ export default function AdminDashboard() {
             fetchDeletedGames();
         }
     }, [activeTab]);
+
+    useEffect(() => {
+        fetchLinkedAthletes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [linkedAthletesPage, linkedAthletesSearch, linkedAthletesFilter]);
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -196,6 +226,31 @@ export default function AdminDashboard() {
             console.error('Failed to fetch deleted games:', err);
         } finally {
             setDeletedGamesLoading(false);
+        }
+    };
+
+    const fetchLinkedAthletes = async () => {
+        setLinkedAthletesLoading(true);
+        try {
+            const params = new URLSearchParams({ 
+                page: linkedAthletesPage.toString(), 
+                limit: '10' 
+            });
+            if (linkedAthletesSearch) params.set('search', linkedAthletesSearch);
+            if (linkedAthletesFilter !== 'all') params.set('filter', linkedAthletesFilter);
+            
+            const res = await fetch(`/api/admin/linked-athletes?${params.toString()}`);
+            if (res.status === 403) {
+                setError('Unauthorized');
+                return;
+            }
+            const data = await res.json();
+            setLinkedAthletes(data.linkedAthletes);
+            setLinkedAthletesTotalPages(data.pagination.totalPages);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLinkedAthletesLoading(false);
         }
     };
 
@@ -449,6 +504,18 @@ export default function AdminDashboard() {
                 >
                     <Trash2 size={16} />
                     Deleted Games
+                </button>
+                <button
+                    onClick={() => setActiveTab('linkedAthletes')}
+                    className={cn(
+                        "px-6 py-3 font-bold uppercase tracking-widest text-sm transition-colors flex items-center gap-2",
+                        activeTab === 'linkedAthletes' 
+                            ? "text-orange-500 border-b-2 border-orange-500" 
+                            : "text-slate-500 hover:text-slate-300"
+                    )}
+                >
+                    <Link2 size={16} />
+                    Linked Athletes
                 </button>
             </div>
 
@@ -897,6 +964,138 @@ export default function AdminDashboard() {
                             </tbody>
                         </table>
                     </div>
+                </div>
+            )}
+
+            {/* Linked Athletes Tab */}
+            {activeTab === 'linkedAthletes' && (
+                <div className="bg-input border border-border rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <Link2 size={20} className="text-orange-500" />
+                            User-Athlete Links
+                        </h2>
+                        <div className="flex gap-2">
+                            <select
+                                value={linkedAthletesFilter}
+                                onChange={(e) => { setLinkedAthletesFilter(e.target.value as 'all' | 'linked' | 'unlinked'); setLinkedAthletesPage(1); }}
+                                className="bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+                            >
+                                <option value="all">All Players</option>
+                                <option value="linked">Linked</option>
+                                <option value="unlinked">Unlinked</option>
+                            </select>
+                            <div className="relative w-full sm:w-64">
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                                <input
+                                    type="text"
+                                    placeholder="Search players or users..."
+                                    value={linkedAthletesSearch}
+                                    onChange={(e) => { setLinkedAthletesSearch(e.target.value); setLinkedAthletesPage(1); }}
+                                    className="w-full bg-background border border-border rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-orange-500"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-background text-xs uppercase tracking-widest text-slate-500 font-semibold">
+                                <tr>
+                                    <th className="px-6 py-4">Athlete</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4">Linked User</th>
+                                    <th className="px-6 py-4">User Email</th>
+                                    <th className="px-6 py-4">Linked At</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800">
+                                {linkedAthletesLoading ? (
+                                    <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">Loading...</td></tr>
+                                ) : linkedAthletes.length === 0 ? (
+                                    <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">No athletes found.</td></tr>
+                                ) : (
+                                    linkedAthletes.map(athlete => (
+                                        <tr key={athlete.id} className="hover:bg-card/30 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-500">
+                                                        <Trophy size={14} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium">{athlete.name}</div>
+                                                        <div className="text-xs text-slate-500">
+                                                            {athlete.firstName} {athlete.surname}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={cn(
+                                                    "inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold uppercase",
+                                                    athlete.status === 'active' 
+                                                        ? "bg-green-500/20 text-green-500"
+                                                        : "bg-slate-500/20 text-slate-500"
+                                                )}>
+                                                    {athlete.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {athlete.user ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-6 h-6 rounded-full bg-card flex items-center justify-center text-slate-400">
+                                                            <User size={12} />
+                                                        </div>
+                                                        <span className="text-sm">
+                                                            {athlete.user.firstName} {athlete.user.lastName}
+                                                        </span>
+                                                        {athlete.user.id && (
+                                                            <span className="text-[10px] text-slate-500 font-mono ml-1">
+                                                                ({athlete.user.id.substring(0, 8)}...)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-500 text-sm italic">Not linked</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-400 text-sm">
+                                                {athlete.user?.email || '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-500 text-sm">
+                                                {athlete.user?.createdAt 
+                                                    ? new Date(athlete.user.createdAt).toLocaleDateString()
+                                                    : '-'
+                                                }
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {linkedAthletesTotalPages > 1 && (
+                        <div className="p-4 border-t border-border flex justify-center gap-2">
+                            <button
+                                disabled={linkedAthletesPage === 1}
+                                onClick={() => setLinkedAthletesPage(p => p - 1)}
+                                className="px-4 py-2 rounded bg-card text-sm font-bold disabled:opacity-50 hover:bg-muted"
+                            >
+                                Prev
+                            </button>
+                            <span className="px-4 py-2 text-sm font-mono text-slate-500">
+                                Page {linkedAthletesPage} of {linkedAthletesTotalPages}
+                            </span>
+                            <button
+                                disabled={linkedAthletesPage === linkedAthletesTotalPages}
+                                onClick={() => setLinkedAthletesPage(p => p + 1)}
+                                className="px-4 py-2 rounded bg-card text-sm font-bold disabled:opacity-50 hover:bg-muted"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

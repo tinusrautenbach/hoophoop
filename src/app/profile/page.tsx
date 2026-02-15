@@ -142,6 +142,28 @@ export default function ProfilePage() {
         }
     };
 
+    const handleUnlinkProfile = async (playerId: string) => {
+        if (!confirm('Are you sure you want to unlink this athlete profile? This means the profile will no longer be associated with your account. You can claim it again later if needed.')) return;
+        
+        try {
+            const res = await fetch(`/api/players/${playerId}/unlink`, {
+                method: 'POST',
+            });
+            if (res.ok) {
+                // Refresh profile data
+                const profileRes = await fetch('/api/profile');
+                const profileData = await profileRes.json();
+                setData(prev => prev ? { ...prev, playerProfile: null } : null);
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to unlink profile');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to unlink profile');
+        }
+    };
+
     if (!isLoaded || loading) {
         return (
             <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-6">
@@ -215,30 +237,44 @@ export default function ProfilePage() {
                             Athlete Profile
                         </h2>
                         {data.playerProfile ? (
-                            <Link href={`/players/${data.playerProfile.id}`}>
-                                <div className="bg-[var(--card)] border border-[var(--border)] p-6 rounded-3xl hover:border-orange-500/50 transition-all group cursor-pointer shadow-xl relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                        <Trophy size={64} />
-                                    </div>
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform font-black text-2xl">
+                            <div className="bg-[var(--card)] border border-[var(--border)] p-6 rounded-3xl hover:border-orange-500/50 transition-all group shadow-xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <Trophy size={64} />
+                                </div>
+                                <div className="flex items-center gap-6">
+                                    <Link href={`/players/${data.playerProfile.id}`}>
+                                        <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform font-black text-2xl cursor-pointer">
                                             {data.playerProfile.name.charAt(0)}
                                         </div>
-                                        <div>
-                                            <div className="text-xl font-black uppercase tracking-tight text-[var(--foreground)]">{data.playerProfile.name}</div>
-                                            {data.playerProfile.community && (
-                                                <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted-foreground)] mt-1">
-                                                    <Shield size={12} className="text-blue-500" />
-                                                    {data.playerProfile.community.name}
-                                                </div>
-                                            )}
-                                            <div className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 flex items-center gap-2">
-                                                View Statistics <ArrowRight size={12} />
+                                    </Link>
+                                    <div className="flex-1">
+                                        <Link href={`/players/${data.playerProfile.id}`}>
+                                            <div className="text-xl font-black uppercase tracking-tight text-[var(--foreground)] hover:text-orange-500 transition-colors">
+                                                {data.playerProfile.name}
                                             </div>
+                                        </Link>
+                                        {data.playerProfile.community && (
+                                            <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted-foreground)] mt-1">
+                                                <Shield size={12} className="text-blue-500" />
+                                                {data.playerProfile.community.name}
+                                            </div>
+                                        )}
+                                        <div className="mt-4 flex items-center gap-3">
+                                            <Link href={`/players/${data.playerProfile.id}`}>
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 flex items-center gap-2">
+                                                    View Statistics <ArrowRight size={12} />
+                                                </span>
+                                            </Link>
+                                            <button
+                                                onClick={() => handleUnlinkProfile(data.playerProfile!.id)}
+                                                className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500/70 hover:text-red-500 flex items-center gap-2 transition-colors"
+                                            >
+                                                Unlink Profile <X size={12} />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                            </Link>
+                            </div>
                         ) : (
                             <div className="bg-[var(--card)]/50 border border-dashed border-[var(--border)] p-8 rounded-3xl text-center space-y-4">
                                 <p className="text-[var(--muted-foreground)] text-sm">No athlete profile linked to your account.</p>

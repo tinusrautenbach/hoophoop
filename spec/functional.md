@@ -296,6 +296,50 @@ Players are global entities that can belong to multiple teams over time, with fu
      - Activity log records: who merged, which profiles, when.
   5. Merged profiles are hidden from search but retained in database for audit.
 
+#### Player Profile Claiming with Admin Approval (New)
+- **Purpose**: When users claim an athlete profile, require community admin approval to prevent unauthorized profile claiming.
+
+- **Claim Flow**:
+  1. User searches for their athlete profile at `/players`
+  2. If profile exists and is unclaimed, user clicks "Claim Profile"
+  3. Instead of immediate linking, a **claim request** is created with status `pending`
+  4. Community Admin receives email notification with link to approve/reject
+  5. Admin views pending claims in their community admin dashboard
+  6. Admin can **Approve** (links user to athlete profile) or **Reject** (with optional reason)
+  7. User receives email notification of approval/rejection
+  8. On approval, athlete's `userId` is set to the claimant's user ID
+
+- **Implementation**:
+  - New `playerClaimRequests` table:
+    ```sql
+    CREATE TABLE player_claim_requests (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      athleteId UUID REFERENCES athletes(id) ON DELETE CASCADE,
+      userId TEXT NOT NULL, -- The user claiming the profile
+      status TEXT DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+      communityId UUID REFERENCES communities(id), -- Community of the athlete
+      requestedAt TIMESTAMP DEFAULT NOW(),
+      reviewedAt TIMESTAMP,
+      reviewedBy TEXT, -- Admin who approved/rejected
+      rejectionReason TEXT,
+    );
+    ```
+  - Email notifications sent via existing email service (Resend)
+  - Admin dashboard shows "Pending Claims" section in community management
+  - User sees "Claim Pending" status on their profile until approved
+
+- **Admin Actions**:
+  - View all pending claims for their community
+  - Approve with one click
+  - Reject with optional reason
+  - View claim history (approved/rejected)
+
+- **Edge Cases**:
+  - If athlete has no community, claim goes to World Admin for approval
+  - Claim requests expire after 7 days (configurable)
+  - If profile is already linked, show "already claimed" error
+  - User can only have one pending claim at a time
+
 #### Community Team Management (New)
 - **Assign Team to Community**:
   - Community Admins can create teams directly within a community.
