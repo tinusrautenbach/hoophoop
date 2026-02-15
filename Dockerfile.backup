@@ -1,0 +1,45 @@
+FROM alpine:3.19
+
+# Install required packages
+RUN apk add --no-cache \
+    postgresql16-client \
+    curl \
+    unzip \
+    tzdata \
+    dcron \
+    && rm -rf /var/cache/apk/*
+
+# Install AWS CLI v2
+RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+    && unzip -q awscliv2.zip \
+    && ./aws/install \
+    && rm -rf awscliv2.zip aws \
+    && aws --version
+
+# Set timezone to UTC for consistent backup scheduling
+ENV TZ=UTC
+
+# Create directories for scripts and logs
+RUN mkdir -p /app/scripts /app/logs /var/log
+
+# Copy backup and restore scripts
+COPY scripts/backup-db.sh /app/scripts/
+COPY scripts/restore-db.sh /app/scripts/
+RUN chmod +x /app/scripts/*.sh
+
+# Create a non-root user to run cron
+RUN addgroup -g 1001 backupuser && \
+    adduser -u 1001 -G backupuser -s /bin/sh -D backupuser
+
+# Create crontab for the backup user
+RUN echo "0 2 * * * /app/scripts/backup-db.sh >> /var/log/backup.log 2>&1" | crontab -u backupuser -
+
+# Create log file and set permissions
+RUN touch /var/log/backup.log && \
+    chown backupuser:backupuser /var/log/backup.log /app/logs
+
+# Switch to backup user
+USER backupuser
+
+# Start cron in foreground
+CMD ["crond", "-f", "-l", "2"]

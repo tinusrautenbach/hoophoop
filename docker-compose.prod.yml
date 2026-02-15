@@ -52,5 +52,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # Backup sidecar service - runs cron for automated database backups
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/bball
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - BACKUP_BUCKET=${BACKUP_BUCKET:-bball-db-backups}
+      - BACKUP_PREFIX=${BACKUP_PREFIX:-backups}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - backup_logs:/app/logs
+    restart: always
+    # This service runs cron in the foreground, performing daily backups at 2 AM UTC
+
 volumes:
   postgres_data:
+  backup_logs:
