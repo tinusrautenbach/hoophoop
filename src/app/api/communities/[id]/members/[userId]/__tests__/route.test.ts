@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DELETE } from '../route';
 import { db } from '@/db';
-import { communities, communityMembers } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -28,7 +27,7 @@ describe('Community Members [userId] API Route', () => {
 
     describe('DELETE', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await DELETE(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1', userId: 'target-user' }) 
             });
@@ -36,8 +35,8 @@ describe('Community Members [userId] API Route', () => {
         });
 
         it('should return 404 if community not found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communities.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await DELETE(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'non-existent', userId: 'target-user' }) 
@@ -46,8 +45,8 @@ describe('Community Members [userId] API Route', () => {
         });
 
         it('should return 403 if unauthorized tries to remove member', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_other' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_other' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: [{ userId: 'user_viewer', role: 'viewer' }]
@@ -60,8 +59,8 @@ describe('Community Members [userId] API Route', () => {
         });
 
         it('should allow admin to remove non-owner member', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_admin' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_admin' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: [
@@ -79,8 +78,8 @@ describe('Community Members [userId] API Route', () => {
         });
 
         it('should allow owner to remove any member', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_owner' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: [{ userId: 'user_admin', role: 'admin' }]
@@ -94,8 +93,8 @@ describe('Community Members [userId] API Route', () => {
         });
 
         it('should allow user to remove themselves', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_scorer' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_scorer' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: [
@@ -112,8 +111,8 @@ describe('Community Members [userId] API Route', () => {
         });
 
         it('should return 403 when trying to remove owner', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_admin' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_admin' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: [

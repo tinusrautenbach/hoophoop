@@ -45,7 +45,7 @@ describe('Public Games API Route', () => {
             },
         ];
 
-        (db.query.games.findMany as any).mockResolvedValue(mockGames);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockGames);
 
         const request = new Request('http://localhost/api/public/games');
         const response = await GET(request);
@@ -70,7 +70,7 @@ describe('Public Games API Route', () => {
             },
         ];
 
-        (db.query.games.findMany as any).mockResolvedValue(mockLiveGames);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockLiveGames);
 
         const request = new Request('http://localhost/api/public/games?status=live');
         const response = await GET(request);
@@ -93,7 +93,7 @@ describe('Public Games API Route', () => {
             },
         ];
 
-        (db.query.games.findMany as any).mockResolvedValue(mockCommunityGames);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunityGames);
 
         const request = new Request('http://localhost/api/public/games?communityId=comm1');
         const response = await GET(request);
@@ -127,7 +127,7 @@ describe('Public Games API Route', () => {
             },
         ];
 
-        (db.query.games.findMany as any).mockResolvedValue(mockGames);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockGames);
 
         const request = new Request('http://localhost/api/public/games?search=lakers');
         const response = await GET(request);
@@ -139,7 +139,7 @@ describe('Public Games API Route', () => {
     });
 
     it('should return empty array when no public games exist', async () => {
-        (db.query.games.findMany as any).mockResolvedValue([]);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
 
         const request = new Request('http://localhost/api/public/games');
         const response = await GET(request);
@@ -164,7 +164,7 @@ describe('Public Games API Route', () => {
             },
         ];
 
-        (db.query.games.findMany as any).mockResolvedValue(mockGames);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockGames);
 
         const request = new Request('http://localhost/api/public/games?dateFrom=2026-02-01&dateTo=2026-02-28');
         const response = await GET(request);
@@ -175,7 +175,7 @@ describe('Public Games API Route', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-        (db.query.games.findMany as any).mockRejectedValue(new Error('Database error'));
+        (db.query.games.findMany as unknown as { mockRejectedValue: (value: unknown) => void }).mockRejectedValue(new Error('Database error'));
 
         const request = new Request('http://localhost/api/public/games');
         const response = await GET(request);

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, POST } from '../route';
 import { db } from '@/db';
-import { athletes, teamMemberships } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -41,9 +40,9 @@ describe('Team Members API Route', () => {
 
     describe('GET', () => {
         it('should return team members', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const mockMembers = [{ id: 'm1', athlete: { name: 'Jordan' } }];
-            (db.query.teamMemberships.findMany as any).mockResolvedValue(mockMembers);
+            (db.query.teamMemberships.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockMembers);
 
             const request = new Request('http://localhost/api/teams/t1/members');
             const response = await GET(request, { params: Promise.resolve({ id: 't1' }) });
@@ -56,10 +55,10 @@ describe('Team Members API Route', () => {
 
     describe('POST', () => {
         it('should add a new member to the team', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
 
-            (db.query.athletes.findFirst as any).mockResolvedValue(null);
-            (db.query.teamMemberships.findFirst as any).mockResolvedValueOnce(null).mockResolvedValueOnce({
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
+            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => { mockResolvedValueOnce: (value: unknown) => void } }).mockResolvedValue(null).mockResolvedValueOnce({
                 id: 'm1',
                 athleteId: 'a1',
                 teamId: 't1',
@@ -76,7 +75,7 @@ describe('Team Members API Route', () => {
             };
 
             let insertCallCount = 0;
-            (db.insert as any).mockImplementation(() => {
+            (db.insert as unknown as { mockImplementation: (callback: unknown) => void }).mockImplementation(() => {
                 insertCallCount++;
                 return {
                     values: vi.fn().mockReturnValue({
@@ -99,13 +98,13 @@ describe('Team Members API Route', () => {
         });
 
         it('should return 409 if player already on team', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
 
-            (db.query.athletes.findFirst as any).mockResolvedValue({ 
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({ 
                 id: 'a1', 
                 name: 'Existing Player' 
             });
-            (db.query.teamMemberships.findFirst as any).mockResolvedValue({ 
+            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({ 
                 id: 'existing-membership',
                 athleteId: 'a1' 
             });

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, POST } from '../route';
 import { db } from '@/db';
-import { athletes, playerHistory, teamMemberships } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -30,14 +29,14 @@ describe('Players API Route', () => {
 
     describe('GET', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await GET(new Request('http://localhost/api/players'));
             expect(response.status).toBe(401);
         });
 
         it('should return empty array when no players found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findMany as any).mockResolvedValue([]);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
 
             const response = await GET(new Request('http://localhost/api/players'));
             const data = await response.json();
@@ -47,12 +46,12 @@ describe('Players API Route', () => {
         });
 
         it('should search players by query on firstName/surname/name', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const mockPlayers = [
                 { id: 'player-1', name: 'Michael Jordan', firstName: 'Michael', surname: 'Jordan' },
                 { id: 'player-2', name: 'Jordan Poole', firstName: 'Jordan', surname: 'Poole' }
             ];
-            (db.query.athletes.findMany as any).mockResolvedValue(mockPlayers);
+            (db.query.athletes.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockPlayers);
 
             const response = await GET(new Request('http://localhost/api/players?q=Jordan'));
             const data = await response.json();
@@ -63,8 +62,8 @@ describe('Players API Route', () => {
         });
 
         it('should scope search to community when communityId provided', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findMany as any).mockResolvedValue([
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
                 { id: 'player-1', name: 'Community Player', firstName: 'Community', surname: 'Player', communityId: 'comm-1' }
             ]);
 
@@ -76,8 +75,8 @@ describe('Players API Route', () => {
         });
 
         it('should filter inactive players by default', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findMany as any).mockResolvedValue([
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
                 { id: 'player-1', name: 'Active Player', firstName: 'Active', surname: 'Player', status: 'active' }
             ]);
 
@@ -86,8 +85,8 @@ describe('Players API Route', () => {
         });
 
         it('should include inactive players when requested (but exclude merged)', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findMany as any).mockResolvedValue([
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
                 { id: 'player-1', name: 'Active Player', status: 'active' },
                 { id: 'player-2', name: 'Inactive Player', status: 'inactive' }
             ]);
@@ -99,7 +98,7 @@ describe('Players API Route', () => {
 
     describe('POST', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await POST(new Request('http://localhost/api/players', {
                 method: 'POST',
                 body: JSON.stringify({ firstName: 'New', surname: 'Player' })
@@ -108,7 +107,7 @@ describe('Players API Route', () => {
         });
 
         it('should return 400 if firstName and name are both missing', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const response = await POST(new Request('http://localhost/api/players', {
                 method: 'POST',
                 body: JSON.stringify({})
@@ -117,7 +116,7 @@ describe('Players API Route', () => {
         });
 
         it('should create a new player with firstName and surname', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const mockPlayer = {
                 id: 'player-1',
                 name: 'New Player',
@@ -129,7 +128,7 @@ describe('Players API Route', () => {
                 ownerId: 'user_123'
             };
 
-            (db.insert as any).mockReturnValue({
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockReturnValue({
                     returning: vi.fn().mockResolvedValue([mockPlayer]),
                 }),
@@ -148,7 +147,7 @@ describe('Players API Route', () => {
         });
 
         it('should create a player with legacy name field (backward compat)', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const mockPlayer = {
                 id: 'player-1',
                 name: 'Legacy Player',
@@ -157,7 +156,7 @@ describe('Players API Route', () => {
                 status: 'active'
             };
 
-            (db.insert as any).mockReturnValue({
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockReturnValue({
                     returning: vi.fn().mockResolvedValue([mockPlayer]),
                 }),
@@ -174,7 +173,7 @@ describe('Players API Route', () => {
         });
 
         it('should create player with optional fields', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const mockPlayer = {
                 id: 'player-1',
                 name: 'Test Player',
@@ -185,7 +184,7 @@ describe('Players API Route', () => {
                 status: 'active'
             };
 
-            (db.insert as any).mockReturnValue({
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockReturnValue({
                     returning: vi.fn().mockResolvedValue([mockPlayer]),
                 }),

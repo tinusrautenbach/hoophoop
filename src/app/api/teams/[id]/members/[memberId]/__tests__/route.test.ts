@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PATCH, DELETE } from '../route';
 import { db } from '@/db';
-import { teamMemberships, athletes, playerHistory } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 const mockMembership = {
@@ -45,7 +44,7 @@ describe('Teams [id] Members [memberId] API Route', () => {
 
     describe('PATCH - Update Jersey Number', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await PATCH(new Request('http://localhost', {
                 method: 'PATCH',
                 body: JSON.stringify({ number: '24' })
@@ -54,8 +53,8 @@ describe('Teams [id] Members [memberId] API Route', () => {
         });
 
         it('should return 404 if membership not found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.teamMemberships.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await PATCH(new Request('http://localhost', {
                 method: 'PATCH',
@@ -65,8 +64,8 @@ describe('Teams [id] Members [memberId] API Route', () => {
         });
 
         it('should update jersey number', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.teamMemberships.findFirst as any).mockResolvedValue(mockMembership);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockMembership);
 
             const response = await PATCH(new Request('http://localhost', {
                 method: 'PATCH',
@@ -78,8 +77,8 @@ describe('Teams [id] Members [memberId] API Route', () => {
         });
 
         it('should log history when number changes', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.teamMemberships.findFirst as any).mockResolvedValue(mockMembership);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockMembership);
 
             const response = await PATCH(new Request('http://localhost', {
                 method: 'PATCH',
@@ -93,7 +92,7 @@ describe('Teams [id] Members [memberId] API Route', () => {
 
     describe('DELETE - Remove from Team', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await DELETE(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'team-1', memberId: 'member-1' }) 
             });
@@ -101,8 +100,8 @@ describe('Teams [id] Members [memberId] API Route', () => {
         });
 
         it('should return 404 if membership not found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.teamMemberships.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await DELETE(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'team-1', memberId: 'non-existent' }) 
@@ -111,8 +110,8 @@ describe('Teams [id] Members [memberId] API Route', () => {
         });
 
         it('should soft delete and log history', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.teamMemberships.findFirst as any).mockResolvedValue(mockMembership);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockMembership);
 
             const response = await DELETE(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'team-1', memberId: 'member-1' }) 

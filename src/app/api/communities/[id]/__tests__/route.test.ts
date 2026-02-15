@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, PATCH } from '../route';
 import { db } from '@/db';
-import { communities, communityMembers, teams, games } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -28,14 +27,14 @@ describe('Community [id] API Route', () => {
         vi.clearAllMocks();
     });
 
-    const createMockRequest = (body: any) => new Request('http://localhost', {
+    const createMockRequest = (body: unknown) => new Request('http://localhost', {
         method: 'PATCH',
         body: JSON.stringify(body),
     });
 
     describe('GET', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1' }) 
             });
@@ -43,8 +42,8 @@ describe('Community [id] API Route', () => {
         });
 
         it('should return 404 if community not found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communities.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'non-existent' }) 
@@ -53,8 +52,8 @@ describe('Community [id] API Route', () => {
         });
 
         it('should return 403 if user is not owner or member', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_other' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_other' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 name: 'Test Community',
                 ownerId: 'user_owner',
@@ -76,8 +75,8 @@ describe('Community [id] API Route', () => {
                 teams: [],
                 games: []
             };
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communities.findFirst as any).mockResolvedValue(mockCommunity);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1' }) 
@@ -97,8 +96,8 @@ describe('Community [id] API Route', () => {
                 teams: [],
                 games: []
             };
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communities.findFirst as any).mockResolvedValue(mockCommunity);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1' }) 
@@ -115,8 +114,8 @@ describe('Community [id] API Route', () => {
                 teams: [{ id: 'team-1', name: 'Team A' }],
                 games: [{ id: 'game-1', homeTeamName: 'Game 1' }]
             };
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communities.findFirst as any).mockResolvedValue(mockCommunity);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1' }) 
@@ -131,7 +130,7 @@ describe('Community [id] API Route', () => {
 
     describe('PATCH', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await PATCH(createMockRequest({ name: 'Updated' }), { 
                 params: Promise.resolve({ id: 'community-1' }) 
             });
@@ -139,8 +138,8 @@ describe('Community [id] API Route', () => {
         });
 
         it('should return 404 if community not found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communities.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await PATCH(createMockRequest({ name: 'Updated' }), { 
                 params: Promise.resolve({ id: 'non-existent' }) 
@@ -149,8 +148,8 @@ describe('Community [id] API Route', () => {
         });
 
         it('should return 403 if non-admin member tries to update', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_viewer' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_viewer' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: [{ userId: 'user_viewer', role: 'viewer' }]
@@ -163,8 +162,8 @@ describe('Community [id] API Route', () => {
         });
 
         it('should allow admin to update community name', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_admin' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_admin' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: [{ userId: 'user_admin', role: 'admin' }]
@@ -179,8 +178,8 @@ describe('Community [id] API Route', () => {
         });
 
         it('should allow owner to update community', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_owner' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: []

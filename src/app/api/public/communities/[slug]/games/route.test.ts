@@ -53,8 +53,8 @@ describe('Public Community Games API Route', () => {
             },
         ];
 
-        (db.query.communities.findFirst as any).mockResolvedValue(mockCommunity);
-        (db.query.games.findMany as any).mockResolvedValue(mockGames);
+        (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockGames);
 
         const request = new Request('http://localhost/api/public/communities/nba/games');
         const response = await GET(request, { params: Promise.resolve({ slug: 'nba' }) });
@@ -67,7 +67,7 @@ describe('Public Community Games API Route', () => {
     });
 
     it('should return 404 for non-existent community', async () => {
-        (db.query.communities.findFirst as any).mockResolvedValue(null);
+        (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
         const request = new Request('http://localhost/api/public/communities/nonexistent/games');
         const response = await GET(request, { params: Promise.resolve({ slug: 'nonexistent' }) });
@@ -97,8 +97,8 @@ describe('Public Community Games API Route', () => {
             },
         ];
 
-        (db.query.communities.findFirst as any).mockResolvedValue(mockCommunity);
-        (db.query.games.findMany as any).mockResolvedValue(mockLiveGames);
+        (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockLiveGames);
 
         const request = new Request('http://localhost/api/public/communities/nba/games?status=live');
         const response = await GET(request, { params: Promise.resolve({ slug: 'nba' }) });
@@ -138,8 +138,8 @@ describe('Public Community Games API Route', () => {
             },
         ];
 
-        (db.query.communities.findFirst as any).mockResolvedValue(mockCommunity);
-        (db.query.games.findMany as any).mockResolvedValue(mockGames);
+        (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockGames);
 
         const request = new Request('http://localhost/api/public/communities/nba/games?search=warriors');
         const response = await GET(request, { params: Promise.resolve({ slug: 'nba' }) });
@@ -158,8 +158,8 @@ describe('Public Community Games API Route', () => {
             type: 'school',
         };
 
-        (db.query.communities.findFirst as any).mockResolvedValue(mockCommunity);
-        (db.query.games.findMany as any).mockResolvedValue([]);
+        (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
 
         const request = new Request('http://localhost/api/public/communities/empty/games');
         const response = await GET(request, { params: Promise.resolve({ slug: 'empty' }) });
@@ -172,7 +172,7 @@ describe('Public Community Games API Route', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-        (db.query.communities.findFirst as any).mockRejectedValue(new Error('Database error'));
+        (db.query.communities.findFirst as unknown as { mockRejectedValue: (value: unknown) => void }).mockRejectedValue(new Error('Database error'));
 
         const request = new Request('http://localhost/api/public/communities/nba/games');
         const response = await GET(request, { params: Promise.resolve({ slug: 'nba' }) });
@@ -203,8 +203,8 @@ describe('Public Community Games API Route', () => {
             },
         ];
 
-        (db.query.communities.findFirst as any).mockResolvedValue(mockCommunity);
-        (db.query.games.findMany as any).mockResolvedValue(mockGames);
+        (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
+        (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockGames);
 
         const request = new Request('http://localhost/api/public/communities/nba/games?dateFrom=2026-02-01&dateTo=2026-02-28');
         const response = await GET(request, { params: Promise.resolve({ slug: 'nba' }) });

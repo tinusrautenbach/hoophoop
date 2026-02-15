@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, POST } from '../route';
 import { db } from '@/db';
-import { teams, athletes, teamMemberships, playerHistory } from '@/db/schema';
+import { athletes } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and, isNull } from 'drizzle-orm';
 
 vi.mock('@/db', () => ({
     db: {
@@ -35,7 +34,7 @@ describe('Teams [id] Members API Route', () => {
 
     describe('GET', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'team-1' }) 
             });
@@ -43,12 +42,12 @@ describe('Teams [id] Members API Route', () => {
         });
 
         it('should return team members', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const mockMembers = [
                 { id: 'member-1', number: '23', athlete: { id: 'player-1', name: 'Jordan' } },
                 { id: 'member-2', number: '33', athlete: { id: 'player-2', name: 'Pippen' } }
             ];
-            (db.query.teamMemberships.findMany as any).mockResolvedValue(mockMembers);
+            (db.query.teamMemberships.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockMembers);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'team-1' }) 
@@ -62,7 +61,7 @@ describe('Teams [id] Members API Route', () => {
 
     describe('POST - Add Member', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
                 body: JSON.stringify({ name: 'New Player', number: '23' })
@@ -71,7 +70,7 @@ describe('Teams [id] Members API Route', () => {
         });
 
         it('should return 400 if no name or athleteId', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
                 body: JSON.stringify({})
@@ -80,8 +79,8 @@ describe('Teams [id] Members API Route', () => {
         });
 
         it('should return 404 if athlete not found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
@@ -91,12 +90,12 @@ describe('Teams [id] Members API Route', () => {
         });
 
         it('should return 409 if player already on team', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'player-1',
                 name: 'Existing Player'
             });
-            (db.query.teamMemberships.findFirst as any).mockResolvedValue({
+            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'existing-member',
                 teamId: 'team-1',
                 athleteId: 'player-1'
@@ -110,9 +109,9 @@ describe('Teams [id] Members API Route', () => {
         });
 
         it('should create new player and add to team', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findFirst as any).mockResolvedValue(null);
-            (db.query.teamMemberships.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
+            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const mockAthlete = { id: 'player-new', name: 'New Player' };
             const mockMembership = { 
@@ -122,9 +121,9 @@ describe('Teams [id] Members API Route', () => {
                 athlete: mockAthlete 
             };
 
-            let insertValues: any = {};
-            (db.insert as any).mockImplementation((table: any) => ({
-                values: vi.fn((values: any) => {
+            let insertValues: Record<string, unknown> = {};
+            (db.insert as unknown as { mockImplementation: (callback: unknown) => { mockReturnValue: (value: unknown) => void } }).mockImplementation((table: unknown) => ({
+                values: vi.fn((values: unknown) => {
                     insertValues = { table, values };
                     return {
                         returning: vi.fn().mockResolvedValue([table === athletes ? mockAthlete : mockMembership]),
@@ -141,12 +140,12 @@ describe('Teams [id] Members API Route', () => {
         });
 
         it('should add existing player to team', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'player-existing',
                 name: 'Existing Player'
             });
-            (db.query.teamMemberships.findFirst as any).mockResolvedValue(null);
+            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const mockMembership = { 
                 id: 'member-1', 
@@ -154,7 +153,7 @@ describe('Teams [id] Members API Route', () => {
                 athlete: { id: 'player-existing', name: 'Existing Player' }
             };
 
-            (db.insert as any).mockReturnValue({
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockReturnValue({
                     returning: vi.fn().mockResolvedValue([mockMembership]),
                 }),

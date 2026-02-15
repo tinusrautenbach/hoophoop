@@ -30,7 +30,7 @@ describe('Teams API Route', () => {
 
     describe('GET', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value?: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await GET();
             expect(response.status).toBe(401);
         });
@@ -38,8 +38,8 @@ describe('Teams API Route', () => {
         it('should return user teams when authenticated', async () => {
             const mockUserId = 'user_123';
             const mockTeams = [{ id: '1', name: 'Team A', ownerId: mockUserId }];
-            (auth as any).mockReturnValue({ userId: mockUserId });
-            (db.query.teams.findMany as any).mockReturnValue(mockTeams);
+            (auth as unknown as { mockReturnValue: (value?: { userId: string | null }) => void }).mockReturnValue({ userId: mockUserId });
+            (db.query.teams.findMany as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue(mockTeams);
 
             const response = await GET();
             const data = await response.json();
@@ -54,10 +54,10 @@ describe('Teams API Route', () => {
         it('should create a new team', async () => {
             const mockUserId = 'user_123';
             const mockTeam = { id: '1', name: 'New Team', ownerId: mockUserId };
-            (auth as any).mockReturnValue({ userId: mockUserId });
+            (auth as unknown as { mockReturnValue: (value?: { userId: string | null }) => void }).mockReturnValue({ userId: mockUserId });
 
             const insertMock = vi.fn().mockReturnValue([{ id: '1', name: 'New Team', ownerId: mockUserId }]);
-            (db.insert as any).mockReturnValue({
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockReturnValue({
                     returning: insertMock,
                 }),
@@ -77,7 +77,7 @@ describe('Teams API Route', () => {
         });
 
         it('should return 400 if name is missing', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value?: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const request = new Request('http://localhost/api/teams', {
                 method: 'POST',
                 body: JSON.stringify({ name: '' }),
