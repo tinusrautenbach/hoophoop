@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PATCH, DELETE } from '../route';
 import { db } from '@/db';
-import { tournamentGames, tournaments, games } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -46,12 +45,12 @@ describe('Tournament Game Detail API Route', () => {
             const mockTournamentGame = { id: '1', tournamentId: mockTournamentId, gameId: mockGameId };
             const mockUpdatedGame = { id: mockGameId, homeScore: 85, guestScore: 72, status: 'final' };
             
-            (auth as any).mockReturnValue({ userId: mockUserId });
-            (db.query.tournaments.findFirst as any).mockReturnValue(mockTournament);
-            (db.query.tournamentGames.findFirst as any).mockReturnValue(mockTournamentGame);
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: mockUserId });
+            (db.query.tournaments.findFirst as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue(mockTournament);
+            (db.query.tournamentGames.findFirst as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue(mockTournamentGame);
 
             const updateMock = vi.fn().mockReturnValue([mockUpdatedGame]);
-            (db.update as any).mockReturnValue({
+            (db.update as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 set: vi.fn().mockReturnValue({
                     where: vi.fn().mockReturnValue({
                         returning: updateMock,
@@ -76,7 +75,7 @@ describe('Tournament Game Detail API Route', () => {
 
         it('should return 400 if scores are missing', async () => {
             const mockUserId = 'user_123';
-            (auth as any).mockReturnValue({ userId: mockUserId });
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: mockUserId });
 
             const response = await PATCH(
                 new Request(`http://localhost/api/tournaments/${mockTournamentId}/games/${mockGameId}/score`, {
@@ -89,7 +88,7 @@ describe('Tournament Game Detail API Route', () => {
         });
 
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: null });
             const response = await PATCH(
                 new Request(`http://localhost/api/tournaments/${mockTournamentId}/games/${mockGameId}/score`),
                 { params: Promise.resolve({ id: mockTournamentId, gameId: mockGameId }) }
@@ -99,8 +98,8 @@ describe('Tournament Game Detail API Route', () => {
 
         it('should return 404 if tournament not found', async () => {
             const mockUserId = 'user_123';
-            (auth as any).mockReturnValue({ userId: mockUserId });
-            (db.query.tournaments.findFirst as any).mockReturnValue(null);
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: mockUserId });
+            (db.query.tournaments.findFirst as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue(null);
 
             const response = await PATCH(
                 new Request(`http://localhost/api/tournaments/${mockTournamentId}/games/${mockGameId}/score`, {
@@ -114,9 +113,9 @@ describe('Tournament Game Detail API Route', () => {
 
         it('should return 404 if game not in tournament', async () => {
             const mockUserId = 'user_123';
-            (auth as any).mockReturnValue({ userId: mockUserId });
-            (db.query.tournaments.findFirst as any).mockReturnValue({ id: mockTournamentId, ownerId: mockUserId });
-            (db.query.tournamentGames.findFirst as any).mockReturnValue(null);
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: mockUserId });
+            (db.query.tournaments.findFirst as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ id: mockTournamentId, ownerId: mockUserId });
+            (db.query.tournamentGames.findFirst as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue(null);
 
             const response = await PATCH(
                 new Request(`http://localhost/api/tournaments/${mockTournamentId}/games/${mockGameId}/score`, {
@@ -132,8 +131,8 @@ describe('Tournament Game Detail API Route', () => {
     describe('DELETE', () => {
         it('should remove game from tournament', async () => {
             const mockUserId = 'user_123';
-            (auth as any).mockReturnValue({ userId: mockUserId });
-            (db.query.tournaments.findFirst as any).mockReturnValue({ id: mockTournamentId, ownerId: mockUserId });
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: mockUserId });
+            (db.query.tournaments.findFirst as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ id: mockTournamentId, ownerId: mockUserId });
 
             const response = await DELETE(
                 new Request(`http://localhost/api/tournaments/${mockTournamentId}/games/${mockGameId}`),
@@ -144,7 +143,7 @@ describe('Tournament Game Detail API Route', () => {
         });
 
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: null });
             const response = await DELETE(
                 new Request(`http://localhost/api/tournaments/${mockTournamentId}/games/${mockGameId}`),
                 { params: Promise.resolve({ id: mockTournamentId, gameId: mockGameId }) }
@@ -154,8 +153,8 @@ describe('Tournament Game Detail API Route', () => {
 
         it('should return 404 if tournament not found', async () => {
             const mockUserId = 'user_123';
-            (auth as any).mockReturnValue({ userId: mockUserId });
-            (db.query.tournaments.findFirst as any).mockReturnValue(null);
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: mockUserId });
+            (db.query.tournaments.findFirst as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue(null);
 
             const response = await DELETE(
                 new Request(`http://localhost/api/tournaments/${mockTournamentId}/games/${mockGameId}`),

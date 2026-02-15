@@ -30,7 +30,7 @@ describe('Tournaments API Route', () => {
 
     describe('GET', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: null });
             const request = new Request('http://localhost/api/tournaments');
             const response = await GET(request);
             expect(response.status).toBe(401);
@@ -41,8 +41,8 @@ describe('Tournaments API Route', () => {
             const mockTournaments = [
                 { id: '1', name: 'Summer Championship', ownerId: mockUserId, status: 'active' }
             ];
-            (auth as any).mockReturnValue({ userId: mockUserId });
-            (db.query.tournaments.findMany as any).mockReturnValue(mockTournaments);
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: mockUserId });
+            (db.query.tournaments.findMany as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue(mockTournaments);
 
             const request = new Request('http://localhost/api/tournaments');
             const response = await GET(request);
@@ -55,7 +55,7 @@ describe('Tournaments API Route', () => {
         it('should filter by communityId when provided', async () => {
             const mockUserId = 'user_123';
             const communityId = 'comm_123';
-            (auth as any).mockReturnValue({ userId: mockUserId });
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: mockUserId });
 
             const request = new Request(`http://localhost/api/tournaments?communityId=${communityId}`);
             await GET(request);
@@ -77,10 +77,10 @@ describe('Tournaments API Route', () => {
                 communityId: 'comm_123',
                 ownerId: mockUserId,
             };
-            (auth as any).mockReturnValue({ userId: mockUserId });
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: mockUserId });
 
             const insertMock = vi.fn().mockReturnValue([mockTournament]);
-            (db.insert as any).mockReturnValue({
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockReturnValue({
                     returning: insertMock,
                 }),
@@ -106,7 +106,7 @@ describe('Tournaments API Route', () => {
         });
 
         it('should return 400 if required fields are missing', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: 'user_123' });
             const request = new Request('http://localhost/api/tournaments', {
                 method: 'POST',
                 body: JSON.stringify({ name: '' }),
@@ -117,7 +117,7 @@ describe('Tournaments API Route', () => {
         });
 
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ userId: null });
             const request = new Request('http://localhost/api/tournaments', {
                 method: 'POST',
                 body: JSON.stringify({ name: 'Test' }),
