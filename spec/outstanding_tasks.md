@@ -1,8 +1,5 @@
 # Basketball Scoring App - Outstanding Tasks
 
-## Phase 2: Game Setup & Real-time
-- [x] 2.5.4 Advanced Team UI (Bulk Paste, Color Picker)
-
 ## Phase 3: Frontend Core (Scorer Views)
 - [ ] **3.3 Roster Enforcement & Positioning**:
   - [ ] Enforce roster requirement on game start button.
