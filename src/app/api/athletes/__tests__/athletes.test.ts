@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from '../route';
 import { db } from '@/db';
-import { athletes } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
+
+// Type definitions for mocks
+type AuthReturn = { userId: string | null };
+type FindManyReturn = unknown[];
 
 vi.mock('@/db', () => ({
     db: {
@@ -24,7 +27,7 @@ describe('Athletes API Route', () => {
     });
 
     it('should return 401 if not authenticated', async () => {
-        (auth as any).mockReturnValue({ userId: null });
+        (auth as unknown as { mockReturnValue: (value: AuthReturn) => void }).mockReturnValue({ userId: null });
         const response = await GET(new Request('http://localhost/api/athletes'));
         expect(response.status).toBe(401);
     });
@@ -32,8 +35,8 @@ describe('Athletes API Route', () => {
     it('should return athletes for current user', async () => {
         const mockUserId = 'user_123';
         const mockAthletes = [{ id: 'a1', name: 'Jordan', ownerId: mockUserId }];
-        (auth as any).mockReturnValue({ userId: mockUserId });
-        (db.query.athletes.findMany as any).mockReturnValue(mockAthletes);
+        (auth as unknown as { mockReturnValue: (value: AuthReturn) => void }).mockReturnValue({ userId: mockUserId });
+        (db.query.athletes.findMany as unknown as { mockReturnValue: (value: FindManyReturn) => void }).mockReturnValue(mockAthletes);
 
         const response = await GET(new Request('http://localhost/api/athletes'));
         const data = await response.json();
@@ -43,8 +46,8 @@ describe('Athletes API Route', () => {
     });
 
     it('should filter by query parameter', async () => {
-        (auth as any).mockReturnValue({ userId: 'user_123' });
-        (db.query.athletes.findMany as any).mockReturnValue([]);
+        (auth as unknown as { mockReturnValue: (value: AuthReturn) => void }).mockReturnValue({ userId: 'user_123' });
+        (db.query.athletes.findMany as unknown as { mockReturnValue: (value: FindManyReturn) => void }).mockReturnValue([]);
 
         await GET(new Request('http://localhost/api/athletes?q=Jordan'));
 
