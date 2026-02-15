@@ -593,3 +593,58 @@
     - [ ] Filter dropdowns (community, season)
     - [ ] Filter chips/badges
     - [ ] Results list with team cards
+
+## Phase 16: Testing Infrastructure (NEW)
+- [ ] **16.1 Load and Volume Test Suite**:
+  - [ ] Create load test for 10,000 concurrent spectators across 100 games
+  - [ ] Implement event generation at ~1 event per second per game rate
+  - [ ] Test server stability under sustained high load (30+ seconds)
+  - [ ] Validate connection handling (batch connections to avoid overwhelming server)
+  - [ ] Monitor memory usage during 10K concurrent connections (<500MB growth limit)
+  - [ ] Measure event propagation latency (<500ms average requirement)
+  - [ ] Stress test rapid connection/disconnection cycles
+  - [ ] Document load test execution and validation criteria in test policy
+  - [ ] Integrate load tests into CI/CD pipeline for production releases
+
+## Phase 17: Database Backup & S3 Storage (NEW)
+- [x] **17.1 Backup Strategy**:
+  - [x] Daily automated database backups at 2 AM UTC
+  - [x] Backup includes all tables: games, teams, athletes, users, communities, tournaments, seasons, events, etc.
+  - [x] Compressed PostgreSQL dump format (pg_dump)
+  - [x] Backup file naming: `bball-backup-{YYYYMMDD}-{HHMMSS}.sql.gz`
+  
+- [x] **17.2 S3 Storage Configuration**:
+  - [ ] Create dedicated S3 bucket for database backups (e.g., `bball-db-backups`)
+  - [x] Configure AWS IAM role with minimal permissions (put object, delete object, list bucket)
+  - [x] Store S3 credentials securely (AWS Secrets Manager or environment variables)
+  - [ ] Enable S3 versioning for backup recovery
+  - [ ] Configure S3 lifecycle policy for cost optimization
+  
+- [x] **17.3 Retention Policy (Tiered Backup)**:
+  - [x] **Daily backups**: Keep last 7 days of daily backups (7 files)
+  - [x] **Weekly backups**: After 7 days, keep only 1 backup per week (every Sunday)
+  - [x] **Monthly backups**: Keep 1 backup per month for historical reference (12 months)
+  - [x] Automatic deletion of expired backups per retention rules
+  - [x] Manual backup on-demand capability for pre-deployment snapshots
+  
+- [x] **17.4 Backup Automation & Monitoring**:
+  - [x] Create backup script (`scripts/backup-db.sh`):
+    - [x] Perform pg_dump with compression
+    - [x] Upload to S3 with retry logic
+    - [x] Verify upload success (checksum validation)
+    - [x] Apply retention policy (delete expired backups)
+    - [x] Log backup operations and errors
+  - [x] Schedule daily cron job (2 AM UTC) - Documented with setup script for Docker deployments
+  - [x] Health check endpoint: `GET /api/health/backup` (returns last backup timestamp, size, status)
+  - [ ] Alert on backup failures (email/Slack notification)
+  - [ ] Backup size monitoring and cost tracking dashboard
+  
+- [x] **17.5 Backup Restoration & Testing**:
+  - [x] Document restore procedure (`docs/BACKUP_RESTORE.md`)
+  - [x] Create restore script (`scripts/restore-db.sh`):
+    - [x] Download specific backup from S3
+    - [x] Restore to staging environment for verification
+    - [x] Validate data integrity post-restore
+  - [ ] Monthly restore test to staging environment
+  - [ ] Point-in-time recovery capability (if using RDS)
+  - [x] Disaster recovery runbook with RTO/RPO targets
