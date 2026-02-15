@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { athletes, playerClaimRequests, communityMembers, users } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and, or } from 'drizzle-orm';
-import { sendPlayerClaimRequestEmail } from '@/lib/email';
+import { eq, and } from 'drizzle-orm';
+import { sendPlayerClaimRequestEmail, sendPlayerClaimResultEmail } from '@/lib/email';
 
 export async function POST(
     request: Request,
@@ -29,16 +29,39 @@ export async function POST(
             return NextResponse.json({ error: 'Player profile already claimed' }, { status: 400 });
         }
 
+        // Check for any existing pending request for this athlete by any user
         const existingRequest = await db.query.playerClaimRequests.findFirst({
             where: and(
                 eq(playerClaimRequests.athleteId, playerId),
-                eq(playerClaimRequests.userId, userId),
                 eq(playerClaimRequests.status, 'pending')
             ),
         });
 
+        // If there's an existing pending request, reject it
         if (existingRequest) {
-            return NextResponse.json({ error: 'You already have a pending claim request for this profile' }, { status: 400 });
+            // Reject the old request
+            await db.update(playerClaimRequests)
+                .set({
+                    status: 'rejected',
+                    reviewedAt: new Date(),
+                    reviewedBy: 'system',
+                    rejectionReason: 'Superseded by new claim request',
+                })
+                .where(eq(playerClaimRequests.id, existingRequest.id));
+
+            // Send rejection email to the previous claimant
+            const previousClaimant = await db.query.users.findFirst({
+                where: eq(users.id, existingRequest.userId),
+            });
+
+            if (previousClaimant?.email) {
+                await sendPlayerClaimResultEmail(
+                    previousClaimant.email,
+                    player.name,
+                    false,
+                    'Your claim request was superseded by a newer request. Only one pending claim is allowed per player profile at a time.'
+                );
+            }
         }
 
         const currentUser = await db.query.users.findFirst({
