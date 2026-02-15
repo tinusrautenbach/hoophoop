@@ -313,7 +313,7 @@ export default function TeamsPage() {
                             <Users size={48} className="mx-auto text-slate-700 mb-4" />
                             <h3 className="text-xl font-bold text-slate-400 mb-2">No Teams Found</h3>
                             <p className="text-slate-500 text-sm max-w-xs mx-auto mb-8">
-                                Try adjusting your filters or search terms to find what you're looking for.
+                                Try adjusting your filters or search terms to find what you&apos;re looking for.
                             </p>
                             <button 
                                 onClick={() => {

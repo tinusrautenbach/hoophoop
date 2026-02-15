@@ -177,7 +177,6 @@ describe('Community Join API Route', () => {
                 method: 'POST',
                 body: JSON.stringify({ token: 'valid-token' })
             }));
-            const data = await response.json();
 
             expect(response.status).toBe(200);
             expect(mockTx.insert).not.toHaveBeenCalled();

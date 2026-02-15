@@ -97,7 +97,6 @@ describe('Public Games API Route', () => {
 
         const request = new Request('http://localhost/api/public/games?communityId=comm1');
         const response = await GET(request);
-        const data = await response.json();
 
         expect(response.status).toBe(200);
         expect(db.query.games.findMany).toHaveBeenCalled();

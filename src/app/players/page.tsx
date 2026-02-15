@@ -156,9 +156,9 @@ export default function PlayersSearchPage() {
         ) : query.length >= 2 ? (
           <div className="bg-[var(--card)]/50 border border-dashed border-[var(--border)] p-12 rounded-3xl text-center space-y-4">
             <User size={48} className="mx-auto text-slate-700" />
-            <p className="text-[var(--muted-foreground)] italic">No players found matching "{query}".</p>
+            <p className="text-[var(--muted-foreground)] italic">No players found matching &quot;{query}&quot;.</p>
             <p className="text-xs text-[var(--muted-foreground)] max-w-xs mx-auto">
-              If you haven't been added to a team yet, your profile might not exist. Ask your team manager or community admin.
+              If you haven&apos;t been added to a team yet, your profile might not exist. Ask your team manager or community admin.
             </p>
           </div>
         ) : null}

@@ -4,12 +4,10 @@ import { Server as SocketServer } from 'socket.io';
 import { io as Client } from 'socket.io-client';
 import { setupSocket } from '../socket';
 import { AddressInfo } from 'node:net';
-import type { Socket } from 'socket.io';
 
 describe('Game Event Propagation', () => {
     let io: SocketServer;
     let httpServer: HttpServer;
-    let serverSocket: Socket;
     let port: number;
 
     beforeEach(async () => {
@@ -55,7 +53,7 @@ describe('Game Event Propagation', () => {
 
         const updateData = { score: { home: 10, guest: 8 } };
 
-        const updatePromise = new Promise<any>((resolve) => {
+        const updatePromise = new Promise<unknown>((resolve) => {
             client2.on('game-updated', (data) => {
                 resolve(data);
             });
@@ -95,7 +93,7 @@ describe('Game Event Propagation', () => {
 
         const eventData = { type: 'FOUL', player: 'Player 1' };
 
-        const eventPromise = new Promise<any>((resolve) => {
+        const eventPromise = new Promise<unknown>((resolve) => {
             client2.on('event-added', (data) => {
                 resolve(data);
             });

@@ -22,7 +22,7 @@ interface LogActivityParams {
     resourceType: ResourceType;
     resourceId: string;
     communityId?: string;
-    details?: any;
+    details?: Record<string, unknown>;
     ipAddress?: string;
 }
 

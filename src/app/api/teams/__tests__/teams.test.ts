@@ -53,7 +53,6 @@ describe('Teams API Route', () => {
     describe('POST', () => {
         it('should create a new team', async () => {
             const mockUserId = 'user_123';
-            const mockTeam = { id: '1', name: 'New Team', ownerId: mockUserId };
             (auth as unknown as { mockReturnValue: (value?: { userId: string | null }) => void }).mockReturnValue({ userId: mockUserId });
 
             const insertMock = vi.fn().mockReturnValue([{ id: '1', name: 'New Team', ownerId: mockUserId }]);

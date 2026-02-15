@@ -21,8 +21,7 @@ export function SeasonSelector({ communityId, selectedSeasonId, onSelect, classN
 
   useEffect(() => {
     if (!communityId) {
-      setSeasons([]);
-      return;
+      return () => setSeasons([]);
     }
 
     setLoading(true);

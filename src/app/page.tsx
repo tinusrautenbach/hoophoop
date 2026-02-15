@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { SignedIn, SignedOut, SignInButton, useAuth } from '@/components/auth-provider';
 import Link from 'next/link';
@@ -45,7 +45,7 @@ export default function LandingPage() {
   const [homeTeamName, setHomeTeamName] = useState('');
   const [guestTeamName, setGuestTeamName] = useState('');
   const [gameName, setGameName] = useState('');
-  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledDate, setScheduledDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [mode, setMode] = useState<'simple' | 'advanced'>('simple');
   const [visibility, setVisibility] = useState<'private' | 'public_general' | 'public_community'>('private');
   const [isCreating, setIsCreating] = useState(false);
@@ -55,36 +55,33 @@ export default function LandingPage() {
   const [totalPeriods, setTotalPeriods] = useState(4);
   const [totalTimeouts, setTotalTimeouts] = useState(3);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
-  const [availableSeasons, setAvailableSeasons] = useState<Season[]>([]);
 
   // Extract unique seasons from teams
-  useEffect(() => {
-    if (teams.length > 0) {
-      const seasonMap = new Map<string, Season>();
-      
-      teams.forEach(team => {
-        if (team.teamSeasons) {
-          team.teamSeasons.forEach(ts => {
-            if (!seasonMap.has(ts.season.id)) {
-              seasonMap.set(ts.season.id, {
-                id: ts.season.id,
-                name: ts.season.name,
-                status: ts.season.status,
-                startDate: ts.season.startDate,
-                communityId: team.communityId || '',
-              });
-            }
-          });
-        }
-      });
-      
-      // Sort seasons by start date (newest first)
-      const sortedSeasons = Array.from(seasonMap.values()).sort(
-        (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-      );
-      
-      setAvailableSeasons(sortedSeasons);
-    }
+  const availableSeasons = useMemo(() => {
+    if (teams.length === 0) return [];
+    
+    const seasonMap = new Map<string, Season>();
+    
+    teams.forEach(team => {
+      if (team.teamSeasons) {
+        team.teamSeasons.forEach(ts => {
+          if (!seasonMap.has(ts.season.id)) {
+            seasonMap.set(ts.season.id, {
+              id: ts.season.id,
+              name: ts.season.name,
+              status: ts.season.status,
+              startDate: ts.season.startDate,
+              communityId: team.communityId || '',
+            });
+          }
+        });
+      }
+    });
+    
+    // Sort seasons by start date (newest first)
+    return Array.from(seasonMap.values()).sort(
+      (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    );
   }, [teams]);
 
   // Filter teams based on selected season
@@ -99,8 +96,6 @@ export default function LandingPage() {
 
   useEffect(() => {
     setMounted(true);
-    // Set default date to today in YYYY-MM-DD format
-    setScheduledDate(new Date().toISOString().split('T')[0]);
 
     if (userId) {
       fetch('/api/teams')

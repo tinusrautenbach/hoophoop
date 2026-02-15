@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createServer, Server as HttpServer } from 'node:http';
 import { Server as SocketServer } from 'socket.io';
 import { io as Client, Socket as ClientSocket } from 'socket.io-client';
