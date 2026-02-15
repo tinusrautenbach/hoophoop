@@ -358,14 +358,33 @@ export default function TeamDetailsPage() {
                 <Link href="/teams" className="text-sm text-slate-400 hover:text-orange-500 mb-2 inline-block">&larr; Back to Teams</Link>
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-4">
-                        {teamColor && (
-                            <div 
-                                className="w-10 h-10 rounded-2xl shadow-[0_0_15px_currentColor] flex items-center justify-center text-xs font-black"
-                                style={{ backgroundColor: teamColor, color: teamColor }} 
-                            >
-                                <span className="text-white drop-shadow-md">{teamShortCode}</span>
+                        <button
+                            onClick={() => {
+                                setEditTeamName(teamName);
+                                setEditTeamShortCode(teamShortCode);
+                                setEditTeamColor(teamColor || '#f97316'); // Default to orange if setting for first time
+                                setIsEditingTeam(true);
+                            }}
+                            className="group relative"
+                            title="Edit Team Color"
+                        >
+                            {teamColor ? (
+                                <div 
+                                    className="w-16 h-16 rounded-2xl shadow-[0_0_15px_currentColor] flex items-center justify-center text-xl font-black transition-transform group-hover:scale-105"
+                                    style={{ backgroundColor: teamColor, color: teamColor }} 
+                                >
+                                    <span className="text-white drop-shadow-md">{teamShortCode}</span>
+                                </div>
+                            ) : (
+                                <div className="w-16 h-16 rounded-2xl bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-500 hover:border-orange-500 hover:text-orange-500 transition-colors">
+                                    <div className="text-xs font-bold text-center leading-tight">ADD<br/>COLOR</div>
+                                </div>
+                            )}
+                            <div className="absolute -bottom-1 -right-1 bg-card rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Edit2 size={12} className="text-slate-500" />
                             </div>
-                        )}
+                        </button>
+
                         <div>
                             <h1 className="text-3xl font-bold flex items-center gap-3">
                                 {teamName}
@@ -373,7 +392,7 @@ export default function TeamDetailsPage() {
                                     onClick={() => {
                                         setEditTeamName(teamName);
                                         setEditTeamShortCode(teamShortCode);
-                                        setEditTeamColor(teamColor);
+                                        setEditTeamColor(teamColor || '#f97316');
                                         setIsEditingTeam(true);
                                     }}
                                     className="text-slate-500 hover:text-orange-500 transition-colors bg-card/50 p-2 rounded-full hover:bg-card"
