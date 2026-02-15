@@ -1,75 +1,46 @@
-# Complete API Test Suite - Results
+# Test Suite Results
 
-**Date:** 2026-02-08  
-**Status:** ✅ ALL TESTS PASSING (52/52)
+**Last Run**: 2026-02-15 11:53:22
+**Overall Status**: ✅ PASSED
 
-## Test Suite Coverage
+### Summary
+- **Test Files**: 33 (33 passed, 0 failed)
+- **Total Tests**: 287 (287 passed, 0 failed)
 
-### ✅ Real-time Event Propagation (New)
-- ✓ Broadcast `game-updated` events to room
-- ✓ Broadcast `event-added` events to room
+### Detailed Results by File
 
-### ✅ Teams API
-- ✓ Create a team
-- ✓ Create a second team
-- ✓ Fetch all teams for a user
-- ✓ Fetch a single team by ID
-- ✓ Update a team
-
-### ✅ Athletes API
-- ✓ Create multiple athletes
-- ✓ Fetch all athletes for a user
-- ✓ Fetch a single athlete by ID
-- ✓ Filter athletes by query parameter
-
-### ✅ Team Memberships/Rosters API
-- ✓ Add athletes to team roster
-- ✓ Fetch team roster with athlete details
-- ✓ Update a team membership
-- ✓ Remove an athlete from roster
-
-### ✅ Games API
-- ✓ Create a game
-- ✓ Fetch a game by ID
-- ✓ Update game status
-- ✓ Update game score
-- ✓ Fetch all games for a user
-
-### ✅ Game Rosters API
-- ✓ Populate game roster from team roster
-- ✓ Fetch game with rosters
-- ✓ Update player stats in game roster
-- ✓ Filter active players in game roster
-
-### ✅ Complex Queries
-- ✓ Fetch team with all members and their stats
-- ✓ Fetch game with full roster details
-- ✓ Calculate total points from game roster
-
-### ✅ Edge Cases and Validation
-- ✓ Handle empty rosters
-- ✓ Handle games without rosters
-- ✓ Handle athlete without team memberships
-- ✓ Handle unauthorized access
-
-## Test Results
-
-```
-Test Files  9 passed (9)
-Tests       52 passed (52)
-Duration    3.42s
-Pass Rate   100%
-```
-
-## Major Fixes Implemented
-
-1. **Next.js 15 Async Params**: Updated all dynamic API routes to await `params` as they are now Promises in Next.js 15.
-2. **Mock Authentication**: Switched all API routes and tests from `@clerk/nextjs/server` to `@/lib/auth-server` for consistent development and testing.
-3. **Database Mocks**: Updated Vitest mocks to include missing query methods like `db.query.games.findFirst`.
-4. **Endpoint Implementation**: Fixed logical errors in game creation and roster population.
-
-## Conclusion
-
-✅ **The entire backend API layer is now fully verified and 100% functional.**
-✅ **The test suite provides comprehensive coverage of all core features.**
-✅ **The application is ready for frontend integration with a solid API foundation.**
+| File | Status | Passed | Failed | Total |
+| :--- | :--- | :--- | :--- | :--- |
+| src/app/api/__tests__/complete-api.test.ts | ✅ | 27 | 0 | 27 |
+| src/app/api/athletes/__tests__/athletes.test.ts | ✅ | 3 | 0 | 3 |
+| src/app/api/communities/__tests__/communities.test.ts | ✅ | 9 | 0 | 9 |
+| src/app/api/communities/[id]/__tests__/route.test.ts | ✅ | 11 | 0 | 11 |
+| src/app/api/communities/[id]/invite/__tests__/route.test.ts | ✅ | 7 | 0 | 7 |
+| src/app/api/communities/[id]/members/[userId]/__tests__/route.test.ts | ✅ | 7 | 0 | 7 |
+| src/app/api/communities/[id]/teams/__tests__/route.test.ts | ✅ | 10 | 0 | 10 |
+| src/app/api/communities/join/__tests__/route.test.ts | ✅ | 7 | 0 | 7 |
+| src/app/api/games/[id]/__tests__/route.test.ts | ✅ | 8 | 0 | 8 |
+| src/app/api/games/[id]/events/__tests__/route.test.ts | ✅ | 14 | 0 | 14 |
+| src/app/api/games/[id]/scorers/__tests__/route.test.ts | ✅ | 11 | 0 | 11 |
+| src/app/api/games/route.test.ts | ✅ | 1 | 0 | 1 |
+| src/app/api/players/__tests__/route.test.ts | ✅ | 11 | 0 | 11 |
+| src/app/api/players/[id]/__tests__/route.test.ts | ✅ | 8 | 0 | 8 |
+| src/app/api/public/communities/[slug]/games/route.test.ts | ✅ | 7 | 0 | 7 |
+| src/app/api/public/games/route.test.ts | ✅ | 7 | 0 | 7 |
+| src/app/api/teams/__tests__/integration.test.ts | ✅ | 8 | 0 | 8 |
+| src/app/api/teams/__tests__/teams.test.ts | ✅ | 4 | 0 | 4 |
+| src/app/api/teams/[id]/__tests__/route.test.ts | ✅ | 10 | 0 | 10 |
+| src/app/api/teams/[id]/members/__tests__/members.test.ts | ✅ | 3 | 0 | 3 |
+| src/app/api/teams/[id]/members/__tests__/route.test.ts | ✅ | 8 | 0 | 8 |
+| src/app/api/teams/[id]/members/[memberId]/__tests__/route.test.ts | ✅ | 7 | 0 | 7 |
+| src/app/api/tournaments/__tests__/route.test.ts | ✅ | 6 | 0 | 6 |
+| src/app/api/tournaments/[id]/__tests__/route.test.ts | ✅ | 9 | 0 | 9 |
+| src/app/api/tournaments/[id]/games/__tests__/route.test.ts | ✅ | 5 | 0 | 5 |
+| src/app/api/tournaments/[id]/games/[gameId]/__tests__/route.test.ts | ✅ | 8 | 0 | 8 |
+| src/app/api/tournaments/[id]/teams/__tests__/route.test.ts | ✅ | 7 | 0 | 7 |
+| src/app/api/tournaments/[id]/teams/[teamId]/__tests__/route.test.ts | ✅ | 7 | 0 | 7 |
+| src/server/__tests__/socket.test.ts | ✅ | 2 | 0 | 2 |
+| src/services/__tests__/game.test.ts | ✅ | 2 | 0 | 2 |
+| src/services/__tests__/roster.test.ts | ✅ | 3 | 0 | 3 |
+| src/utils/__tests__/minutesTracking.test.ts | ✅ | 47 | 0 | 47 |
+| tests/load/load-test-10k-spectators-100-games.test.ts | ✅ | 3 | 0 | 3 |
