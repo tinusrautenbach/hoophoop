@@ -125,7 +125,41 @@ Create an IAM policy with minimal required permissions:
 
 ### Automated Daily Backups
 
-1. **Setup cron job** (run as appropriate user):
+#### Option 1: Host-Level Cron (Recommended for Docker)
+
+For Docker deployments, the recommended approach is to run cron on the **host** system and trigger backups inside the container:
+
+**Quick Setup:**
+```bash
+# Run as root or with sudo
+sudo ./scripts/setup-backup-cron.sh [container_name]
+```
+
+**Manual Setup:**
+```bash
+# Edit system crontab
+sudo crontab -e
+
+# Add line for 2 AM UTC daily (adjust container name as needed)
+0 2 * * * docker exec bball-app-1 /app/scripts/backup-db.sh >> /var/log/bball-backup.log 2>&1
+```
+
+**Verify setup:**
+```bash
+# Check if cron job is scheduled
+sudo crontab -l | grep backup-db
+
+# Test the backup manually first
+docker exec bball-app-1 /app/scripts/backup-db.sh --manual
+
+# View logs
+tail -f /var/log/bball-backup.log
+```
+
+#### Option 2: Native Installation (Non-Docker)
+
+If running without Docker:
+
 ```bash
 # Edit crontab
 crontab -e
@@ -134,13 +168,46 @@ crontab -e
 0 2 * * * /path/to/project/scripts/backup-db.sh >> /path/to/project/logs/cron-backup.log 2>&1
 ```
 
-2. **Verify setup**:
-```bash
-# Check if cron job is scheduled
-crontab -l | grep backup-db
+#### Option 3: Systemd Timer (Alternative)
 
-# Test the script manually first
-./scripts/backup-db.sh
+For systems using systemd, create a timer service:
+
+**1. Create backup service:**
+```ini
+# /etc/systemd/system/bball-backup.service
+[Unit]
+Description=Basketball App Database Backup
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec bball-app-1 /app/scripts/backup-db.sh
+StandardOutput=append:/var/log/bball-backup.log
+StandardError=append:/var/log/bball-backup.log
+```
+
+**2. Create timer:**
+```ini
+# /etc/systemd/system/bball-backup.timer
+[Unit]
+Description=Run Basketball App Database Backup daily
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+**3. Enable and start:**
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable bball-backup.timer
+sudo systemctl start bball-backup.timer
+
+# Check status
+sudo systemctl list-timers --all
 ```
 
 ### Manual Backups
