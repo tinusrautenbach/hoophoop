@@ -21,6 +21,12 @@ services:
       - SMTP_PASS=${SMTP_PASS}
       - SMTP_FROM=${SMTP_FROM}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME}
+      # AWS S3 Backup Configuration
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - BACKUP_BUCKET=${BACKUP_BUCKET:-bball-db-backups}
+      - BACKUP_PREFIX=${BACKUP_PREFIX:-backups}
     depends_on:
       db:
         condition: service_healthy
