@@ -192,7 +192,7 @@ describe('Communities API Route', () => {
 
             const insertedValues: Record<string, unknown>[] = [];
             const mockTx = {
-                insert: vi.fn().mockImplementation((table: unknown) => ({
+                insert: vi.fn().mockImplementation(() => ({
                     values: vi.fn().mockImplementation((values) => {
                         insertedValues.push(values);
                         return {

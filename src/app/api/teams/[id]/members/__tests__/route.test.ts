@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, POST } from '../route';
 import { db } from '@/db';
-import { athletes } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -114,19 +113,11 @@ describe('Teams [id] Members API Route', () => {
             (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const mockAthlete = { id: 'player-new', name: 'New Player' };
-            const mockMembership = { 
-                id: 'member-1', 
-                number: '23', 
-                athleteId: 'player-new',
-                athlete: mockAthlete 
-            };
 
-            let insertValues: Record<string, unknown> = {};
-            (db.insert as unknown as { mockImplementation: (callback: unknown) => { mockReturnValue: (value: unknown) => void } }).mockImplementation((table: unknown) => ({
-                values: vi.fn((values: unknown) => {
-                    insertValues = { table, values };
+            (db.insert as unknown as { mockImplementation: (callback: unknown) => { mockReturnValue: (value: unknown) => void } }).mockImplementation(() => ({
+                values: vi.fn(() => {
                     return {
-                        returning: vi.fn().mockResolvedValue([table === athletes ? mockAthlete : mockMembership]),
+                        returning: vi.fn().mockResolvedValue([mockAthlete]),
                     };
                 }),
             }));

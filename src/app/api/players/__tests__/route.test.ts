@@ -68,7 +68,6 @@ describe('Players API Route', () => {
             ]);
 
             const response = await GET(new Request('http://localhost/api/players?q=Community&communityId=comm-1'));
-            const data = await response.json();
 
             expect(response.status).toBe(200);
             expect(db.query.athletes.findMany).toHaveBeenCalled();

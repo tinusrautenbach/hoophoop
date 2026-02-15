@@ -108,6 +108,20 @@ export const playerInvitations = pgTable('player_invitations', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// --- PLAYER CLAIM REQUESTS ---
+
+export const playerClaimRequests = pgTable('player_claim_requests', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    athleteId: uuid('athlete_id').references(() => athletes.id, { onDelete: 'cascade' }).notNull(),
+    userId: text('user_id').notNull(), // The user claiming the profile
+    status: text('status').default('pending').notNull(), // pending, approved, rejected
+    communityId: uuid('community_id').references(() => communities.id), // Community of the athlete (nullable for no-community athletes)
+    requestedAt: timestamp('requested_at').defaultNow().notNull(),
+    reviewedAt: timestamp('reviewed_at'),
+    reviewedBy: text('reviewed_by'), // Admin who approved/rejected
+    rejectionReason: text('rejection_reason'),
+});
+
 
 // --- SEASON MANAGEMENT ---
 
@@ -448,6 +462,12 @@ export const playerHistoryRelations = relations(playerHistory, ({ one }) => ({
 
 export const playerInvitationsRelations = relations(playerInvitations, ({ one }) => ({
     athlete: one(athletes, { fields: [playerInvitations.athleteId], references: [athletes.id] }),
+}));
+
+export const playerClaimRequestsRelations = relations(playerClaimRequests, ({ one }) => ({
+    athlete: one(athletes, { fields: [playerClaimRequests.athleteId], references: [athletes.id] }),
+    community: one(communities, { fields: [playerClaimRequests.communityId], references: [communities.id] }),
+    reviewer: one(users, { fields: [playerClaimRequests.reviewedBy], references: [users.id] }),
 }));
 
 export const seasonsRelations = relations(seasons, ({ one, many }) => ({

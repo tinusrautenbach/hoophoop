@@ -36,7 +36,9 @@
   - [ ] Broadcast updated totals to all clients via Socket.io.
   - [ ] Ensure the scorer UI, spectator UI, and box score all reflect the recalculated score.
 
-## Phase 12: Mobile Application (React Native)
+## Phase 12: Mobile Application (React Native) - SUSPENDED
+> **Note**: Mobile app development has been suspended. The `/mobile` directory has been removed from the codebase.
+
 - [ ] **12.1 Project Scaffolding**:
   - [ ] Initialize Expo project in `/mobile` directory.
   - [ ] Configure `app.json` with app name, bundle ID, version, icons, splash screen.

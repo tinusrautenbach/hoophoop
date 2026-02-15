@@ -1,7 +1,7 @@
+// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import fs from 'fs';
 import path from 'path';
-
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 export default class MarkdownReporter {
   onTestRunEnd(files: any, _errors: any, _reason: any) {
     console.log('[MarkdownReporter] onTestRunEnd called with', files?.length, 'files');

@@ -245,7 +245,6 @@ export default function FullLogPage() {
                                         {['score', 'foul', 'timeout', 'miss'].map(t => (
                                             <button
                                                 key={t}
-                                                // @ts-ignore
                                                 onClick={() => setEditingEvent({ ...editingEvent!, type: t as any })}
                                                 className={cn(
                                                     "p-3 rounded-xl border text-xs font-black uppercase tracking-widest transition-all",
@@ -266,9 +265,8 @@ export default function FullLogPage() {
                                         <div className="flex gap-2">
                                             {[1, 2, 3].map(v => (
                                                 <button
-                                                    key={v}
-                                                    // @ts-ignore
-                                                    onClick={() => setEditingEvent({ ...editingEvent!, value: v })}
+                                                key={v}
+                                                onClick={() => setEditingEvent({ ...editingEvent!, value: v })}
                                                     className={cn(
                                                         "flex-1 p-4 rounded-xl border text-xl font-black transition-all",
                                                         editingEvent.value === v
@@ -288,7 +286,6 @@ export default function FullLogPage() {
                                     <input
                                         type="text"
                                         value={editingEvent.player || ''}
-                                        // @ts-ignore
                                         onChange={(e) => setEditingEvent({ ...editingEvent!, player: e.target.value })}
                                         className="w-full bg-black/40 border border-border rounded-xl p-4 font-bold text-white focus:outline-none focus:border-orange-500 transition-colors"
                                         placeholder="Player Name"

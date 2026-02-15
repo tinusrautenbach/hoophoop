@@ -9,7 +9,7 @@ export default function ContactPage() {
                 </div>
                 <h1 className="text-4xl font-bold mb-4">Contact Us</h1>
                 <p className="text-slate-400 mb-8 text-lg">
-                    Have questions, suggestions, or just want to say hello? We'd love to hear from you.
+                    Have questions, suggestions, or just want to say hello? We&apos;d love to hear from you.
                 </p>
                 <a
                     href="mailto:info@hoophoop.net"

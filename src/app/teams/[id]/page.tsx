@@ -211,9 +211,8 @@ export default function TeamDetailsPage() {
                     .then(data => setPlayerSearchResults(data));
             }, 300);
             return () => clearTimeout(timer);
-        } else {
-            setPlayerSearchResults([]);
         }
+        return () => setPlayerSearchResults([]);
     }, [searchQuery, showPlayerSearch, teamCommunityId]);
 
     useEffect(() => {

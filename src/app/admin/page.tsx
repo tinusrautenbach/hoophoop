@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
     Shield, Search, User, Check, ShieldAlert, ArrowRight, 
     Users, Building2, Trash2, Plus, Minus, ChevronDown, ChevronUp,
-    Crown, RotateCcw
+    Crown, RotateCcw, Link2, Trophy, X, Mail
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -73,9 +73,26 @@ type DeletedGame = {
     } | null;
 };
 
+type LinkedAthlete = {
+    id: string;
+    name: string;
+    firstName: string | null;
+    surname: string | null;
+    status: string;
+    communityId: string | null;
+    createdAt: string;
+    user: {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        email: string;
+        createdAt: string;
+    } | null;
+};
+
 export default function AdminDashboard() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'users' | 'communities' | 'deletedGames'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'communities' | 'deletedGames' | 'linkedAthletes' | 'invitations'>('users');
     
     // Users state
     const [users, setUsers] = useState<UserData[]>([]);
@@ -94,6 +111,14 @@ export default function AdminDashboard() {
     // Deleted games state
     const [deletedGames, setDeletedGames] = useState<DeletedGame[]>([]);
     const [deletedGamesLoading, setDeletedGamesLoading] = useState(false);
+
+    // Linked athletes state
+    const [linkedAthletes, setLinkedAthletes] = useState<LinkedAthlete[]>([]);
+    const [linkedAthletesSearch, setLinkedAthletesSearch] = useState('');
+    const [linkedAthletesFilter, setLinkedAthletesFilter] = useState<'all' | 'linked' | 'unlinked'>('all');
+    const [linkedAthletesPage, setLinkedAthletesPage] = useState(1);
+    const [linkedAthletesTotalPages, setLinkedAthletesTotalPages] = useState(1);
+    const [linkedAthletesLoading, setLinkedAthletesLoading] = useState(true);
     
     // Community members modal state
     const [selectedCommunity, setSelectedCommunity] = useState<CommunityData | null>(null);
@@ -103,6 +128,40 @@ export default function AdminDashboard() {
     const [userSearchQuery, setUserSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<UserData[]>([]);
     const [selectedRole, setSelectedRole] = useState<'admin' | 'scorer' | 'viewer'>('scorer');
+    
+    // Claim requests state
+    const [claimRequests, setClaimRequests] = useState<Array<{
+        id: string;
+        athleteId: string;
+        userId: string;
+        status: string;
+        requestedAt: string;
+        athleteName: string;
+        userFirstName: string | null;
+        userLastName: string | null;
+        userEmail: string;
+    }>>([]);
+    const [claimRequestsLoading, setClaimRequestsLoading] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
+
+    // Pending invitations state
+    const [pendingInvitations, setPendingInvitations] = useState<Array<{
+        id: string;
+        athleteId: string | null;
+        email: string;
+        token: string;
+        status: string;
+        expiresAt: string;
+        createdAt: string;
+        createdBy: string;
+        athleteName: string | null;
+        athleteFirstName: string | null;
+        athleteSurname: string | null;
+        creatorName: string;
+        creatorEmail: string | null;
+    }>>([]);
+    const [invitationsLoading, setInvitationsLoading] = useState(false);
     
     const [error, setError] = useState('');
 
@@ -119,6 +178,7 @@ export default function AdminDashboard() {
     useEffect(() => {
         if (selectedCommunity) {
             fetchCommunityMembers(selectedCommunity.id);
+            fetchClaimRequests(selectedCommunity.id);
         }
     }, [selectedCommunity]);
 
@@ -127,6 +187,17 @@ export default function AdminDashboard() {
             fetchDeletedGames();
         }
     }, [activeTab]);
+
+    useEffect(() => {
+        if (activeTab === 'invitations') {
+            fetchPendingInvitations();
+        }
+    }, [activeTab]);
+
+    useEffect(() => {
+        fetchLinkedAthletes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [linkedAthletesPage, linkedAthletesSearch, linkedAthletesFilter]);
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -199,6 +270,31 @@ export default function AdminDashboard() {
         }
     };
 
+    const fetchLinkedAthletes = async () => {
+        setLinkedAthletesLoading(true);
+        try {
+            const params = new URLSearchParams({ 
+                page: linkedAthletesPage.toString(), 
+                limit: '10' 
+            });
+            if (linkedAthletesSearch) params.set('search', linkedAthletesSearch);
+            if (linkedAthletesFilter !== 'all') params.set('filter', linkedAthletesFilter);
+            
+            const res = await fetch(`/api/admin/linked-athletes?${params.toString()}`);
+            if (res.status === 403) {
+                setError('Unauthorized');
+                return;
+            }
+            const data = await res.json();
+            setLinkedAthletes(data.linkedAthletes);
+            setLinkedAthletesTotalPages(data.pagination.totalPages);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLinkedAthletesLoading(false);
+        }
+    };
+
     const restoreGame = async (gameId: string) => {
         if (!confirm('Are you sure you want to restore this game?')) return;
         
@@ -230,6 +326,126 @@ export default function AdminDashboard() {
             console.error(err);
         } finally {
             setMembersLoading(false);
+        }
+    };
+
+    const fetchClaimRequests = async (communityId: string) => {
+        setClaimRequestsLoading(true);
+        try {
+            const res = await fetch(`/api/admin/communities/${communityId}/claim-requests?status=pending`);
+            if (res.ok) {
+                const data = await res.json();
+                setClaimRequests(data.claims || []);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setClaimRequestsLoading(false);
+        }
+    };
+
+    const approveClaimRequest = async (requestId: string) => {
+        if (!selectedCommunity) return;
+        if (!confirm('Are you sure you want to approve this claim request?')) return;
+
+        try {
+            const res = await fetch(`/api/admin/communities/${selectedCommunity.id}/claim-requests/${requestId}`, {
+                method: 'POST',
+            });
+            if (res.ok) {
+                setClaimRequests(prev => prev.filter(r => r.id !== requestId));
+                alert('Claim request approved!');
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to approve claim request');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to approve claim request');
+        }
+    };
+
+    const rejectClaimRequest = async (requestId: string) => {
+        if (!selectedCommunity) return;
+        if (!rejectReason.trim()) {
+            alert('Please provide a reason for rejection');
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/admin/communities/${selectedCommunity.id}/claim-requests/${requestId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: rejectReason }),
+            });
+            if (res.ok) {
+                setClaimRequests(prev => prev.filter(r => r.id !== requestId));
+                setShowRejectModal(null);
+                setRejectReason('');
+                alert('Claim request rejected');
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to reject claim request');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to reject claim request');
+        }
+    };
+
+    const fetchPendingInvitations = async () => {
+        setInvitationsLoading(true);
+        try {
+            const res = await fetch('/api/admin/invitations?status=pending');
+            if (res.status === 403) {
+                setError('Unauthorized');
+                return;
+            }
+            if (res.ok) {
+                const data = await res.json();
+                setPendingInvitations(data.invitations || []);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setInvitationsLoading(false);
+        }
+    };
+
+    const cancelInvitation = async (token: string) => {
+        if (!confirm('Are you sure you want to cancel this invitation?')) return;
+        
+        try {
+            const res = await fetch(`/api/players/invitations/${token}/resend`, {
+                method: 'DELETE',
+            });
+            if (res.ok) {
+                setPendingInvitations(prev => prev.filter(inv => inv.token !== token));
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to cancel invitation');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to cancel invitation');
+        }
+    };
+
+    const resendInvitation = async (token: string) => {
+        try {
+            const res = await fetch(`/api/players/invitations/${token}/resend`, {
+                method: 'POST',
+            });
+            if (res.ok) {
+                alert('Invitation resent successfully');
+                fetchPendingInvitations();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to resend invitation');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to resend invitation');
         }
     };
 
@@ -449,6 +665,30 @@ export default function AdminDashboard() {
                 >
                     <Trash2 size={16} />
                     Deleted Games
+                </button>
+                <button
+                    onClick={() => setActiveTab('linkedAthletes')}
+                    className={cn(
+                        "px-6 py-3 font-bold uppercase tracking-widest text-sm transition-colors flex items-center gap-2",
+                        activeTab === 'linkedAthletes' 
+                            ? "text-orange-500 border-b-2 border-orange-500" 
+                            : "text-slate-500 hover:text-slate-300"
+                    )}
+                >
+                    <Link2 size={16} />
+                    Linked Athletes
+                </button>
+                <button
+                    onClick={() => setActiveTab('invitations')}
+                    className={cn(
+                        "px-6 py-3 font-bold uppercase tracking-widest text-sm transition-colors flex items-center gap-2",
+                        activeTab === 'invitations' 
+                            ? "text-orange-500 border-b-2 border-orange-500" 
+                            : "text-slate-500 hover:text-slate-300"
+                    )}
+                >
+                    <Link2 size={16} />
+                    Linked Athletes
                 </button>
             </div>
 
@@ -830,6 +1070,89 @@ export default function AdminDashboard() {
                             </table>
                         </div>
                     </div>
+
+                    {/* Pending Claim Requests Section */}
+                    <div className="bg-input border border-border rounded-2xl overflow-hidden mt-6">
+                        <div className="p-6 border-b border-border">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <Trophy size={18} className="text-yellow-500" />
+                                Pending Claim Requests ({claimRequests.length})
+                            </h3>
+                            <p className="text-slate-500 text-sm mt-1">User requests to claim player profiles</p>
+                        </div>
+
+                        {claimRequestsLoading ? (
+                            <div className="p-12 text-center text-slate-500">Loading...</div>
+                        ) : claimRequests.length === 0 ? (
+                            <div className="p-12 text-center text-slate-500">No pending claim requests</div>
+                        ) : (
+                            <div className="divide-y divide-slate-800">
+                                {claimRequests.map((request) => (
+                                    <div key={request.id} className="p-4 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center">
+                                                <Trophy className="w-5 h-5 text-yellow-500" />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-sm">{request.athleteName}</div>
+                                                <div className="text-xs text-slate-400">
+                                                    Requested by: {request.userFirstName} {request.userLastName} ({request.userEmail})
+                                                </div>
+                                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                                    {new Date(request.requestedAt).toLocaleString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => approveClaimRequest(request.id)}
+                                                className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded transition-colors"
+                                            >
+                                                Approve
+                                            </button>
+                                            <button
+                                                onClick={() => setShowRejectModal(request.id)}
+                                                className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded transition-colors"
+                                            >
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Reject Modal */}
+                    {showRejectModal && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md">
+                                <h3 className="font-bold text-lg mb-4">Reject Claim Request</h3>
+                                <p className="text-slate-400 text-sm mb-4">Please provide a reason for rejecting this claim request:</p>
+                                <textarea
+                                    value={rejectReason}
+                                    onChange={(e) => setRejectReason(e.target.value)}
+                                    placeholder="Reason for rejection..."
+                                    className="w-full bg-background border border-border rounded-lg p-3 text-sm focus:outline-none focus:border-orange-500 mb-4"
+                                    rows={3}
+                                />
+                                <div className="flex gap-2 justify-end">
+                                    <button
+                                        onClick={() => { setShowRejectModal(null); setRejectReason(''); }}
+                                        className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white text-sm font-bold rounded transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={() => rejectClaimRequest(showRejectModal)}
+                                        className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded transition-colors"
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -897,6 +1220,204 @@ export default function AdminDashboard() {
                             </tbody>
                         </table>
                     </div>
+                </div>
+            )}
+
+            {/* Linked Athletes Tab */}
+            {activeTab === 'linkedAthletes' && (
+                <div className="bg-input border border-border rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <Link2 size={20} className="text-orange-500" />
+                            User-Athlete Links
+                        </h2>
+                        <div className="flex gap-2">
+                            <select
+                                value={linkedAthletesFilter}
+                                onChange={(e) => { setLinkedAthletesFilter(e.target.value as 'all' | 'linked' | 'unlinked'); setLinkedAthletesPage(1); }}
+                                className="bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500"
+                            >
+                                <option value="all">All Players</option>
+                                <option value="linked">Linked</option>
+                                <option value="unlinked">Unlinked</option>
+                            </select>
+                            <div className="relative w-full sm:w-64">
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                                <input
+                                    type="text"
+                                    placeholder="Search players or users..."
+                                    value={linkedAthletesSearch}
+                                    onChange={(e) => { setLinkedAthletesSearch(e.target.value); setLinkedAthletesPage(1); }}
+                                    className="w-full bg-background border border-border rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-orange-500"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-background text-xs uppercase tracking-widest text-slate-500 font-semibold">
+                                <tr>
+                                    <th className="px-6 py-4">Athlete</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4">Linked User</th>
+                                    <th className="px-6 py-4">User Email</th>
+                                    <th className="px-6 py-4">Linked At</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800">
+                                {linkedAthletesLoading ? (
+                                    <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">Loading...</td></tr>
+                                ) : linkedAthletes.length === 0 ? (
+                                    <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">No athletes found.</td></tr>
+                                ) : (
+                                    linkedAthletes.map(athlete => (
+                                        <tr key={athlete.id} className="hover:bg-card/30 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-500">
+                                                        <Trophy size={14} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium">{athlete.name}</div>
+                                                        <div className="text-xs text-slate-500">
+                                                            {athlete.firstName} {athlete.surname}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={cn(
+                                                    "inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold uppercase",
+                                                    athlete.status === 'active' 
+                                                        ? "bg-green-500/20 text-green-500"
+                                                        : "bg-slate-500/20 text-slate-500"
+                                                )}>
+                                                    {athlete.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {athlete.user ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-6 h-6 rounded-full bg-card flex items-center justify-center text-slate-400">
+                                                            <User size={12} />
+                                                        </div>
+                                                        <span className="text-sm">
+                                                            {athlete.user.firstName} {athlete.user.lastName}
+                                                        </span>
+                                                        {athlete.user.id && (
+                                                            <span className="text-[10px] text-slate-500 font-mono ml-1">
+                                                                ({athlete.user.id.substring(0, 8)}...)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-500 text-sm italic">Not linked</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-400 text-sm">
+                                                {athlete.user?.email || '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-500 text-sm">
+                                                {athlete.user?.createdAt 
+                                                    ? new Date(athlete.user.createdAt).toLocaleDateString()
+                                                    : '-'
+                                                }
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {linkedAthletesTotalPages > 1 && (
+                        <div className="p-4 border-t border-border flex justify-center gap-2">
+                            <button
+                                disabled={linkedAthletesPage === 1}
+                                onClick={() => setLinkedAthletesPage(p => p - 1)}
+                                className="px-4 py-2 rounded bg-card text-sm font-bold disabled:opacity-50 hover:bg-muted"
+                            >
+                                Prev
+                            </button>
+                            <span className="px-4 py-2 text-sm font-mono text-slate-500">
+                                Page {linkedAthletesPage} of {linkedAthletesTotalPages}
+                            </span>
+                            <button
+                                disabled={linkedAthletesPage === linkedAthletesTotalPages}
+                                onClick={() => setLinkedAthletesPage(p => p + 1)}
+                                className="px-4 py-2 rounded bg-card text-sm font-bold disabled:opacity-50 hover:bg-muted"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Pending Invitations Tab */}
+            {activeTab === 'invitations' && (
+                <div className="bg-input border border-border rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-border">
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <Mail size={20} className="text-blue-500" />
+                            Pending Player Invitations
+                        </h2>
+                        <p className="text-slate-500 text-sm mt-1">
+                            {pendingInvitations.length} pending invitation{pendingInvitations.length !== 1 ? 's' : ''} awaiting acceptance
+                        </p>
+                    </div>
+
+                    {invitationsLoading ? (
+                        <div className="p-12 text-center text-slate-500">Loading invitations...</div>
+                    ) : pendingInvitations.length === 0 ? (
+                        <div className="p-12 text-center text-slate-500">
+                            <Mail size={48} className="mx-auto mb-4 text-slate-700" />
+                            <p>No pending player invitations.</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-800">
+                            {pendingInvitations.map((invitation) => (
+                                <div key={invitation.id} className="p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
+                                            <Mail className="w-5 h-5 text-blue-500" />
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-sm">
+                                                {invitation.athleteName || 'Unknown Player'}
+                                            </div>
+                                            <div className="text-xs text-slate-400">
+                                                Invited by: {invitation.creatorName} ({invitation.creatorEmail})
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                                To: {invitation.email}
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 mt-0.5">
+                                                Expires: {new Date(invitation.expiresAt).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => resendInvitation(invitation.token)}
+                                            className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-500 text-xs font-bold rounded transition-colors"
+                                            title="Resend invitation"
+                                        >
+                                            Resend
+                                        </button>
+                                        <button
+                                            onClick={() => cancelInvitation(invitation.token)}
+                                            className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-500 text-xs font-bold rounded transition-colors"
+                                            title="Cancel invitation"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

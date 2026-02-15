@@ -52,6 +52,22 @@ type ProfileData = {
             name: string;
         } | null;
     }>;
+    pendingClaimRequests?: Array<{
+        id: string;
+        athleteId: string;
+        status: string;
+        requestedAt: string;
+        athlete: {
+            id: string;
+            name: string;
+            firstName: string | null;
+            surname: string | null;
+        } | null;
+        community: {
+            id: string;
+            name: string;
+        } | null;
+    }>;
 };
 
 export default function ProfilePage() {
@@ -60,6 +76,7 @@ export default function ProfilePage() {
     const [data, setData] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [pendingInvitations, setPendingInvitations] = useState<ProfileData['pendingInvitations']>([]);
+    const [pendingClaimRequests, setPendingClaimRequests] = useState<ProfileData['pendingClaimRequests']>([]);
     const [managingInvitations, setManagingInvitations] = useState(false);
 
     useEffect(() => {
@@ -142,6 +159,28 @@ export default function ProfilePage() {
         }
     };
 
+    const handleUnlinkProfile = async (playerId: string) => {
+        if (!confirm('Are you sure you want to unlink this athlete profile? This means the profile will no longer be associated with your account. You can claim it again later if needed.')) return;
+        
+        try {
+            const res = await fetch(`/api/players/${playerId}/unlink`, {
+                method: 'POST',
+            });
+            if (res.ok) {
+                // Refresh profile data
+                const profileRes = await fetch('/api/profile');
+                const profileData = await profileRes.json();
+                setData(prev => prev ? { ...prev, playerProfile: null } : null);
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to unlink profile');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to unlink profile');
+        }
+    };
+
     if (!isLoaded || loading) {
         return (
             <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-6">
@@ -215,30 +254,44 @@ export default function ProfilePage() {
                             Athlete Profile
                         </h2>
                         {data.playerProfile ? (
-                            <Link href={`/players/${data.playerProfile.id}`}>
-                                <div className="bg-[var(--card)] border border-[var(--border)] p-6 rounded-3xl hover:border-orange-500/50 transition-all group cursor-pointer shadow-xl relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                        <Trophy size={64} />
-                                    </div>
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform font-black text-2xl">
+                            <div className="bg-[var(--card)] border border-[var(--border)] p-6 rounded-3xl hover:border-orange-500/50 transition-all group shadow-xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <Trophy size={64} />
+                                </div>
+                                <div className="flex items-center gap-6">
+                                    <Link href={`/players/${data.playerProfile.id}`}>
+                                        <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform font-black text-2xl cursor-pointer">
                                             {data.playerProfile.name.charAt(0)}
                                         </div>
-                                        <div>
-                                            <div className="text-xl font-black uppercase tracking-tight text-[var(--foreground)]">{data.playerProfile.name}</div>
-                                            {data.playerProfile.community && (
-                                                <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted-foreground)] mt-1">
-                                                    <Shield size={12} className="text-blue-500" />
-                                                    {data.playerProfile.community.name}
-                                                </div>
-                                            )}
-                                            <div className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 flex items-center gap-2">
-                                                View Statistics <ArrowRight size={12} />
+                                    </Link>
+                                    <div className="flex-1">
+                                        <Link href={`/players/${data.playerProfile.id}`}>
+                                            <div className="text-xl font-black uppercase tracking-tight text-[var(--foreground)] hover:text-orange-500 transition-colors">
+                                                {data.playerProfile.name}
                                             </div>
+                                        </Link>
+                                        {data.playerProfile.community && (
+                                            <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted-foreground)] mt-1">
+                                                <Shield size={12} className="text-blue-500" />
+                                                {data.playerProfile.community.name}
+                                            </div>
+                                        )}
+                                        <div className="mt-4 flex items-center gap-3">
+                                            <Link href={`/players/${data.playerProfile.id}`}>
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 flex items-center gap-2">
+                                                    View Statistics <ArrowRight size={12} />
+                                                </span>
+                                            </Link>
+                                            <button
+                                                onClick={() => handleUnlinkProfile(data.playerProfile!.id)}
+                                                className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500/70 hover:text-red-500 flex items-center gap-2 transition-colors"
+                                            >
+                                                Unlink Profile <X size={12} />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                            </Link>
+                            </div>
                         ) : (
                             <div className="bg-[var(--card)]/50 border border-dashed border-[var(--border)] p-8 rounded-3xl text-center space-y-4">
                                 <p className="text-[var(--muted-foreground)] text-sm">No athlete profile linked to your account.</p>
@@ -295,6 +348,39 @@ export default function ProfilePage() {
                                             >
                                                 <X size={16} />
                                             </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Pending Claim Requests */}
+                    {pendingClaimRequests && pendingClaimRequests.length > 0 && (
+                        <div className="space-y-4">
+                            <h2 className="text-sm font-black uppercase tracking-[0.2em] text-[var(--muted-foreground)] px-2 flex items-center gap-2">
+                                <Trophy size={16} className="text-orange-500" />
+                                Pending Claim Requests ({pendingClaimRequests.length})
+                            </h2>
+                            <div className="space-y-3">
+                                {pendingClaimRequests.map((request) => (
+                                    <div key={request.id} className="bg-[var(--card)] border border-[var(--border)] p-4 rounded-2xl flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center">
+                                                <Trophy className="w-5 h-5 text-yellow-500" />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-sm">{request.athlete?.name || 'Unknown Player'}</div>
+                                                <div className="text-xs text-[var(--muted-foreground)]">
+                                                    {request.community?.name || 'No Community'}
+                                                </div>
+                                                <div className="text-[10px] text-yellow-500 mt-0.5">
+                                                    Pending approval from admin
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] text-[var(--muted-foreground)]">
+                                            Requested: {new Date(request.requestedAt).toLocaleDateString()}
                                         </div>
                                     </div>
                                 ))}
