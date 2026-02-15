@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { seasons, games, teams, teamSeasons } from '@/db/schema';
+import { seasons, games, teamSeasons } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { eq, and, isNull } from 'drizzle-orm';
+
+interface TeamStanding {
+  teamId: string;
+  teamName: string;
+  played: number;
+  wins: number;
+  losses: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  pointDiff: number;
+}
 
 export async function GET(
   request: Request,
@@ -57,7 +68,7 @@ export async function GET(
     });
 
     // Initialize standings map
-    const standings: Record<string, any> = {};
+    const standings: Record<string, TeamStanding> = {};
     for (const ts of teamsInSeason) {
       standings[ts.teamId] = {
         teamId: ts.teamId,
