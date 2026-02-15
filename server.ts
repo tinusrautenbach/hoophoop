@@ -18,8 +18,8 @@ app.prepare().then(() => {
         keepAliveTimeout: 65000,
         // Headers timeout
         headersTimeout: 66000,
-        // Request timeout
-        requestTimeout: 30000,
+        // Request timeout (must be >= headersTimeout)
+        requestTimeout: 70000,
     }, handler);
 
     // Configure Socket.io with optimized settings for 10K+ connections

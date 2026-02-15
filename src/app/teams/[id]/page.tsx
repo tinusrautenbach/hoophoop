@@ -71,6 +71,8 @@ export default function TeamDetailsPage() {
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
     const [teamName, setTeamName] = useState('');
+    const [teamShortCode, setTeamShortCode] = useState('');
+    const [teamColor, setTeamColor] = useState('');
     const [teamCommunityId, setTeamCommunityId] = useState<string | null>(null);
     const [teamGames, setTeamGames] = useState<any[]>([]);
     const [teamSeasons, setTeamSeasons] = useState<TeamSeason[]>([]);
@@ -100,6 +102,13 @@ export default function TeamDetailsPage() {
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [editNumber, setEditNumber] = useState('');
     const [isSavingEdit, setIsSavingEdit] = useState(false);
+    
+    // Team Edit State
+    const [isEditingTeam, setIsEditingTeam] = useState(false);
+    const [editTeamName, setEditTeamName] = useState('');
+    const [editTeamShortCode, setEditTeamShortCode] = useState('');
+    const [editTeamColor, setEditTeamColor] = useState('');
+    const [isSavingTeam, setIsSavingTeam] = useState(false);
 
     // Community dropdown state
     const [showCommunityDropdown, setShowCommunityDropdown] = useState(false);
@@ -118,6 +127,8 @@ export default function TeamDetailsPage() {
                     setTeamGames([]);
                 } else {
                     setTeamName(data.name || '');
+                    setTeamShortCode(data.shortCode || '');
+                    setTeamColor(data.color || '');
                     setTeamCommunityId(data.communityId || null);
                     const allGames = [...(data.homeGames || []), ...(data.guestGames || [])]
                         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -304,6 +315,27 @@ export default function TeamDetailsPage() {
         setIsSavingEdit(false);
     };
 
+    const handleSaveTeam = async () => {
+        setIsSavingTeam(true);
+        const res = await fetch(`/api/teams/${teamId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                name: editTeamName,
+                shortCode: editTeamShortCode,
+                color: editTeamColor
+            }),
+        });
+
+        if (res.ok) {
+            setTeamName(editTeamName);
+            setTeamShortCode(editTeamShortCode);
+            setTeamColor(editTeamColor);
+            setIsEditingTeam(false);
+        }
+        setIsSavingTeam(false);
+    };
+
     const handleCommunityChange = async (communityId: string | null) => {
         setTeamCommunityId(communityId);
         setShowCommunityDropdown(false);
@@ -325,7 +357,41 @@ export default function TeamDetailsPage() {
             <div className="mb-8">
                 <Link href="/teams" className="text-sm text-slate-400 hover:text-orange-500 mb-2 inline-block">&larr; Back to Teams</Link>
                 <div className="flex justify-between items-start">
-                    <h1 className="text-3xl font-bold">{teamName} Roster</h1>
+                    <div className="flex items-center gap-4">
+                        {teamColor && (
+                            <div 
+                                className="w-10 h-10 rounded-2xl shadow-[0_0_15px_currentColor] flex items-center justify-center text-xs font-black"
+                                style={{ backgroundColor: teamColor, color: teamColor }} 
+                            >
+                                <span className="text-white drop-shadow-md">{teamShortCode}</span>
+                            </div>
+                        )}
+                        <div>
+                            <h1 className="text-3xl font-bold flex items-center gap-3">
+                                {teamName}
+                                <button 
+                                    onClick={() => {
+                                        setEditTeamName(teamName);
+                                        setEditTeamShortCode(teamShortCode);
+                                        setEditTeamColor(teamColor);
+                                        setIsEditingTeam(true);
+                                    }}
+                                    className="text-slate-500 hover:text-orange-500 transition-colors bg-card/50 p-2 rounded-full hover:bg-card"
+                                >
+                                    <Edit2 size={16} />
+                                </button>
+                            </h1>
+                            <div className="flex items-center gap-2 text-sm text-slate-400">
+                                <span className="uppercase tracking-widest font-bold text-xs">Roster</span>
+                                {teamShortCode && (
+                                    <>
+                                        <span>•</span>
+                                        <span className="font-mono bg-card px-1.5 py-0.5 rounded text-xs">{teamShortCode}</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                     
                     <div className="relative">
                         <button
@@ -483,7 +549,103 @@ export default function TeamDetailsPage() {
                                                 ))}
                                             </motion.div>
                                         )}
-                                    </AnimatePresence>
+            </AnimatePresence>
+
+            {/* Team Edit Modal */}
+            <AnimatePresence>
+                {isEditingTeam && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setIsEditingTeam(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.95 }}
+                            className="bg-card p-6 rounded-2xl border border-border w-full max-w-sm"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <h3 className="text-lg font-bold mb-4">Edit Team Details</h3>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">Team Name</label>
+                                    <input
+                                        type="text"
+                                        value={editTeamName}
+                                        onChange={e => setEditTeamName(e.target.value)}
+                                        className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                        autoFocus
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">Short Code</label>
+                                    <input
+                                        type="text"
+                                        value={editTeamShortCode}
+                                        onChange={e => setEditTeamShortCode(e.target.value)}
+                                        maxLength={3}
+                                        className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 uppercase"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs uppercase tracking-wider text-slate-400 mb-1">Team Color</label>
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        {['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b'].map((c) => (
+                                            <button
+                                                key={c}
+                                                type="button"
+                                                onClick={() => setEditTeamColor(c)}
+                                                className={`w-6 h-6 rounded-full transition-all border ${editTeamColor === c ? 'border-white scale-110 shadow-[0_0_10px_currentColor]' : 'border-transparent hover:scale-110 opacity-70 hover:opacity-100'}`}
+                                                style={{ backgroundColor: c, color: c }}
+                                            />
+                                        ))}
+                                    </div>
+                                    <div className="relative flex items-center gap-2 bg-input border border-border rounded-lg px-3 py-2">
+                                        <div 
+                                            className="w-4 h-4 rounded-full shadow-[0_0_5px_currentColor]"
+                                            style={{ backgroundColor: editTeamColor, color: editTeamColor }}
+                                        />
+                                        <input
+                                            type="text"
+                                            value={editTeamColor}
+                                            onChange={e => setEditTeamColor(e.target.value)}
+                                            className="bg-transparent border-none focus:outline-none text-sm font-mono text-slate-300 w-full uppercase"
+                                            placeholder="#000000"
+                                        />
+                                        <input
+                                            type="color"
+                                            value={editTeamColor}
+                                            onChange={e => setEditTeamColor(e.target.value)}
+                                            className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0 opacity-0 absolute right-8"
+                                        />
+                                        <div className="text-slate-500 text-[10px] pointer-events-none uppercase ml-auto">Pick</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 mt-6">
+                                <button
+                                    onClick={() => setIsEditingTeam(false)}
+                                    className="flex-1 bg-muted hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveTeam}
+                                    disabled={isSavingTeam}
+                                    className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    {isSavingTeam ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
                                 </div>
 
                                 {selectedPlayer && (

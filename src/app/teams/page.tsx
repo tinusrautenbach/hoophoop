@@ -20,6 +20,7 @@ export default function TeamsPage() {
     const [loading, setLoading] = useState(true);
     const [name, setName] = useState('');
     const [shortCode, setShortCode] = useState('');
+    const [color, setColor] = useState('#f97316'); // Default orange-500
     const [communityId, setCommunityId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     
@@ -67,7 +68,7 @@ export default function TeamsPage() {
 
         const res = await fetch('/api/teams', {
             method: 'POST',
-            body: JSON.stringify({ name, shortCode, communityId }),
+            body: JSON.stringify({ name, shortCode, color, communityId }),
             headers: { 'Content-Type': 'application/json' },
         });
 
@@ -76,6 +77,7 @@ export default function TeamsPage() {
             setTeams([newTeam, ...teams]);
             setName('');
             setShortCode('');
+            setColor('#f97316');
             setCommunityId(null);
         }
         setIsCreating(false);
@@ -203,6 +205,40 @@ export default function TeamsPage() {
                                     maxLength={3}
                                     className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-xs uppercase tracking-widest font-black text-slate-500 mb-2">Team Color</label>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b'].map((c) => (
+                                        <button
+                                            key={c}
+                                            type="button"
+                                            onClick={() => setColor(c)}
+                                            className={`w-8 h-8 rounded-full transition-all border-2 ${color === c ? 'border-white scale-110 shadow-[0_0_10px_currentColor]' : 'border-transparent hover:scale-110 opacity-70 hover:opacity-100'}`}
+                                            style={{ backgroundColor: c, color: c }}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="flex items-center gap-3 bg-background border border-border rounded-xl px-4 py-2">
+                                    <div 
+                                        className="w-6 h-6 rounded-full shadow-[0_0_10px_currentColor]"
+                                        style={{ backgroundColor: color, color: color }}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={color}
+                                        onChange={e => setColor(e.target.value)}
+                                        className="bg-transparent border-none focus:outline-none text-sm font-mono text-slate-300 w-full uppercase"
+                                        placeholder="#000000"
+                                    />
+                                    <input
+                                        type="color"
+                                        value={color}
+                                        onChange={e => setColor(e.target.value)}
+                                        className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0 opacity-0 absolute right-8"
+                                    />
+                                    <div className="text-slate-500 text-xs pointer-events-none">PICK</div>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-xs uppercase tracking-widest font-black text-slate-500 mb-2">Assign to Community</label>
