@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { createServer, Server as HttpServer } from 'node:http';
 import { Server as SocketServer } from 'socket.io';
 import { io as Client, Socket as ClientSocket } from 'socket.io-client';
@@ -33,9 +33,9 @@ describe('Load and Volume Tests - 10K Spectators / 100 Games', () => {
     const BATCH_DELAY_MS = 50; // Delay between connection batches
     
     // Track connections and events
-    let gameClients: Map<string, ClientSocket[]> = new Map();
+    const gameClients: Map<string, ClientSocket[]> = new Map();
     let allClients: ClientSocket[] = [];
-    let eventCounts: Map<string, number> = new Map();
+    const eventCounts: Map<string, number> = new Map();
     let connectionErrors: number = 0;
     let disconnectionErrors: number = 0;
     let eventsReceived: number = 0;
@@ -118,7 +118,7 @@ describe('Load and Volume Tests - 10K Spectators / 100 Games', () => {
                     }
                 });
 
-                client.on('game-updated', (data) => {
+                client.on('game-updated', (_data) => {
                     eventsReceived++;
                 });
                 

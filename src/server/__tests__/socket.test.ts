@@ -1,14 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createServer, Server as HttpServer } from 'node:http';
 import { Server as SocketServer } from 'socket.io';
-import { io as Client, Socket as ClientSocket } from 'socket.io-client';
+import { io as Client } from 'socket.io-client';
 import { setupSocket } from '../socket';
 import { AddressInfo } from 'node:net';
+import type { Socket } from 'socket.io';
 
 describe('Game Event Propagation', () => {
     let io: SocketServer;
     let httpServer: HttpServer;
-    let serverSocket: any;
+    let serverSocket: Socket;
     let port: number;
 
     beforeEach(async () => {
