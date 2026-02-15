@@ -72,11 +72,5 @@ export default class MarkdownReporter {
     }
 
     fs.writeFileSync(reportPath, reportContent);
-    
-    // Log clearly to terminal
-    console.log('\n--- Markdown Report Generated ---');
-    console.log(`Updated: ${suiteResultsPath}`);
-    console.log(`Updated: ${reportPath}`);
-    console.log('--------------------------------\n');
   }
 }
