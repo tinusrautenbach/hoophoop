@@ -169,7 +169,7 @@ export default function MergePlayersPage() {
                             <div className="space-y-4 flex-1">
                                 <div className="text-sm text-slate-400 bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg flex items-start gap-2">
                                     <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                                    Select the "Primary" profile. All other profiles listed here will be merged into it and deactivated.
+                                    Select the &quot;Primary&quot; profile. All other profiles listed here will be merged into it and deactivated.
                                 </div>
 
                                 {selectedPlayers.map(player => (

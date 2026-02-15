@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, POST } from '../route';
 import { db } from '@/db';
-import { communities, communityMembers } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -42,7 +41,7 @@ describe('Communities API Route', () => {
 
     describe('GET', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await GET();
             expect(response.status).toBe(401);
         });
@@ -52,11 +51,11 @@ describe('Communities API Route', () => {
             const mockCommunities = [
                 { id: 'community-1', name: 'Test Community', ownerId: mockUserId }
             ];
-            (auth as any).mockReturnValue({ userId: mockUserId });
-            (db.query.communityMembers.findMany as any).mockResolvedValue([
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: mockUserId });
+            (db.query.communityMembers.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
                 { communityId: 'community-1' }
             ]);
-            (db.query.communities.findMany as any).mockResolvedValue(mockCommunities);
+            (db.query.communities.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunities);
 
             const response = await GET();
             const data = await response.json();
@@ -69,9 +68,9 @@ describe('Communities API Route', () => {
 
         it('should return empty array when user has no communities', async () => {
             const mockUserId = 'user_456';
-            (auth as any).mockReturnValue({ userId: mockUserId });
-            (db.query.communityMembers.findMany as any).mockResolvedValue([]);
-            (db.query.communities.findMany as any).mockResolvedValue([]);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: mockUserId });
+            (db.query.communityMembers.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
+            (db.query.communities.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
 
             const response = await GET();
             const data = await response.json();
@@ -85,9 +84,9 @@ describe('Communities API Route', () => {
             const mockCommunities = [
                 { id: 'community-owned', name: 'Owned Community', ownerId: mockUserId }
             ];
-            (auth as any).mockReturnValue({ userId: mockUserId });
-            (db.query.communityMembers.findMany as any).mockResolvedValue([]);
-            (db.query.communities.findMany as any).mockResolvedValue(mockCommunities);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: mockUserId });
+            (db.query.communityMembers.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
+            (db.query.communities.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunities);
 
             const response = await GET();
             const data = await response.json();
@@ -99,7 +98,7 @@ describe('Communities API Route', () => {
 
     describe('POST', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const request = new Request('http://localhost/api/communities', {
                 method: 'POST',
                 body: JSON.stringify({ name: 'Test Community' }),
@@ -109,7 +108,7 @@ describe('Communities API Route', () => {
         });
 
         it('should return 400 if name is missing', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const request = new Request('http://localhost/api/communities', {
                 method: 'POST',
                 body: JSON.stringify({ name: '' }),
@@ -126,7 +125,7 @@ describe('Communities API Route', () => {
                 type: 'other',
                 ownerId: mockUserId 
             };
-            (auth as any).mockReturnValue({ userId: mockUserId });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: mockUserId });
 
             const mockTx = {
                 insert: vi.fn().mockReturnValue({
@@ -135,8 +134,8 @@ describe('Communities API Route', () => {
                     }),
                 }),
             };
-            (db.transaction as any).mockImplementation(async (callback) => {
-                await callback(mockTx);
+            (db.transaction as unknown as { mockImplementation: (callback: unknown) => void }).mockImplementation(async (callback: unknown) => {
+                await (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
                 return [mockCommunity];
             });
 
@@ -161,7 +160,7 @@ describe('Communities API Route', () => {
                 type: 'school',
                 ownerId: mockUserId 
             };
-            (auth as any).mockReturnValue({ userId: mockUserId });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: mockUserId });
 
             const mockTx = {
                 insert: vi.fn().mockReturnValue({
@@ -170,8 +169,8 @@ describe('Communities API Route', () => {
                     }),
                 }),
             };
-            (db.transaction as any).mockImplementation(async (callback) => {
-                await callback(mockTx);
+            (db.transaction as unknown as { mockImplementation: (callback: unknown) => void }).mockImplementation(async (callback: unknown) => {
+                await (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
                 return [mockCommunity];
             });
 
@@ -189,11 +188,11 @@ describe('Communities API Route', () => {
 
         it('should add owner as admin member when creating community', async () => {
             const mockUserId = 'user_admin';
-            (auth as any).mockReturnValue({ userId: mockUserId });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: mockUserId });
 
-            const insertedValues: any[] = [];
+            const insertedValues: Record<string, unknown>[] = [];
             const mockTx = {
-                insert: vi.fn().mockImplementation((table) => ({
+                insert: vi.fn().mockImplementation((table: unknown) => ({
                     values: vi.fn().mockImplementation((values) => {
                         insertedValues.push(values);
                         return {
@@ -202,8 +201,8 @@ describe('Communities API Route', () => {
                     }),
                 })),
             };
-            (db.transaction as any).mockImplementation(async (callback) => {
-                await callback(mockTx);
+            (db.transaction as unknown as { mockImplementation: (callback: unknown) => void }).mockImplementation(async (callback: unknown) => {
+                await (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
             });
 
             const request = new Request('http://localhost/api/communities', {

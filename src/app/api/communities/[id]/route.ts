@@ -97,7 +97,7 @@ export async function GET(
         const finalGames = uniqueGames.slice(0, 10);
 
         // Get unique member user IDs to fetch their details
-        const memberUserIds = [...new Set(community.members.map((m: any) => m.userId))];
+        const memberUserIds = [...new Set(community.members.map(m => m.userId))];
         const memberUsers = await db.query.users.findMany({
             where: inArray(users.id, memberUserIds),
         });
@@ -108,7 +108,7 @@ export async function GET(
         }]));
 
         // Enrich members with user details
-        const membersWithUserDetails = community.members.map((member: any) => {
+        const membersWithUserDetails = community.members.map(member => {
             const user = memberUserMap.get(member.userId);
             const displayName = user?.firstName && user?.lastName
                 ? `${user.firstName} ${user.lastName}`

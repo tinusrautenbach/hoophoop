@@ -96,7 +96,7 @@ export async function PATCH(
 
         if (!existing) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
 
-        const updates: any = {};
+        const updates: { number?: string; name?: string } = {};
         if (number) updates.number = number;
         if (name) updates.name = name;
 

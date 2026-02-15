@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, PATCH } from '../route';
 import { db } from '@/db';
-import { athletes, playerHistory, teamMemberships } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -38,7 +37,7 @@ describe('Players [id] API Route', () => {
 
     describe('GET', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'player-1' }) 
             });
@@ -46,8 +45,8 @@ describe('Players [id] API Route', () => {
         });
 
         it('should return 404 if player not found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'non-existent' }) 
@@ -56,7 +55,7 @@ describe('Players [id] API Route', () => {
         });
 
         it('should return player with history and memberships', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const mockPlayer = {
                 id: 'player-1',
                 name: 'Test Player',
@@ -75,9 +74,9 @@ describe('Players [id] API Route', () => {
                 { id: 'member-1', number: '23', isActive: true, team: { id: 'team-1', name: 'Team A' } }
             ];
 
-            (db.query.athletes.findFirst as any).mockResolvedValue(mockPlayer);
-            (db.query.playerHistory.findMany as any).mockResolvedValue(mockHistory);
-            (db.query.teamMemberships.findMany as any).mockResolvedValue(mockMemberships);
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockPlayer);
+            (db.query.playerHistory.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockHistory);
+            (db.query.teamMemberships.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockMemberships);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'player-1' }) 
@@ -95,7 +94,7 @@ describe('Players [id] API Route', () => {
 
     describe('PATCH', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await PATCH(new Request('http://localhost', {
                 method: 'PATCH',
                 body: JSON.stringify({ firstName: 'Updated' })
@@ -104,8 +103,8 @@ describe('Players [id] API Route', () => {
         });
 
         it('should return 404 if player not found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await PATCH(new Request('http://localhost', {
                 method: 'PATCH',
@@ -115,8 +114,8 @@ describe('Players [id] API Route', () => {
         });
 
         it('should update player firstName and surname, recomputing name', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'player-1',
                 name: 'Old Name',
                 firstName: 'Old',
@@ -133,8 +132,8 @@ describe('Players [id] API Route', () => {
         });
 
         it('should update player using legacy name field', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'player-1',
                 name: 'Old Name',
                 firstName: 'Old',
@@ -151,8 +150,8 @@ describe('Players [id] API Route', () => {
         });
 
         it('should update multiple fields', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.athletes.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'player-1',
                 name: 'Test Player',
                 firstName: 'Test',

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { athletes } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, isNull, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 export async function POST(
     request: Request,
@@ -43,10 +43,7 @@ export async function POST(
         // For MVP, we'll allow claiming if it's unclaimed
 
         await db.update(athletes)
-            .set({ 
-                userId,
-                updatedAt: new Date(),
-            } as any)
+            .set({ userId })
             .where(eq(athletes.id, playerId));
 
         return NextResponse.json({ success: true });

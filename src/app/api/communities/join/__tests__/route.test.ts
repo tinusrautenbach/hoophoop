@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '../route';
 import { db } from '@/db';
-import { communityInvites, communityMembers } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -48,7 +47,7 @@ describe('Community Join API Route', () => {
 
     describe('POST', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
                 body: JSON.stringify({ token: 'test-token' })
@@ -57,7 +56,7 @@ describe('Community Join API Route', () => {
         });
 
         it('should return 400 if token is missing', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
                 body: JSON.stringify({})
@@ -66,8 +65,8 @@ describe('Community Join API Route', () => {
         });
 
         it('should return 404 for invalid token', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communityInvites.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communityInvites.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
@@ -77,8 +76,8 @@ describe('Community Join API Route', () => {
         });
 
         it('should return 400 for expired invite', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communityInvites.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communityInvites.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'invite-1',
                 communityId: 'community-1',
                 token: 'expired-token',
@@ -95,8 +94,8 @@ describe('Community Join API Route', () => {
         });
 
         it('should join community with valid token', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communityInvites.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communityInvites.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'invite-1',
                 communityId: 'community-1',
                 token: 'valid-token',
@@ -117,8 +116,8 @@ describe('Community Join API Route', () => {
         });
 
         it('should mark invite as accepted after joining', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communityInvites.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communityInvites.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'invite-1',
                 communityId: 'community-1',
                 token: 'valid-token',
@@ -142,8 +141,8 @@ describe('Community Join API Route', () => {
                     }),
                 }),
             };
-            (db.transaction as any).mockImplementation(async (callback: any) => {
-                await callback(mockTx);
+            (db.transaction as unknown as { mockImplementation: (callback: unknown) => void }).mockImplementation(async (callback: unknown) => {
+                await (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
             });
 
             await POST(new Request('http://localhost', {
@@ -155,7 +154,7 @@ describe('Community Join API Route', () => {
         });
 
         it('should not add duplicate member if already joined', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             
             const mockTx = {
                 query: {
@@ -170,8 +169,8 @@ describe('Community Join API Route', () => {
                     }),
                 }),
             };
-            (db.transaction as any).mockImplementation(async (callback: any) => {
-                await callback(mockTx);
+            (db.transaction as unknown as { mockImplementation: (callback: unknown) => void }).mockImplementation(async (callback: unknown) => {
+                await (callback as (tx: typeof mockTx) => Promise<unknown>)(mockTx);
             });
 
             const response = await POST(new Request('http://localhost', {

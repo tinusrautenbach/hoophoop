@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import type { NextFetchEvent } from 'next/server';
 
 const useMock = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
 
-export default async function middleware(request: any, event: any) {
+export default async function middleware(request: NextRequest, event: NextFetchEvent) {
     if (useMock || request.headers.get('x-test-auth') === 'true') {
         return NextResponse.next();
     }
@@ -25,8 +27,8 @@ export default async function middleware(request: any, event: any) {
         '/sign-up(.*)',
     ]);
 
-    return clerkMiddleware(async (auth, request) => {
-        if (!isPublicRoute(request)) {
+    return clerkMiddleware(async (auth, req) => {
+        if (!isPublicRoute(req)) {
             await auth.protect();
         }
     })(request, event);

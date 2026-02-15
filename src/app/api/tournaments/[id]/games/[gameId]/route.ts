@@ -90,8 +90,8 @@ export async function PATCH(
         }
 
         // Build update objects
-        const gameUpdate: any = {};
-        const tournamentGameUpdate: any = {};
+        const gameUpdate: Record<string, unknown> = {};
+        const tournamentGameUpdate: Record<string, unknown> = {};
 
         // Update scores if provided
         if (homeScore !== undefined) gameUpdate.homeScore = homeScore;

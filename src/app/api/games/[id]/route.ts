@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { games, gameRosters, communities, communityMembers, users } from '@/db/schema';
+import { games, gameRosters } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { isWorldAdmin } from '@/lib/auth-admin';
-import { eq, and, isNull, isNotNull } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 
 export async function GET(
     request: Request,
@@ -162,7 +162,7 @@ export async function DELETE(
         const isOwner = game.ownerId === userId;
         const isCommunityOwner = game.community?.ownerId === userId;
         const isCommunityAdmin = game.community?.members?.some(
-            (m: any) => m.userId === userId && m.role === 'admin'
+            m => m.userId === userId && m.role === 'admin'
         );
 
         if (!isOwner && !isCommunityOwner && !isCommunityAdmin) {

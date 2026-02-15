@@ -87,7 +87,7 @@ export async function POST(
             .returning();
 
         return NextResponse.json(newTournamentGame, { status: 201 });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error adding game to tournament:', error);
         return NextResponse.json({ error: 'Failed to add game' }, { status: 500 });
     }
@@ -110,7 +110,7 @@ export async function GET(
         });
 
         return NextResponse.json(gamesList);
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error fetching tournament games:', error);
         return NextResponse.json({ error: 'Failed to fetch games' }, { status: 500 });
     }

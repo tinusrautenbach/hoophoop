@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, POST } from '../route';
 import { db } from '@/db';
-import { teams, communityMembers } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -33,8 +32,8 @@ describe('Community Teams API Route', () => {
 
     describe('GET', () => {
         it('should return community teams for public access (no auth)', async () => {
-            (auth as any).mockReturnValue({ userId: null });
-            (db.query.teams.findMany as any).mockResolvedValue([
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
+            (db.query.teams.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
                 { id: 'team-1', name: 'Varsity', communityId: 'community-1' },
                 { id: 'team-2', name: 'Junior Varsity', communityId: 'community-1' }
             ]);
@@ -50,8 +49,8 @@ describe('Community Teams API Route', () => {
         });
 
         it('should return 403 if authenticated but not a community member', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communityMembers.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communityMembers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1' }) 
@@ -60,13 +59,13 @@ describe('Community Teams API Route', () => {
         });
 
         it('should return community teams for authenticated members', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communityMembers.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communityMembers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 communityId: 'community-1',
                 userId: 'user_123',
                 role: 'scorer'
             });
-            (db.query.teams.findMany as any).mockResolvedValue([
+            (db.query.teams.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
                 { id: 'team-1', name: 'Varsity', communityId: 'community-1' },
                 { id: 'team-2', name: 'Junior Varsity', communityId: 'community-1' }
             ]);
@@ -82,8 +81,8 @@ describe('Community Teams API Route', () => {
         });
 
         it('should return empty array for community with no teams', async () => {
-            (auth as any).mockReturnValue({ userId: null });
-            (db.query.teams.findMany as any).mockResolvedValue([]);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
+            (db.query.teams.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1' }) 
@@ -97,7 +96,7 @@ describe('Community Teams API Route', () => {
 
     describe('POST', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
                 body: JSON.stringify({ name: 'New Team' })
@@ -106,8 +105,8 @@ describe('Community Teams API Route', () => {
         });
 
         it('should return 403 if not a community member', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communityMembers.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communityMembers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
@@ -117,8 +116,8 @@ describe('Community Teams API Route', () => {
         });
 
         it('should return 403 if member cannot manage games', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communityMembers.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communityMembers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 communityId: 'community-1',
                 userId: 'user_123',
                 role: 'scorer',
@@ -133,8 +132,8 @@ describe('Community Teams API Route', () => {
         });
 
         it('should return 400 if name is missing', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communityMembers.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communityMembers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 communityId: 'community-1',
                 userId: 'user_123',
                 role: 'admin',
@@ -149,8 +148,8 @@ describe('Community Teams API Route', () => {
         });
 
         it('should allow admin to create team', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_admin' });
-            (db.query.communityMembers.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_admin' });
+            (db.query.communityMembers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 communityId: 'community-1',
                 userId: 'user_admin',
                 role: 'admin',
@@ -164,7 +163,7 @@ describe('Community Teams API Route', () => {
                 ownerId: 'user_admin'
             };
 
-            (db.insert as any).mockReturnValue({
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockReturnValue({
                     returning: vi.fn().mockResolvedValue([mockTeam]),
                 }),
@@ -182,16 +181,16 @@ describe('Community Teams API Route', () => {
         });
 
         it('should create team with all provided fields', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_member' });
-            (db.query.communityMembers.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_member' });
+            (db.query.communityMembers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 communityId: 'community-1',
                 userId: 'user_member',
                 role: 'scorer',
                 canManageGames: true
             });
 
-            let insertedValues: any = {};
-            (db.insert as any).mockReturnValue({
+            let insertedValues: Record<string, unknown> = {};
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockImplementation((values) => {
                     insertedValues = values;
                     return {

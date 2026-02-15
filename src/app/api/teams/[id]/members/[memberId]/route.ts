@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { teamMemberships, athletes, playerHistory } from '@/db/schema';
+import { teamMemberships, playerHistory } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 export async function PATCH(
     request: Request,

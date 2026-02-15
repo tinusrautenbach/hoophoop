@@ -32,15 +32,15 @@ describe('Games API Route', () => {
     });
 
     it('should create a game and return results', async () => {
-        (auth as any).mockReturnValue({ userId: 'user_123' });
+        (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
         const mockGame = { id: 'g1', homeTeamName: 'Home', guestTeamName: 'Guest' };
 
-        (db.insert as any).mockReturnValue({
+        (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
             values: vi.fn().mockReturnValue({
                 returning: vi.fn().mockResolvedValue([mockGame]),
             }),
         });
-        (db.query.games.findFirst as any).mockResolvedValue(mockGame);
+        (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockGame);
 
         const request = new Request('http://localhost/api/games', {
             method: 'POST',

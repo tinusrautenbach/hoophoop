@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { teamSeasons, seasons, communities, teams } from '@/db/schema';
+import { teamSeasons, seasons, teams } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { eq, and } from 'drizzle-orm';
 

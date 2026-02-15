@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET, POST } from '../route';
 import { db } from '@/db';
-import { games, gameScorers } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -34,7 +33,7 @@ describe('Games [id] Scorers API Route', () => {
 
     describe('GET', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'game-1' }) 
             });
@@ -42,8 +41,8 @@ describe('Games [id] Scorers API Route', () => {
         });
 
         it('should return 404 if game not found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.games.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'non-existent' }) 
@@ -52,12 +51,12 @@ describe('Games [id] Scorers API Route', () => {
         });
 
         it('should return 403 if user is not owner or scorer', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_other' });
-            (db.query.games.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_other' });
+            (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'game-1',
                 ownerId: 'user_owner'
             });
-            (db.query.gameScorers.findFirst as any).mockResolvedValue(null);
+            (db.query.gameScorers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'game-1' }) 
@@ -66,12 +65,12 @@ describe('Games [id] Scorers API Route', () => {
         });
 
         it('should return scorers for game owner', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_owner' });
-            (db.query.games.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
+            (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'game-1',
                 ownerId: 'user_owner'
             });
-            (db.query.gameScorers.findMany as any).mockResolvedValue([
+            (db.query.gameScorers.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
                 { id: 'scorer-1', userId: 'user_owner', role: 'owner' },
                 { id: 'scorer-2', userId: 'user_co', role: 'co_scorer' }
             ]);
@@ -86,17 +85,17 @@ describe('Games [id] Scorers API Route', () => {
         });
 
         it('should return scorers for authorized scorer', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_co' });
-            (db.query.games.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_co' });
+            (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'game-1',
                 ownerId: 'user_owner'
             });
-            (db.query.gameScorers.findFirst as any).mockResolvedValue({
+            (db.query.gameScorers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'scorer-1',
                 userId: 'user_co',
                 role: 'co_scorer'
             });
-            (db.query.gameScorers.findMany as any).mockResolvedValue([
+            (db.query.gameScorers.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
                 { id: 'scorer-1', userId: 'user_co', role: 'co_scorer' }
             ]);
 
@@ -109,7 +108,7 @@ describe('Games [id] Scorers API Route', () => {
 
     describe('POST', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
                 body: JSON.stringify({ userId: 'new-scorer' })
@@ -118,8 +117,8 @@ describe('Games [id] Scorers API Route', () => {
         });
 
         it('should return 400 if userId is missing', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_owner' });
-            (db.query.games.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
+            (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'game-1',
                 ownerId: 'user_owner'
             });
@@ -132,8 +131,8 @@ describe('Games [id] Scorers API Route', () => {
         });
 
         it('should return 403 if non-owner tries to add scorer', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_co' });
-            (db.query.games.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_co' });
+            (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'game-1',
                 ownerId: 'user_owner'
             });
@@ -146,12 +145,12 @@ describe('Games [id] Scorers API Route', () => {
         });
 
         it('should return 409 if user is already a scorer', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_owner' });
-            (db.query.games.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
+            (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'game-1',
                 ownerId: 'user_owner'
             });
-            (db.query.gameScorers.findFirst as any).mockResolvedValue({
+            (db.query.gameScorers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'existing-scorer',
                 userId: 'existing-user'
             });
@@ -164,12 +163,12 @@ describe('Games [id] Scorers API Route', () => {
         });
 
         it('should allow owner to add new scorer', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_owner' });
-            (db.query.games.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
+            (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'game-1',
                 ownerId: 'user_owner'
             });
-            (db.query.gameScorers.findFirst as any).mockResolvedValue(null);
+            (db.query.gameScorers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const mockScorer = {
                 id: 'scorer-1',
@@ -178,7 +177,7 @@ describe('Games [id] Scorers API Route', () => {
                 role: 'co_scorer'
             };
 
-            (db.insert as any).mockReturnValue({
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockReturnValue({
                     returning: vi.fn().mockResolvedValue([mockScorer]),
                 }),
@@ -195,15 +194,15 @@ describe('Games [id] Scorers API Route', () => {
         });
 
         it('should allow owner to specify scorer role', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_owner' });
-            (db.query.games.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
+            (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'game-1',
                 ownerId: 'user_owner'
             });
-            (db.query.gameScorers.findFirst as any).mockResolvedValue(null);
+            (db.query.gameScorers.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
-            let insertedValues: any = {};
-            (db.insert as any).mockReturnValue({
+            let insertedValues: Record<string, unknown> = {};
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockImplementation((values) => {
                     insertedValues = values;
                     return {

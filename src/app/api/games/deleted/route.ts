@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { games, users, communities, communityMembers } from '@/db/schema';
+import { games, users } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and, desc, inArray, isNotNull, or } from 'drizzle-orm';
+import { eq, desc, inArray, isNotNull } from 'drizzle-orm';
 
 // GET /api/games/deleted - List all deleted games (World Admin only)
 export async function GET() {

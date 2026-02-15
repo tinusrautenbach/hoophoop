@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { seasons, communities, teamSeasons, teams, games } from '@/db/schema';
+import { seasons, communities } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and, desc, isNull } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     const conditions = [eq(seasons.communityId, communityId)];
 
     if (status) {
-      conditions.push(eq(seasons.status, status as any));
+      conditions.push(eq(seasons.status, status as 'upcoming' | 'active' | 'completed' | 'archived'));
     }
 
     const seasonsList = await db.query.seasons.findMany({

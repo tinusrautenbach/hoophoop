@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { seasons, communities } from '@/db/schema';
+import { seasons } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 export async function GET(
   request: Request,

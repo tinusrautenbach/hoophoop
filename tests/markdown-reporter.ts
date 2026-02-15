@@ -1,21 +1,35 @@
 import fs from 'fs';
 import path from 'path';
 
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 export default class MarkdownReporter {
-  onFinished(files) {
+  onTestRunEnd(files: any, _errors: any, _reason: any) {
+    console.log('[MarkdownReporter] onTestRunEnd called with', files?.length, 'files');
+    
     const testsDir = path.resolve(process.cwd(), 'tests');
     if (!fs.existsSync(testsDir)) {
       fs.mkdirSync(testsDir, { recursive: true });
     }
 
     const totalFiles = files.length;
-    const failedFiles = files.filter(f => f.result?.state === 'fail').length;
-    const passedFiles = totalFiles - failedFiles;
-
-    const allTests = files.flatMap(f => f.tasks || []);
+    
+    // Handle new Vitest 4 structure - files are TestModule objects with children (TestCollection)
+    // Use allTests() to get all tests recursively, not just top-level
+    const allTests = files.flatMap(f => [...(f.children?.allTests() || [])]);
     const totalTests = allTests.length;
-    const failedTests = allTests.filter(t => t.result?.state === 'fail').length;
+    
+    const failedTests = allTests.filter(t => t.result?.().state === 'failed').length;
     const passedTests = totalTests - failedTests;
+    
+    // Check for files that failed at module level (import errors, etc.)
+    const failedFiles = files.filter(f => {
+      // Check if module itself failed
+      if (f.state?.() === 'failed') return true;
+      // Check if it has any failed tests
+      const tests = [...(f.children?.allTests() || [])];
+      return tests.some(t => t.result?.().state === 'failed');
+    }).length;
+    const passedFiles = totalFiles - failedFiles;
 
     const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0];
     
@@ -31,35 +45,55 @@ export default class MarkdownReporter {
     suiteContent += `| File | Status | Passed | Failed | Total |\n`;
     suiteContent += `| :--- | :--- | :--- | :--- | :--- |\n`;
 
-    files.sort((a, b) => a.filepath.localeCompare(b.filepath)).forEach(file => {
-      const fileName = path.relative(process.cwd(), file.filepath);
-      const fileTasks = file.tasks || [];
+    files.sort((a, b) => (a.moduleId || '').localeCompare(b.moduleId || '')).forEach(file => {
+      const fileName = path.relative(process.cwd(), file.moduleId || 'unknown');
+      const fileTasks = [...(file.children?.allTests() || [])];
       const fTotal = fileTasks.length;
-      const fFailed = fileTasks.filter(t => t.result?.state === 'fail').length;
+      const fFailed = fileTasks.filter(t => t.result?.().state === 'failed').length;
       const fPassed = fTotal - fFailed;
-      const status = fFailed > 0 ? '❌' : '✅';
+      const hasModuleError = file.state?.() === 'fail';
+      const status = (fFailed > 0 || hasModuleError) ? '❌' : '✅';
       suiteContent += `| ${fileName} | ${status} | ${fPassed} | ${fFailed} | ${fTotal} |\n`;
     });
 
     fs.writeFileSync(suiteResultsPath, suiteContent);
+    console.log('[MarkdownReporter] Written TEST_SUITE_RESULTS.md');
 
     // Update TEST_REPORT.md with failures
     const reportPath = path.join(testsDir, 'TEST_REPORT.md');
     let reportContent = `# Detailed Test Report\n\n`;
     reportContent += `**Date**: ${timestamp}\n\n`;
     
-    if (failedTests > 0) {
+    if (failedTests > 0 || failedFiles > 0) {
       reportContent += `## ❌ Failures\n\n`;
+      
+      // Report module-level failures first
       files.forEach(file => {
-        const fileTasks = file.tasks || [];
-        const failures = fileTasks.filter(t => t.result?.state === 'fail');
+        if (file.state?.() === 'fail') {
+          reportContent += `### ${path.relative(process.cwd(), file.moduleId || 'unknown')}\n`;
+          reportContent += `- **Module failed to load**\n`;
+          if (file.errors?.length > 0) {
+            file.errors.forEach(err => {
+              const cleanMsg = (err.message || 'Unknown error').replace(/\n/g, '\n  ');
+              reportContent += `  \`\`\`\n  ${cleanMsg}\n  \`\`\`\n`;
+            });
+          }
+          reportContent += `\n`;
+        }
+      });
+      
+      // Report test-level failures
+      files.forEach(file => {
+        const fileTasks = [...(file.children?.allTests() || [])];
+        const failures = fileTasks.filter(t => t.result?.().state === 'failed');
         if (failures.length > 0) {
-          reportContent += `### ${path.relative(process.cwd(), file.filepath)}\n`;
+          reportContent += `### ${path.relative(process.cwd(), file.moduleId || 'unknown')}\n`;
           failures.forEach(t => {
             reportContent += `- **${t.name}**\n`;
-            if (t.result?.errors) {
-              t.result.errors.forEach(err => {
-                const cleanMsg = err.message || 'No error message';
+            const result = t.result?.();
+            if (result?.errors) {
+              result.errors.forEach(err => {
+                const cleanMsg = (err.message || 'No error message').replace(/\n/g, '\n  ');
                 reportContent += `  \`\`\`\n  ${cleanMsg}\n  \`\`\`\n`;
               });
             }
@@ -72,5 +106,6 @@ export default class MarkdownReporter {
     }
 
     fs.writeFileSync(reportPath, reportContent);
+    console.log('[MarkdownReporter] Written TEST_REPORT.md');
   }
 }

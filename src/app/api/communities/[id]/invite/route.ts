@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { communities, communityInvites, communityMembers, users } from '@/db/schema';
+import { communities, communityInvites, users } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { sendCommunityInvitationEmail } from '@/lib/email';
 import { eq } from 'drizzle-orm';

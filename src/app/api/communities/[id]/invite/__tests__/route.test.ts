@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '../route';
 import { db } from '@/db';
-import { communities, communityInvites, communityMembers } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 
 vi.mock('@/db', () => ({
@@ -30,7 +29,7 @@ describe('Community Invite API Route', () => {
 
     describe('POST', () => {
         it('should return 401 if not authenticated', async () => {
-            (auth as any).mockReturnValue({ userId: null });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: null });
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
                 body: JSON.stringify({ email: 'test@example.com' })
@@ -39,7 +38,7 @@ describe('Community Invite API Route', () => {
         });
 
         it('should return 400 if email is missing', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
                 body: JSON.stringify({})
@@ -48,8 +47,8 @@ describe('Community Invite API Route', () => {
         });
 
         it('should return 404 if community not found', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_123' });
-            (db.query.communities.findFirst as any).mockResolvedValue(null);
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
@@ -59,8 +58,8 @@ describe('Community Invite API Route', () => {
         });
 
         it('should return 403 if non-admin tries to invite', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_scorer' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_scorer' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: [{ userId: 'user_scorer', role: 'scorer' }]
@@ -74,8 +73,8 @@ describe('Community Invite API Route', () => {
         });
 
         it('should allow admin to create invite', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_admin' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_admin' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: [{ userId: 'user_admin', role: 'admin' }]
@@ -90,7 +89,7 @@ describe('Community Invite API Route', () => {
                 status: 'pending'
             };
 
-            (db.insert as any).mockReturnValue({
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockReturnValue({
                     returning: vi.fn().mockResolvedValue([mockInvite]),
                 }),
@@ -108,14 +107,14 @@ describe('Community Invite API Route', () => {
         });
 
         it('should allow owner to create invite', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_owner' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: []
             });
 
-            (db.insert as any).mockReturnValue({
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockReturnValue({
                     returning: vi.fn().mockResolvedValue([{
                         id: 'invite-1',
@@ -135,15 +134,15 @@ describe('Community Invite API Route', () => {
         });
 
         it('should default role to scorer if not specified', async () => {
-            (auth as any).mockReturnValue({ userId: 'user_admin' });
-            (db.query.communities.findFirst as any).mockResolvedValue({
+            (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_admin' });
+            (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
                 members: [{ userId: 'user_admin', role: 'admin' }]
             });
 
-            let insertedValues: any = {};
-            (db.insert as any).mockReturnValue({
+            let insertedValues: Record<string, unknown> = {};
+            (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
                 values: vi.fn().mockImplementation((values) => {
                     insertedValues = values;
                     return {
