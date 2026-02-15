@@ -594,17 +594,70 @@
     - [ ] Filter chips/badges
     - [ ] Results list with team cards
 
-## Phase 16: Testing Infrastructure (NEW)
-- [ ] **16.1 Load and Volume Test Suite**:
-  - [ ] Create load test for 10,000 concurrent spectators across 100 games
-  - [ ] Implement event generation at ~1 event per second per game rate
-  - [ ] Test server stability under sustained high load (30+ seconds)
-  - [ ] Validate connection handling (batch connections to avoid overwhelming server)
-  - [ ] Monitor memory usage during 10K concurrent connections (<500MB growth limit)
-  - [ ] Measure event propagation latency (<500ms average requirement)
-  - [ ] Stress test rapid connection/disconnection cycles
-  - [ ] Document load test execution and validation criteria in test policy
-  - [ ] Integrate load tests into CI/CD pipeline for production releases
+## Phase 16: High-Scale Socket Infrastructure (Completed)
+- [x] **16.1 Load and Volume Test Suite**:
+  - [x] Create load test for 10,000 concurrent spectators across 100 games
+  - [x] Implement event generation at ~1 event per second per game rate
+  - [x] Test server stability under sustained high load (30+ seconds)
+  - [x] Validate connection handling (batch connections to avoid overwhelming server)
+  - [x] Monitor memory usage during 10K concurrent connections (<500MB growth limit)
+  - [x] Measure event propagation latency (<500ms average requirement)
+  - [x] Stress test rapid connection/disconnection cycles
+  - [x] Document load test execution and validation criteria in test policy
+  - [x] Integrate load tests into CI/CD pipeline for production releases
+
+- [x] **16.2 Optimized Socket.io Configuration**:
+  - [x] Configure server for 15K max connections with soft/hard limits
+  - [x] Optimize HTTP server settings (keep-alive, timeouts)
+  - [x] Disable per-message compression for high throughput
+  - [x] Configure CORS for production environments
+  - [x] Implement graceful shutdown with connection draining
+
+- [x] **16.3 Connection Management & Load Shedding**:
+  - [x] Implement connection rate limiting (10 connections/10s per IP)
+  - [x] Add load shedding at 15K hard limit / 12K soft limit
+  - [x] Track active connections with metrics collection
+  - [x] Log warnings as capacity thresholds are approached
+
+- [x] **16.4 Event Rate Limiting**:
+  - [x] Per-socket rate limiting (60 events/minute)
+  - [x] Per-game rate limiting (120 events/minute)
+  - [x] Burst limiting for high-frequency events (10 events/5s)
+  - [x] Automatic rate limit reset on successful authentication
+
+- [x] **16.5 Message Batching & Broadcasting Optimization**:
+  - [x] Implement priority-based message queuing (high/normal/low)
+  - [x] Batch multiple events into single emissions
+  - [x] Adaptive batch sizing based on connection count
+  - [x] Separate flush intervals per priority level (16ms/50ms/100ms)
+  - [x] Drop stale low-priority messages (>500ms old)
+
+- [x] **16.6 Performance Monitoring**:
+  - [x] Real-time metrics collection (connections, events, latency)
+  - [x] Memory usage tracking
+  - [x] Event loop lag monitoring
+  - [x] Broadcast latency measurement
+  - [x] Health status reporting (healthy/degraded/critical)
+  - [x] Periodic metrics logging (every 30 seconds)
+
+- [x] **16.7 Multi-Server Scaling (Redis Adapter)**:
+  - [x] Redis pub/sub adapter for horizontal scaling
+  - [x] Automatic reconnection with exponential backoff
+  - [x] Health checking for Redis connection
+  - [x] Graceful adapter shutdown
+  - [x] Configuration via environment variables
+
+- [x] **16.8 Files Created/Modified**:
+  - [x] `tests/load/load-test-10k-spectators-100-games.test.ts` - Load test suite
+  - [x] `src/server/socket/index.ts` - Main socket implementation
+  - [x] `src/server/socket/metrics.ts` - Performance metrics collection
+  - [x] `src/server/socket/rate-limiter.ts` - Rate limiting logic
+  - [x] `src/server/socket/broadcast.ts` - Optimized broadcasting
+  - [x] `src/server/socket/redis-adapter.ts` - Redis adapter support
+  - [x] `src/server/socket.ts` - Backward compatibility re-exports
+  - [x] `server.ts` - Updated with optimized HTTP server config
+  - [x] `spec/test_policy.md` - Updated with load test requirements
+  - [x] `spec/implementation_plan.md` - Marked Phase 16 as complete
 
 ## Phase 17: Database Backup & S3 Storage (NEW)
 - [x] **17.1 Backup Strategy**:
