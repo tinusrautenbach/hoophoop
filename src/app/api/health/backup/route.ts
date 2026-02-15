@@ -1,10 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
-
-const execAsync = promisify(exec);
 
 interface BackupLogEntry {
   timestamp: string;
@@ -20,7 +16,7 @@ interface BackupLogEntry {
  * Returns the status of the last database backup
  * Requires authentication (admin only)
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Check if user is authenticated and has admin rights
     // For now, we'll return basic info without auth check for health monitoring
@@ -28,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     const backupLogPath = process.cwd() + '/logs/backup.log';
     let lastBackup: BackupLogEntry | null = null;
-    let backupStats = {
+    const backupStats = {
       totalBackups: 0,
       successfulBackups: 0,
       failedBackups: 0,

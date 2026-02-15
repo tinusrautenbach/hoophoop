@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { playerInvitations, athletes, users } from '@/db/schema';
+import { playerInvitations, users } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { sendPlayerInvitationEmail } from '@/lib/email';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 // Resend invitation
 export async function POST(

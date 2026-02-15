@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { teams, communityMembers, communities, games } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and, inArray, isNull } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 
 export async function GET(
     request: Request,

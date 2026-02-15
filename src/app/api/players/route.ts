@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { athletes, teamMemberships, teams, communities } from '@/db/schema';
+import { athletes, teamMemberships } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, ilike, desc, and, or, ne, sql } from 'drizzle-orm';
+import { eq, ilike, desc, and, or, ne } from 'drizzle-orm';
 
 export async function GET(request: Request) {
     const { userId } = await auth();

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { games, users, communities, communityMembers, teams } from '@/db/schema';
+import { games, users, communities, teams } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { eq, and, desc, inArray, isNotNull, or } from 'drizzle-orm';
 
@@ -38,7 +38,7 @@ export async function GET(
         const isWorldAdmin = currentUser?.isWorldAdmin;
         const isCommunityOwner = community.ownerId === userId;
         const isCommunityAdmin = community.members?.some(
-            (m: any) => m.userId === userId && m.role === 'admin'
+            m => m.userId === userId && m.role === 'admin'
         );
 
         if (!isWorldAdmin && !isCommunityOwner && !isCommunityAdmin) {

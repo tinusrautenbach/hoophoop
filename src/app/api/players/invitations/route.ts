@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { playerInvitations, athletes } from '@/db/schema';
+import { playerInvitations } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { eq, and, gt } from 'drizzle-orm';
 
-export async function GET(request: Request) {
+export async function GET() {
     const { userId } = await auth();
     if (!userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

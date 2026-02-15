@@ -1,0 +1,960 @@
+
+> hoophoop@0.1.0 lint
+> eslint
+
+
+/mnt/data/skwirel/bball/mobile/app/_layout.tsx
+  19:14  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/mobile/app/index.tsx
+   3:10  warning  'Link' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  13:42  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `startOAuthFlow`, but the source dependencies were []. Inferred dependency not present in source.
+
+/mnt/data/skwirel/bball/mobile/app/index.tsx:13:42
+  11 |   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
+  12 |
+> 13 |   const handleSignIn = React.useCallback(async () => {
+     |                                          ^^^^^^^^^^^^^
+> 14 |     try {
+     | ^^^^^^^^^
+> 15 |       const { createdSessionId, setActive } = await startOAuthFlow();
+     | ^^^^^^^^^
+> 16 |       if (createdSessionId) {
+     | ^^^^^^^^^
+> 17 |         setActive!({ session: createdSessionId });
+     | ^^^^^^^^^
+> 18 |       }
+     | ^^^^^^^^^
+> 19 |     } catch (err) {
+     | ^^^^^^^^^
+> 20 |       console.error('OAuth error', err);
+     | ^^^^^^^^^
+> 21 |     }
+     | ^^^^^^^^^
+> 22 |   }, []);
+     | ^^^^ Could not preserve existing manual memoization
+  23 |
+  24 |   return (
+  25 |     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 20 }}>  react-hooks/preserve-manual-memoization
+  22:6   warning  React Hook React.useCallback has a missing dependency: 'startOAuthFlow'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+
+/mnt/data/skwirel/bball/src/app/admin/page.tsx
+  111:8  warning  React Hook useEffect has a missing dependency: 'fetchUsers'. Either include it or remove the dependency array        react-hooks/exhaustive-deps
+  115:8  warning  React Hook useEffect has a missing dependency: 'fetchCommunities'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  138:8  warning  React Hook useEffect has a missing dependency: 'searchUsers'. Either include it or remove the dependency array       react-hooks/exhaustive-deps
+
+/mnt/data/skwirel/bball/src/app/admin/players/merge/page.tsx
+  172:48  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  172:56  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+/mnt/data/skwirel/bball/src/app/api/__tests__/complete-api.test.ts
+  1:53  warning  'beforeEach' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/athletes/__tests__/athletes.test.ts
+   4:10  warning  'athletes' is defined but never used      @typescript-eslint/no-unused-vars
+  27:18  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:18  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  36:40  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  46:18  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  47:40  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/communities/[id]/__tests__/route.test.ts
+    4:10  warning  'communities' is defined but never used       @typescript-eslint/no-unused-vars
+    4:23  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+    4:41  warning  'teams' is defined but never used             @typescript-eslint/no-unused-vars
+    4:48  warning  'games' is defined but never used             @typescript-eslint/no-unused-vars
+   31:38  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   38:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   46:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   47:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   56:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   57:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   79:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   80:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  100:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  101:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  118:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  119:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  134:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  142:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  143:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  152:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  153:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  166:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  167:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  182:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  183:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/communities/[id]/deleted-games/[gameId]/route.ts
+   3:37  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+  41:17  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/communities/[id]/deleted-games/route.ts
+   3:37  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+  41:17  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/communities/[id]/invite/__tests__/route.test.ts
+    4:10  warning  'communities' is defined but never used       @typescript-eslint/no-unused-vars
+    4:23  warning  'communityInvites' is defined but never used  @typescript-eslint/no-unused-vars
+    4:41  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+   33:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   42:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   51:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   52:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   62:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   63:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   77:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   78:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   93:27  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  111:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  112:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  118:27  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  138:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  139:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  145:33  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  146:27  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/communities/[id]/invite/route.ts
+  3:41  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/communities/[id]/members/[userId]/__tests__/route.test.ts
+    4:10  warning  'communities' is defined but never used       @typescript-eslint/no-unused-vars
+    4:23  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+   31:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   39:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   40:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   49:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   50:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   63:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   64:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   82:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   83:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   97:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   98:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  115:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  116:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/communities/[id]/route.ts
+  100:69  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  111:71  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/communities/[id]/teams/__tests__/route.test.ts
+    4:10  warning  'teams' is defined but never used             @typescript-eslint/no-unused-vars
+    4:17  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+   36:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   37:41  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   53:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   54:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   63:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   64:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   69:41  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   85:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   86:41  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  100:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  109:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  110:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  120:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  121:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  136:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  137:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  152:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  153:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  167:27  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  185:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  186:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  193:33  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  194:27  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/communities/__tests__/communities.test.ts
+    1:48  warning  'afterEach' is defined but never used         @typescript-eslint/no-unused-vars
+    4:10  warning  'communities' is defined but never used       @typescript-eslint/no-unused-vars
+    4:23  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+   45:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   55:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   56:52  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   59:47  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   72:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   73:52  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   74:47  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   88:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   89:52  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   90:47  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  102:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  112:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  129:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  138:32  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  164:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  173:32  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  192:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  194:35  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  196:53  warning  'table' is defined but never used             @typescript-eslint/no-unused-vars
+  205:32  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/communities/join/__tests__/route.test.ts
+    4:10  warning  'communityInvites' is defined but never used  @typescript-eslint/no-unused-vars
+    4:28  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+   51:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   60:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   69:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   70:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   80:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   81:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   98:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   99:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  120:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  121:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  145:32  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  145:73  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  158:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  173:32  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  173:73  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  181:19  warning  'data' is assigned a value but never used     @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/games/[id]/__tests__/route.test.ts
+    4:10  warning  'games' is defined but never used         @typescript-eslint/no-unused-vars
+    4:17  warning  'gameRosters' is defined but never used   @typescript-eslint/no-unused-vars
+   55:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   69:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   81:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   90:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   91:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  101:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  102:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  116:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  117:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  132:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  133:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  150:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/games/[id]/events/__tests__/route.test.ts
+    4:17  warning  'gameEvents' is defined but never used    @typescript-eslint/no-unused-vars
+   53:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   62:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   63:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   73:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   74:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   84:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   85:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  102:27  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  119:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  120:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:33  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  128:27  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  157:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  165:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  166:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  179:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  180:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  195:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  212:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  215:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  237:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  246:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  255:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  256:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  270:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  271:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/games/[id]/roster/route.ts
+  99:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/games/[id]/route.ts
+    3:30  warning  'communities' is defined but never used       @typescript-eslint/no-unused-vars
+    3:43  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+    3:61  warning  'users' is defined but never used             @typescript-eslint/no-unused-vars
+    6:27  warning  'isNotNull' is defined but never used         @typescript-eslint/no-unused-vars
+  165:17  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/games/[id]/scorers/__tests__/route.test.ts
+    4:10  warning  'games' is defined but never used         @typescript-eslint/no-unused-vars
+    4:17  warning  'gameScorers' is defined but never used   @typescript-eslint/no-unused-vars
+   37:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   45:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   46:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   55:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   56:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   60:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   69:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   70:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   74:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   89:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   90:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   94:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   99:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  121:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  122:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  136:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  150:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  154:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  167:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  168:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  172:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  181:27  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  198:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  199:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  203:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  205:33  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  206:27  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/games/deleted/route.ts
+  3:24  warning  'communities' is defined but never used       @typescript-eslint/no-unused-vars
+  3:37  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+  5:14  warning  'and' is defined but never used               @typescript-eslint/no-unused-vars
+  5:45  warning  'or' is defined but never used                @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/games/route.test.ts
+  35:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  43:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/health/backup/route.ts
+   7:7   warning  'execAsync' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  23:27  warning  'request' is defined but never used                     @typescript-eslint/no-unused-vars
+  31:9   error    'backupStats' is never reassigned. Use 'const' instead  prefer-const
+
+/mnt/data/skwirel/bball/src/app/api/players/[id]/__tests__/route.test.ts
+    4:10  warning  'athletes' is defined but never used         @typescript-eslint/no-unused-vars
+    4:20  warning  'playerHistory' is defined but never used    @typescript-eslint/no-unused-vars
+    4:35  warning  'teamMemberships' is defined but never used  @typescript-eslint/no-unused-vars
+   41:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   49:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   50:45  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   59:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   78:45  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   79:49  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   80:51  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   98:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  107:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  108:45  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  118:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  119:45  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  136:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  137:45  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  154:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  155:45  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/players/[id]/claim/route.ts
+   5:14  warning  'isNull' is defined but never used        @typescript-eslint/no-unused-vars
+   5:22  warning  'and' is defined but never used           @typescript-eslint/no-unused-vars
+  49:18  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/players/[id]/route.ts
+  3:35  warning  'teams' is defined but never used        @typescript-eslint/no-unused-vars
+  3:59  warning  'communities' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/players/[id]/stats/route.ts
+    5:27  warning  'sql' is defined but never used           @typescript-eslint/no-unused-vars
+   77:37  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:50  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/players/__tests__/route.test.ts
+    4:10  warning  'athletes' is defined but never used         @typescript-eslint/no-unused-vars
+    4:20  warning  'playerHistory' is defined but never used    @typescript-eslint/no-unused-vars
+    4:35  warning  'teamMemberships' is defined but never used  @typescript-eslint/no-unused-vars
+   33:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   39:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   40:44  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   50:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   55:44  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   66:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   67:44  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   72:19  warning  'data' is assigned a value but never used    @typescript-eslint/no-unused-vars
+   79:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   80:44  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   89:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   90:44  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  102:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  111:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  120:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  132:27  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  151:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  160:27  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  177:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  188:27  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/players/invitations/[token]/resend/route.ts
+  3:29  warning  'athletes' is defined but never used  @typescript-eslint/no-unused-vars
+  6:14  warning  'and' is defined but never used       @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/players/invitations/[token]/route.ts
+  3:29  warning  'athletes' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/players/invitations/route.ts
+  3:29  warning  'athletes' is defined but never used  @typescript-eslint/no-unused-vars
+  7:27  warning  'request' is defined but never used   @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/players/invite/route.ts
+   3:29  warning  'athletes' is defined but never used  @typescript-eslint/no-unused-vars
+  93:27  warning  'request' is defined but never used   @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/players/me/route.ts
+  3:37  warning  'teams' is defined but never used        @typescript-eslint/no-unused-vars
+  3:44  warning  'communities' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/players/route.ts
+  3:37  warning  'teams' is defined but never used        @typescript-eslint/no-unused-vars
+  3:44  warning  'communities' is defined but never used  @typescript-eslint/no-unused-vars
+  5:40  warning  'sql' is defined but never used          @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/profile/route.ts
+  4:35  warning  'communities' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/public/communities/[slug]/games/route.test.ts
+   56:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   57:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   70:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  100:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  101:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  142:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  161:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  162:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  175:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  206:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  207:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/public/games/route.test.ts
+   48:37  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+   73:37  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+   96:37  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  100:15  warning  'data' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  130:37  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  142:37  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  167:37  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  178:37  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/seasons/[id]/games/route.ts
+  3:26  warning  'teams' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/seasons/[id]/route.ts
+  3:19  warning  'communities' is defined but never used  @typescript-eslint/no-unused-vars
+  5:14  warning  'and' is defined but never used          @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/seasons/[id]/standings/route.ts
+   3:26  warning  'teams' is defined but never used         @typescript-eslint/no-unused-vars
+  60:37  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/seasons/[id]/teams/route.ts
+  3:32  warning  'communities' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/seasons/route.ts
+   3:32  warning  'teamSeasons' is defined but never used   @typescript-eslint/no-unused-vars
+   3:45  warning  'teams' is defined but never used         @typescript-eslint/no-unused-vars
+   3:52  warning  'games' is defined but never used         @typescript-eslint/no-unused-vars
+   5:25  warning  'isNull' is defined but never used        @typescript-eslint/no-unused-vars
+  44:52  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/teams/[id]/__tests__/route.test.ts
+    4:10  warning  'teams' is defined but never used             @typescript-eslint/no-unused-vars
+    4:17  warning  'communities' is defined but never used       @typescript-eslint/no-unused-vars
+    4:30  warning  'communityMembers' is defined but never used  @typescript-eslint/no-unused-vars
+   48:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   56:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   57:42  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   66:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   67:42  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   85:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   94:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+   95:42  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  105:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  106:42  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  118:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  119:42  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  120:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  131:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  132:42  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  133:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  137:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  148:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  149:42  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  150:48  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  154:53  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  169:22  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+  170:42  error    Unexpected any. Specify a different type      @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/teams/[id]/members/[memberId]/__tests__/route.test.ts
+    4:10  warning  'teamMemberships' is defined but never used  @typescript-eslint/no-unused-vars
+    4:27  warning  'athletes' is defined but never used         @typescript-eslint/no-unused-vars
+    4:37  warning  'playerHistory' is defined but never used    @typescript-eslint/no-unused-vars
+   48:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   57:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   58:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   68:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   69:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   81:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   82:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   96:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  104:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  105:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  114:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  115:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/teams/[id]/members/[memberId]/route.ts
+  3:27  warning  'athletes' is defined but never used  @typescript-eslint/no-unused-vars
+  5:14  warning  'and' is defined but never used       @typescript-eslint/no-unused-vars
+  5:19  warning  'isNull' is defined but never used    @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/teams/[id]/members/__tests__/members.test.ts
+    4:10  warning  'athletes' is defined but never used         @typescript-eslint/no-unused-vars
+    4:20  warning  'teamMemberships' is defined but never used  @typescript-eslint/no-unused-vars
+   44:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   46:51  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   59:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   61:45  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   62:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   79:27  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  102:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  104:45  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  108:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/teams/[id]/members/__tests__/route.test.ts
+    4:10  warning  'teams' is defined but never used                  @typescript-eslint/no-unused-vars
+    4:27  warning  'teamMemberships' is defined but never used        @typescript-eslint/no-unused-vars
+    4:44  warning  'playerHistory' is defined but never used          @typescript-eslint/no-unused-vars
+    6:10  warning  'eq' is defined but never used                     @typescript-eslint/no-unused-vars
+    6:14  warning  'and' is defined but never used                    @typescript-eslint/no-unused-vars
+    6:19  warning  'isNull' is defined but never used                 @typescript-eslint/no-unused-vars
+   38:22  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+   46:22  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+   51:51  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+   65:22  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+   74:22  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+   83:22  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+   84:45  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+   94:22  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+   95:45  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+   99:52  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  113:22  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  114:45  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  115:52  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  125:17  warning  'insertValues' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  125:31  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  126:27  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  126:59  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  127:40  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  144:22  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  145:45  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  149:52  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  157:27  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/teams/[id]/members/route.ts
+  3:10  warning  'teams' is defined but never used        @typescript-eslint/no-unused-vars
+  3:59  warning  'communities' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/teams/[id]/route.ts
+  5:19  warning  'inArray' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/teams/__tests__/teams.test.ts
+  33:22  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  41:22  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  42:41  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  56:19  warning  'mockTeam' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  57:22  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  60:27  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  80:22  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/teams/route.ts
+   3:17  warning  'communities' is defined but never used            @typescript-eslint/no-unused-vars
+   3:48  warning  'teamSeasons' is defined but never used            @typescript-eslint/no-unused-vars
+   3:61  warning  'seasons' is defined but never used                @typescript-eslint/no-unused-vars
+  26:11  warning  'communityIds' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/api/tournaments/[id]/__tests__/route.test.ts
+    4:10  warning  'tournaments' is defined but never used   @typescript-eslint/no-unused-vars
+   40:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   60:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   61:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   75:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   76:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   94:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   95:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   98:27  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  118:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  128:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  129:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  145:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  146:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  157:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  167:22  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  168:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/tournaments/[id]/games/[gameId]/__tests__/route.test.ts
+    4:10  warning  'tournamentGames' is defined but never used  @typescript-eslint/no-unused-vars
+    4:27  warning  'tournaments' is defined but never used      @typescript-eslint/no-unused-vars
+    4:40  warning  'games' is defined but never used            @typescript-eslint/no-unused-vars
+   49:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   50:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   51:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   54:27  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   79:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   92:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  102:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  103:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  117:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  118:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  119:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  135:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  136:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  147:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  157:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  158:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/tournaments/[id]/games/[gameId]/route.ts
+  93:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  94:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/tournaments/[id]/games/__tests__/route.test.ts
+    4:10  warning  'tournamentGames' is defined but never used  @typescript-eslint/no-unused-vars
+    4:27  warning  'tournaments' is defined but never used      @typescript-eslint/no-unused-vars
+    4:40  warning  'games' is defined but never used            @typescript-eslint/no-unused-vars
+   42:51  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   55:51  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   72:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   73:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   76:27  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   96:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  106:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  107:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/tournaments/[id]/teams/[teamId]/__tests__/route.test.ts
+    4:10  warning  'tournamentTeams' is defined but never used  @typescript-eslint/no-unused-vars
+    4:27  warning  'tournaments' is defined but never used      @typescript-eslint/no-unused-vars
+   48:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   49:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   50:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   53:27  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   73:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   83:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   84:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   98:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   99:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  100:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  116:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  117:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  128:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  138:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  139:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/tournaments/[id]/teams/__tests__/route.test.ts
+    4:10  warning  'tournamentTeams' is defined but never used  @typescript-eslint/no-unused-vars
+    4:27  warning  'tournaments' is defined but never used      @typescript-eslint/no-unused-vars
+   43:51  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   60:51  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   77:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   78:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   79:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   82:27  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  102:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  111:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  123:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  124:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  138:22  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  139:48  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  140:52  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/api/tournaments/__tests__/route.test.ts
+   33:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   44:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   45:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   58:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   80:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   83:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  109:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  120:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/communities/[id]/page.tsx
+    6:36   warning  'Settings' is defined but never used                  @typescript-eslint/no-unused-vars
+   20:48   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   23:58   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   24:62   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   25:70   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+   27:26   warning  'setTeamsLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   32:54   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  230:58   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  269:60   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  290:65   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  399:79   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  418:87   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  444:81   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  444:112  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  445:83   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  607:82   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  681:77   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  681:116  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  682:77   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  862:69   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  927:75   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  927:112  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+  972:62   error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/communities/join/page.tsx
+  16:12  warning  'communityId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/communities/page.tsx
+  13:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/community/[slug]/page.tsx
+  77:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  79:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/contact/page.tsx
+  12:79  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/mnt/data/skwirel/bball/src/app/game/[id]/box-score/page.tsx
+  6:21  warning  'Trophy' is defined but never used   @typescript-eslint/no-unused-vars
+  6:29  warning  'Users' is defined but never used    @typescript-eslint/no-unused-vars
+  6:57  warning  'Target' is defined but never used   @typescript-eslint/no-unused-vars
+  6:65  warning  'Percent' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/game/[id]/log/page.tsx
+   6:10  warning  'motion' is defined but never used        @typescript-eslint/no-unused-vars
+  21:38  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  33:51  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  48:45  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/app/game/[id]/page.tsx
+    6:18  warning  'AnimatePresence' is defined but never used  @typescript-eslint/no-unused-vars
+    7:18  warning  'Clock' is defined but never used            @typescript-eslint/no-unused-vars
+    7:25  warning  'Users' is defined but never used            @typescript-eslint/no-unused-vars
+    7:32  warning  'ArrowLeft' is defined but never used        @typescript-eslint/no-unused-vars
+    7:43  warning  'ShieldAlert' is defined but never used      @typescript-eslint/no-unused-vars
+    7:56  warning  'Target' is defined but never used           @typescript-eslint/no-unused-vars
+   74:97  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+   86:46  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  181:55  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  430:81  warning  'b' is defined but never used                @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/game/[id]/scorer/log/page.tsx
+    7:21   warning  'Target' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+    7:38   warning  'Filter' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+    7:56   warning  'Trash2' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+   21:38   error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   34:51   error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+   49:45   error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  248:49   error    Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  249:111  error    Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+  270:53   error    Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  291:41   error    Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+
+/mnt/data/skwirel/bball/src/app/game/[id]/scorer/page.tsx
+    9:5   warning  'Trophy' is defined but never used                     @typescript-eslint/no-unused-vars
+   10:5   warning  'MoreHorizontal' is defined but never used             @typescript-eslint/no-unused-vars
+   10:53  warning  'Target' is defined but never used                     @typescript-eslint/no-unused-vars
+   10:61  warning  'Move' is defined but never used                       @typescript-eslint/no-unused-vars
+   10:67  warning  'Timer' is defined but never used                      @typescript-eslint/no-unused-vars
+  123:51  error    Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  139:97  error    Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  147:46  error    Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  180:45  error    Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  307:32  error    Unexpected any. Specify a different type               @typescript-eslint/no-explicit-any
+  716:15  warning  'isGameOwner' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  717:15  warning  'isCommunityOwner' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  718:15  warning  'isCommunityAdmin' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/games/page.tsx
+  4:10  warning  'useRouter' is defined but never used  @typescript-eslint/no-unused-vars
+  5:18  warning  'Clock' is defined but never used      @typescript-eslint/no-unused-vars
+  5:25  warning  'Users' is defined but never used      @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/invite/player/[token]/page.tsx
+  16:48  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:14  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/layout.tsx
+  76:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/mnt/data/skwirel/bball/src/app/page.tsx
+   86:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/mnt/data/skwirel/bball/src/app/page.tsx:86:7
+  84 |       );
+  85 |       
+> 86 |       setAvailableSeasons(sortedSeasons);
+     |       ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  87 |     }
+  88 |   }, [teams]);
+  89 |                                                                              react-hooks/set-state-in-effect
+  101:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/mnt/data/skwirel/bball/src/app/page.tsx:101:5
+   99 |
+  100 |   useEffect(() => {
+> 101 |     setMounted(true);
+      |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  102 |     // Set default date to today in YYYY-MM-DD format
+  103 |     setScheduledDate(new Date().toISOString().split('T')[0]);
+  104 |  react-hooks/set-state-in-effect
+  233:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @next/next/no-img-element
+
+/mnt/data/skwirel/bball/src/app/players/[id]/page.tsx
+   98:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  749:28  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/app/players/page.tsx
+    6:40   warning  'ArrowRight' is defined but never used                           @typescript-eslint/no-unused-vars
+    6:59   warning  'X' is defined but never used                                    @typescript-eslint/no-unused-vars
+  159:92   error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  159:100  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  161:27   error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/mnt/data/skwirel/bball/src/app/profile/page.tsx
+   12:10  warning  'cn' is defined but never used                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  164:29  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/mnt/data/skwirel/bball/src/app/teams/[id]/page.tsx
+    8:5   warning  'ArrowLeft' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+    8:24  warning  'Plus' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   77:48  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+   89:12  warning  'showNewPlayer' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+   89:27  warning  'setShowNewPlayer' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   98:12  warning  'showBulk' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+   98:22  warning  'setShowBulk' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  187:13  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/mnt/data/skwirel/bball/src/app/teams/[id]/page.tsx:187:13
+  185 |             return () => clearTimeout(timer);
+  186 |         } else {
+> 187 |             setPlayerSearchResults([]);
+      |             ^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  188 |         }
+  189 |     }, [searchQuery, showPlayerSearch, teamCommunityId]);
+  190 |  react-hooks/set-state-in-effect
+
+/mnt/data/skwirel/bball/src/app/teams/page.tsx
+    5:18  warning  'Filter' is defined but never used                               @typescript-eslint/no-unused-vars
+  316:92  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+/mnt/data/skwirel/bball/src/components/scorer/advanced-scorer.tsx
+  141:47  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  314:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/components/scorer/amend-roster-modal.tsx
+  4:13  warning  'Plus' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/components/scorer/game-log.tsx
+   5:62  warning  'ChevronDown' is defined but never used   @typescript-eslint/no-unused-vars
+   5:75  warning  'ChevronUp' is defined but never used     @typescript-eslint/no-unused-vars
+  23:16  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/components/scorer/game-settings-modal.tsx
+  75:11  warning  'formatTimeDisplay' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/components/scorer/scorer-manager.tsx
+   9:10  warning  'cn' is defined but never used      @typescript-eslint/no-unused-vars
+  32:5   warning  'gameId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/components/scorer/scoring-modal.tsx
+  3:20  warning  'useEffect' is defined but never used        @typescript-eslint/no-unused-vars
+  4:13  warning  'Users' is defined but never used            @typescript-eslint/no-unused-vars
+  4:36  warning  'Shirt' is defined but never used            @typescript-eslint/no-unused-vars
+  7:18  warning  'AnimatePresence' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/components/scorer/subs-modal.tsx
+  3:13  warning  'ArrowLeft' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/components/season-selector.tsx
+  24:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/mnt/data/skwirel/bball/src/components/season-selector.tsx:24:7
+  22 |   useEffect(() => {
+  23 |     if (!communityId) {
+> 24 |       setSeasons([]);
+     |       ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  25 |       return;
+  26 |     }
+  27 |  react-hooks/set-state-in-effect
+
+/mnt/data/skwirel/bball/src/hooks/use-socket.ts
+  31:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/mnt/data/skwirel/bball/src/hooks/use-socket.ts:31:17
+  29 |
+  30 |     return {
+> 31 |         socket: socketRef.current,
+     |                 ^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  32 |         isConnected,
+  33 |     };
+  34 | };  react-hooks/refs
+  31:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+/mnt/data/skwirel/bball/src/hooks/use-socket.ts:31:17
+  29 |
+  30 |     return {
+> 31 |         socket: socketRef.current,
+     |                 ^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  32 |         isConnected,
+  33 |     };
+  34 | };  react-hooks/refs
+
+/mnt/data/skwirel/bball/src/lib/activity-logger.ts
+  25:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/lib/auth-server.ts
+  26:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+  49:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/src/middleware.ts
+  5:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  5:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/server/__tests__/socket.test.ts
+   1:55  warning  'vi' is defined but never used            @typescript-eslint/no-unused-vars
+   4:34  warning  'ClientSocket' is defined but never used  @typescript-eslint/no-unused-vars
+  11:9   warning  'serverSocket' is defined but never used  @typescript-eslint/no-unused-vars
+  11:23  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  57:43  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  97:42  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/mnt/data/skwirel/bball/src/utils/__tests__/minutesTracking.test.ts
+  457:47  warning  'name' is defined but never used  @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/tests/load/load-test-10k-spectators-100-games.test.ts
+    1:32  warning  'beforeAll' is defined but never used                   @typescript-eslint/no-unused-vars
+    1:43  warning  'afterAll' is defined but never used                    @typescript-eslint/no-unused-vars
+    1:76  warning  'vi' is defined but never used                          @typescript-eslint/no-unused-vars
+   36:9   error    'gameClients' is never reassigned. Use 'const' instead  prefer-const
+   38:9   error    'eventCounts' is never reassigned. Use 'const' instead  prefer-const
+  121:44  warning  'data' is defined but never used                        @typescript-eslint/no-unused-vars
+
+/mnt/data/skwirel/bball/tests/markdown-reporter.ts
+  5:23  warning  'errors' is defined but never used  @typescript-eslint/no-unused-vars
+  5:31  warning  'reason' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 653 problems (470 errors, 183 warnings)
+  3 errors and 0 warnings potentially fixable with the `--fix` option.
+

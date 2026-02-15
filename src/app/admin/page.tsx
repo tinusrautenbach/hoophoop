@@ -108,10 +108,12 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userPage, userSearch]);
 
     useEffect(() => {
         fetchCommunities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [communityPage, communitySearch]);
 
     useEffect(() => {
@@ -135,6 +137,7 @@ export default function AdminDashboard() {
             }
         }, 300);
         return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userSearchQuery]);
 
     const fetchUsers = async () => {

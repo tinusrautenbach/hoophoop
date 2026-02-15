@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-server';
 import { db } from '@/db';
-import { users, communityMembers, communities, userActivityLogs, athletes, playerInvitations } from '@/db/schema';
+import { users, communityMembers, userActivityLogs, athletes, playerInvitations } from '@/db/schema';
 import { eq, desc, and, gt } from 'drizzle-orm';
 
 export async function GET() {

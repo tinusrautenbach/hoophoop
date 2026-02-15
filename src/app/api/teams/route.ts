@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { teams, communities, communityMembers, teamSeasons, seasons } from '@/db/schema';
+import { teams } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { eq, and, or, ilike, desc } from 'drizzle-orm';
 
@@ -17,13 +17,6 @@ export async function GET(request: Request) {
     const communityId = searchParams.get('communityId');
     const seasonId = searchParams.get('seasonId');
     const myTeams = searchParams.get('myTeams') === 'true';
-
-    // Get communities where user is a member
-    const userCommunities = await db.query.communityMembers.findMany({
-      where: eq(communityMembers.userId, userId),
-    });
-
-    const communityIds = userCommunities.map(m => m.communityId);
 
     // Base query conditions
     const conditions = [];
