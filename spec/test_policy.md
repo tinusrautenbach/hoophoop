@@ -48,7 +48,39 @@ src/
         route.test.ts
 ```
 
-## 6. Example Test Template
+## 6. Load and Volume Testing Requirements
+
+In addition to unit tests, all production releases **MUST** pass load and volume tests:
+
+### 6.1 Minimum Load Test Specifications
+- **10,000 concurrent spectators** connected simultaneously
+- **100 active games** with ongoing events
+- **Event rate**: Approximately 1 event per second per game (100 events/second total)
+- **Duration**: Minimum 30 seconds of sustained load
+- **Connection stability**: < 10% disconnection rate during test
+- **Event latency**: Average < 500ms for event propagation
+
+### 6.2 Load Test File Location
+Load tests are stored in:
+```
+tests/
+  load/
+    load-test-10k-spectators-100-games.test.ts
+```
+
+### 6.3 Running Load Tests
+```bash
+npm test -- tests/load/load-test-10k-spectators-100-games.test.ts
+```
+
+### 6.4 Load Test Validation Criteria
+1. **Connection Phase**: Successfully connect > 90% of targeted spectators
+2. **Event Propagation**: All games maintain 1 event/second rate
+3. **Memory Stability**: Memory growth < 500MB during sustained load
+4. **Disconnection Rate**: < 10% of connections should drop during test
+5. **Latency**: Average event propagation latency < 500ms
+
+## 7. Example Test Template
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { calculateScore } from '../game';
