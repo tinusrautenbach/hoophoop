@@ -2,7 +2,16 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { athletes, gameRosters, games, teams } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
+
+interface TeamStat {
+  teamId: string;
+  gamesPlayed: number;
+  totalPoints: number;
+  totalFouls: number;
+  wins: number;
+  losses: number;
+}
 
 export async function GET(
   request: Request,
@@ -74,7 +83,7 @@ export async function GET(
     }
 
     // Get team-specific statistics
-    const teamStats: Record<string, any> = {};
+    const teamStats: Record<string, TeamStat> = {};
 
     for (const { roster, game } of filteredData) {
       // Determine which team the player was on
@@ -109,7 +118,7 @@ export async function GET(
 
     // Fetch team names
     const teamStatsArray = await Promise.all(
-      Object.values(teamStats).map(async (stats: any) => {
+      Object.values(teamStats).map(async (stats) => {
         const team = await db.query.teams.findFirst({
           where: eq(teams.id, stats.teamId),
           columns: { id: true, name: true },
