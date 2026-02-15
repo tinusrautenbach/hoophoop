@@ -14,7 +14,7 @@
   - [ ] Create conflict notification UI (when two scorers edit simultaneously)
 
 ## Phase 6: Stats & Finalization
-- [ ] 6.2 Season Statistics
+- [x] 6.2 Season Statistics
 
 ## Phase 7: Community & Advanced User System
 - [ ] **7.2 Community Management API**:
