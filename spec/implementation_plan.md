@@ -634,7 +634,7 @@
     - [x] Verify upload success (checksum validation)
     - [x] Apply retention policy (delete expired backups)
     - [x] Log backup operations and errors
-  - [ ] Schedule daily cron job (2 AM UTC)
+  - [x] Schedule daily cron job (2 AM UTC) - Documented with setup script for Docker deployments
   - [x] Health check endpoint: `GET /api/health/backup` (returns last backup timestamp, size, status)
   - [ ] Alert on backup failures (email/Slack notification)
   - [ ] Backup size monitoring and cost tracking dashboard
