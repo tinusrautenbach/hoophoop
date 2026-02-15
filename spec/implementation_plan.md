@@ -592,6 +592,30 @@
     - [x] Search functionality (via API params)
     - [x] Filter support (community, season via query params)
     - [ ] Search bar with autocomplete
+
+- [x] **15.9 Player Profile Claim Approval Workflow Fix**:
+  - [x] Fixed broken email approval links (404 errors)
+  - [x] Create World Admin API: `/api/admin/claim-requests/[id]/route.ts` (POST approve, DELETE reject)
+  - [x] Create World Admin Approval Page: `/admin/claim-requests/[id]/approve/page.tsx`
+    - [x] Full player details display (name, email, community)
+    - [x] Login required + World Admin verification
+    - [x] Green "Approve" button with confirmation
+    - [x] Success page with link to admin dashboard
+  - [x] Create World Admin Rejection Page: `/admin/claim-requests/[id]/reject/page.tsx`
+    - [x] Same details as approval page
+    - [x] Required rejection reason textarea
+    - [x] Red "Reject" button with confirmation
+    - [x] Success page with link to admin dashboard
+  - [x] Create Community Admin Approval Page: `/admin/communities/[id]/claim-requests/[rid]/approve/page.tsx`
+    - [x] Community Admin verification (not World Admin)
+    - [x] Uses existing community claim API
+    - [x] Same UI pattern as World Admin approval
+  - [x] Create Community Admin Rejection Page: `/admin/communities/[id]/claim-requests/[rid]/reject/page.tsx`
+    - [x] Community Admin verification
+    - [x] Required rejection reason textarea
+    - [x] Same UI pattern as World Admin rejection
+  - [x] All pages follow existing admin design system (dark theme, orange accents, card panels)
+  - [x] Email notifications sent on approve/reject (existing functionality)
     - [ ] Filter dropdowns (community, season)
     - [ ] Filter chips/badges
     - [ ] Results list with team cards
