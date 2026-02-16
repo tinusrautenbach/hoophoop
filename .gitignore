@@ -34,3 +34,5 @@ yarn-error.log*
 next-env.d.ts
 dev_data_migration.sql
 input_images/**
+aws/**
+awscliv2.zip

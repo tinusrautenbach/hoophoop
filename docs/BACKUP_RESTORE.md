@@ -65,13 +65,20 @@ aws s3 mb s3://bball-db-backups --region us-east-1
 aws s3api put-bucket-versioning \
   --bucket bball-db-backups \
   --versioning-configuration Status=Enabled
+
+3. Configure Object Ownership (Recommended - Disables ACLs):
+```bash
+aws s3api put-bucket-ownership-controls \
+  --bucket bball-db-backups \
+  --ownership-controls Rules=[{ObjectOwnership=BucketOwnerEnforced}]
+```
 ```
 
 3. Configure lifecycle policy for cost optimization:
 ```bash
 aws s3api put-bucket-lifecycle-configuration \
   --bucket bball-db-backups \
-  --lifecycle-configuration file://s3-lifecycle-policy.json
+  --lifecycle-configuration file://scripts/s3-lifecycle-policy.json
 ```
 
 ### Environment Variables
@@ -97,7 +104,13 @@ RETENTION_MONTHS=12
 
 ### IAM Permissions
 
-Create an IAM policy with minimal required permissions:
+### IAM Permissions
+
+There are two ways to grant permissions. Choose **one**:
+
+#### Option A: IAM User Policy (Identity-based)
+Attach this policy to your **IAM User** or **IAM Role** (in IAM Console -> Users -> Permissions).
+*Note: Do NOT attach this to the S3 Bucket Policy.*
 
 ```json
 {
@@ -110,7 +123,8 @@ Create an IAM policy with minimal required permissions:
         "s3:GetObject",
         "s3:DeleteObject",
         "s3:ListBucket",
-        "s3:GetObjectVersion"
+        "s3:GetObjectVersion",
+        "s3:GetBucketLocation"
       ],
       "Resource": [
         "arn:aws:s3:::bball-db-backups",
@@ -119,6 +133,38 @@ Create an IAM policy with minimal required permissions:
     }
   ]
 }
+```
+
+#### Option B: S3 Bucket Policy (Resource-based)
+Attach this policy to the **S3 Bucket** (in S3 Console -> Permissions -> Bucket Policy).
+*Replace `arn:aws:iam::ACCOUNT_ID:user/USERNAME` with your actual IAM User ARN.*
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowBackupUser",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::ACCOUNT_ID:user/USERNAME"
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetObjectVersion",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::bball-db-backups",
+        "arn:aws:s3:::bball-db-backups/*"
+      ]
+    }
+  ]
+}
+```
 ```
 
 ## Usage
