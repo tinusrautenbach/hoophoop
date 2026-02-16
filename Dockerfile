@@ -50,13 +50,7 @@ ENV NEXT_TELEMETRY_DISABLED 1
 # Install AWS CLI and PostgreSQL client tools for backup/restore
 RUN apk add --no-cache \
     postgresql-client \
-    curl \
-    unzip \
-    && curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-    && unzip -q awscliv2.zip \
-    && ./aws/install \
-    && rm -rf awscliv2.zip aws \
-    && aws --version
+    aws-cli
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
