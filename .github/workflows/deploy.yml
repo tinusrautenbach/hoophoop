@@ -1,0 +1,101 @@
+name: Deploy to Coolify
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Trigger Coolify Deployment
+        id: deploy
+        run: |
+          echo "Triggering Coolify deployment webhook..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://cool2.2zero50.com/webhooks/source/github/events/manual" \
+            -H "Content-Type: application/json" \
+            -d "{\"ref\":\"${{ github.sha }}\",\"repository\":{\"full_name\":\"${{ github.repository }}\"}}")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" -ne 200 ]; then
+            echo "::error::Deployment webhook failed with status $http_code"
+            exit 1
+          fi
+          
+          echo "Coolify deployment triggered successfully"
+        timeout-minutes: 2
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to complete..."
+          sleep 30
+        timeout-minutes: 2
+
+      - name: Health check
+        id: healthcheck
+        run: |
+          echo "Performing health check..."
+          max_retries=5
+          retry_count=0
+          
+          while [ $retry_count -lt $max_retries ]; do
+            response=$(curl -s -o /dev/null -w "%{http_code}" "https://hoophoop.net" || echo "000")
+            
+            if [ "$response" -eq 200 ]; then
+              echo "✅ Health check passed - Site is up"
+              exit 0
+            fi
+            
+            retry_count=$((retry_count + 1))
+            echo "Attempt $retry_count/$max_retries: Health check failed (status: $response)"
+            
+            if [ $retry_count -lt $max_retries ]; then
+              echo "Waiting 10 seconds before retry..."
+              sleep 10
+            fi
+          done
+          
+          echo "::error::Health check failed after $max_retries attempts"
+          exit 1
+        timeout-minutes: 2
+
+      - name: Post deployment status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ steps.deploy.outcome }}' === 'success' && '${{ steps.healthcheck.outcome }}' === 'success' ? '✅' : '❌';
+            const message = '${{ steps.deploy.outcome }}' === 'success' && '${{ steps.healthcheck.outcome }}' === 'success' 
+              ? 'Deployment successful! Site is live at https://hoophoop.net'
+              : 'Deployment failed. Check the workflow logs for details.';
+            
+            const body = `## ${status} Deployment Status
+            
+            ${message}
+            
+            - **Commit:** ${{ github.sha }}
+            - **Triggered by:** ${{ github.actor }}
+            - **Workflow:** ${{ github.workflow }}`;
+            
+            // Only post if this is a PR
+            if (context.issue.number) {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
