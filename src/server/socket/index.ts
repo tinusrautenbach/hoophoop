@@ -73,7 +73,8 @@ async function isAuthorizedScorer(gameId: string, userId: string): Promise<boole
 async function startTimer(gameId: string, socket: Socket, io: Server) {
     console.log(`[Timer] Starting timer for game ${gameId}`);
     
-    stopTimer(gameId);
+    // Pass io to stopTimer so it can broadcast the stop event if there's an existing timer
+    await stopTimer(gameId, socket, io);
     
     try {
         const game = await db.query.games.findFirst({
@@ -405,31 +406,68 @@ export async function setupSocket(io: Server) {
             gameId: string; 
             action: 'start' | 'stop';
             userId: string;
-        }) => {
+        }, callback?: (response: { success: boolean; error?: string; clockSeconds?: number; isTimerRunning?: boolean }) => void) => {
             console.log(`[Socket] Timer control received:`, data);
             
             // Rate limit timer controls
             const rateLimit = await socketRateLimiter.checkEventAllowed(socketId);
             if (!rateLimit.allowed) {
-                socket.emit('error', { 
+                const error = { 
                     code: 'RATE_LIMITED',
                     message: 'Too many timer control attempts. Please slow down.' 
-                });
+                };
+                socket.emit('error', error);
                 metricsCollector.recordRateLimitHit();
+                if (callback) {
+                    callback({ success: false, error: error.message });
+                }
                 return;
             }
             
             const isAuthorized = await isAuthorizedScorer(data.gameId, data.userId);
             if (!isAuthorized) {
                 console.log(`[Socket] Unauthorized timer control attempt by ${data.userId}`);
-                socket.emit('error', { message: 'Not authorized to control timer' });
+                const error = { message: 'Not authorized to control timer' };
+                socket.emit('error', error);
+                if (callback) {
+                    callback({ success: false, error: error.message });
+                }
                 return;
             }
             
-            if (data.action === 'start') {
-                await startTimer(data.gameId, socket, io);
-            } else if (data.action === 'stop') {
-                await stopTimer(data.gameId, socket, io);
+            try {
+                if (data.action === 'start') {
+                    await startTimer(data.gameId, socket, io);
+                    const game = await db.query.games.findFirst({
+                        where: eq(games.id, data.gameId),
+                        columns: { clockSeconds: true, isTimerRunning: true }
+                    });
+                    if (callback) {
+                        callback({ 
+                            success: true, 
+                            clockSeconds: game?.clockSeconds,
+                            isTimerRunning: game?.isTimerRunning 
+                        });
+                    }
+                } else if (data.action === 'stop') {
+                    await stopTimer(data.gameId, socket, io);
+                    const game = await db.query.games.findFirst({
+                        where: eq(games.id, data.gameId),
+                        columns: { clockSeconds: true, isTimerRunning: true }
+                    });
+                    if (callback) {
+                        callback({ 
+                            success: true, 
+                            clockSeconds: game?.clockSeconds,
+                            isTimerRunning: game?.isTimerRunning 
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error(`[Timer] Error processing timer control:`, error);
+                if (callback) {
+                    callback({ success: false, error: 'Internal server error' });
+                }
             }
         });
 
