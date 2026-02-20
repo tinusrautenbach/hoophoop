@@ -215,14 +215,31 @@ export default function ScorerPage() {
         if (!game || !socket || !userId) return;
         
         const action = isTimerRunning ? 'stop' : 'start';
+        const previousState = isTimerRunning;
         
         // Optimistic update
         setIsTimerRunning(!isTimerRunning);
         
+        // Emit with acknowledgment callback for error handling
         socket.emit('timer-control', {
             gameId: id,
             action,
             userId
+        }, (response: { success: boolean; error?: string; clockSeconds?: number; isTimerRunning?: boolean }) => {
+            if (!response?.success) {
+                // Revert optimistic update on failure
+                console.error(`[Timer] Failed to ${action} timer:`, response?.error);
+                setIsTimerRunning(previousState);
+                // Optionally show error to user (could add toast notification here)
+            } else {
+                // Confirm state matches server
+                if (response.isTimerRunning !== undefined) {
+                    setIsTimerRunning(response.isTimerRunning);
+                }
+                if (response.clockSeconds !== undefined) {
+                    setGame(prev => prev ? { ...prev, clockSeconds: response.clockSeconds! } : null);
+                }
+            }
         });
     };
 
