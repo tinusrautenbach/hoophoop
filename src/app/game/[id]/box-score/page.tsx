@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Trophy, Users, Share2, Download, X, Target, Percent } from 'lucide-react';
+import { ArrowLeft, Share2, Download, X } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useSocket } from '@/hooks/use-socket';

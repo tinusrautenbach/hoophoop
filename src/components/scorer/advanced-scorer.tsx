@@ -138,7 +138,7 @@ export function AdvancedScorer({ game, updateGame, handleScore, addEvent }: Adva
             setSelectedPlayerId(null);
         } else if (['Rebound', 'Assist', 'Steal', 'Block', 'Turnover'].includes(action)) {
             addEvent({
-                type: action.toLowerCase() as any,
+                type: action.toLowerCase() as 'rebound' | 'assist' | 'steal' | 'block' | 'turnover',
                 team: player.team,
                 player: player.name
             });
@@ -311,7 +311,7 @@ function ActionButton({ icon, label, color, onClick, disabled }: { icon: React.R
     );
 }
 
-function RotateCcw(props: any) {
+function RotateCcw(props: { size?: number; className?: string }) {
     return (
         <svg
             {...props}

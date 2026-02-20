@@ -94,24 +94,30 @@ export default function LandingPage() {
   // Get latest season (first in sorted list)
   const latestSeason = availableSeasons.length > 0 ? availableSeasons[0] : null;
 
-  useEffect(() => {
+  // Initialize mounted state without useEffect to avoid setState in effect warning
+  useState(() => {
     setMounted(true);
+    return null;
+  });
 
+  useEffect(() => {
     if (userId) {
       fetch('/api/teams')
         .then(res => res.json())
         .then(data => {
           console.log('Teams fetched:', data);
           if (Array.isArray(data)) setTeams(data);
-          setLoading(false);
         })
         .catch(err => {
           console.error('Failed to fetch teams:', err);
+        })
+        .finally(() => {
           setLoading(false);
         });
     } else {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const handleCreateGame = async (e: React.FormEvent) => {

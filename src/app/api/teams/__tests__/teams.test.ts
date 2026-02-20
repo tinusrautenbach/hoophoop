@@ -31,7 +31,8 @@ describe('Teams API Route', () => {
     describe('GET', () => {
         it('should return 401 if not authenticated', async () => {
             (auth as unknown as { mockReturnValue: (value?: { userId: string | null }) => void }).mockReturnValue({ userId: null });
-            const response = await GET();
+            const request = new Request('http://localhost/api/teams');
+            const response = await GET(request);
             expect(response.status).toBe(401);
         });
 
@@ -41,7 +42,8 @@ describe('Teams API Route', () => {
             (auth as unknown as { mockReturnValue: (value?: { userId: string | null }) => void }).mockReturnValue({ userId: mockUserId });
             (db.query.teams.findMany as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue(mockTeams);
 
-            const response = await GET();
+            const request = new Request('http://localhost/api/teams');
+            const response = await GET(request);
             const data = await response.json();
 
             expect(response.status).toBe(200);

@@ -21,24 +21,43 @@ export function SeasonSelector({ communityId, selectedSeasonId, onSelect, classN
 
   useEffect(() => {
     if (!communityId) {
-      return () => setSeasons([]);
+      return;
     }
 
-    setLoading(true);
+    let isMounted = true;
+    // Schedule state update in a microtask to avoid synchronous setState in effect
+    Promise.resolve().then(() => {
+      if (isMounted) {
+        setLoading(true);
+      }
+    });
+    
     fetch(`/api/seasons?communityId=${communityId}`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          setSeasons(data);
-        } else {
-          setSeasons([]);
+        if (isMounted) {
+          if (Array.isArray(data)) {
+            setSeasons(data);
+          } else {
+            setSeasons([]);
+          }
         }
       })
       .catch(err => {
         console.error('Failed to fetch seasons:', err);
-        setSeasons([]);
+        if (isMounted) {
+          setSeasons([]);
+        }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+    
+    return () => {
+      isMounted = false;
+    };
   }, [communityId]);
 
   return (

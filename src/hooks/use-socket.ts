@@ -27,8 +27,15 @@ export const useSocket = (gameId: string) => {
         };
     }, [gameId]);
 
+    // Use a state to track socket availability to avoid ref access during render
+    const [socketState, setSocketState] = useState<Socket | null>(null);
+    
+    useEffect(() => {
+        setSocketState(socketRef.current);
+    }, [isConnected]);
+
     return {
-        socket: socketRef.current,
+        socket: socketState,
         isConnected,
     };
 };

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/use-socket';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Clock, Users, ArrowLeft, ShieldAlert, Target, Table, RefreshCw, Wifi, WifiOff, Eye, Globe, Users2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Trophy, Table, RefreshCw, Wifi, WifiOff, Eye, Globe, Users2 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
@@ -21,6 +21,14 @@ type RosterEntry = {
     points: number;
     fouls: number;
     isActive: boolean;
+};
+
+type GameEventRaw = {
+    id: string;
+    type: string;
+    team: 'home' | 'guest';
+    createdAt?: string;
+    timestamp?: string;
 };
 
 type Game = {
@@ -71,7 +79,7 @@ export default function SpectatorPage() {
         if (!socket) return;
         
         // Listen for full game state on connection
-        const handleGameState = ({ game: gameState, events: gameEvents }: { game: Game, events: any[] }) => {
+        const handleGameState = ({ game: gameState, events: gameEvents }: { game: Game, events: GameEventRaw[] }) => {
             console.log('[Spectator] Received game-state event:', { 
                 isTimerRunning: gameState.isTimerRunning, 
                 clockSeconds: gameState.clockSeconds,
@@ -83,10 +91,10 @@ export default function SpectatorPage() {
             setHasReceivedGameState(true);
             setLastSyncTime(new Date());
             if (gameEvents) {
-                setEvents(gameEvents.map((e: any) => ({
+                setEvents(gameEvents.map((e: GameEventRaw) => ({
                     ...e,
-                    timestamp: new Date(e.timestamp || e.createdAt)
-                })));
+                    timestamp: new Date(e.timestamp || e.createdAt || Date.now())
+                })) as GameEvent[]);
             }
         };
 
@@ -178,10 +186,10 @@ export default function SpectatorPage() {
                     setHasReceivedGameState(true);
                     setLastSyncTime(new Date());
                     if (data.events) {
-                        setEvents(data.events.map((e: any) => ({
+                        setEvents(data.events.map((e: GameEventRaw) => ({
                             ...e,
-                            timestamp: new Date(e.createdAt || e.timestamp)
-                        })));
+                            timestamp: new Date(e.createdAt || e.timestamp || Date.now())
+                        })) as GameEvent[]);
                     }
                 });
         }
@@ -427,7 +435,7 @@ export default function SpectatorPage() {
                         )}>On the Floor</h3>
                         <div className="flex-1 overflow-y-auto">
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                                {game.rosters?.filter(r => r.isActive).sort((a, b) => a.team === 'home' ? -1 : 1).map(player => (
+                                {game.rosters?.filter(r => r.isActive).sort((a) => a.team === 'home' ? -1 : 1).map(player => (
                                     <div key={player.id} className={cn(
                                         "bg-input/40 border rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-3 transition-all",
                                         "p-2 sm:p-3",

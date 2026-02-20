@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/use-socket';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Target, History, Filter, Download, Trash2, Edit2, Search, X } from 'lucide-react';
+import { ArrowLeft, History, Download, Edit2, Search, X } from 'lucide-react';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -13,12 +13,23 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+type Game = {
+    id: string;
+    homeTeamName: string;
+    guestTeamName: string;
+};
+
+type GameEventRaw = {
+    createdAt?: string;
+    timestamp?: string;
+};
+
 export default function FullLogPage() {
     const { id } = useParams();
     const router = useRouter();
     const { socket } = useSocket(id as string);
 
-    const [game, setGame] = useState<any>(null);
+    const [game, setGame] = useState<Game | null>(null);
     const [events, setEvents] = useState<GameEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingEvent, setEditingEvent] = useState<GameEvent | null>(null);
@@ -31,10 +42,10 @@ export default function FullLogPage() {
             .then(data => {
                 setGame(data);
                 if (data.events) {
-                    setEvents(data.events.map((e: any) => ({
+                    setEvents(data.events.map((e: GameEventRaw) => ({
                         ...e,
-                        timestamp: new Date(e.createdAt || e.timestamp)
-                    })));
+                        timestamp: new Date(e.createdAt || e.timestamp || Date.now())
+                    })) as GameEvent[]);
                 }
                 setLoading(false);
             });
@@ -43,10 +54,10 @@ export default function FullLogPage() {
     useEffect(() => {
         if (!socket) return;
         socket.on('event-added', (event: GameEvent) => {
-            const newEvent = { ...event, timestamp: new Date(event.timestamp) };
+            const newEvent = { ...event, timestamp: new Date(event.timestamp || Date.now()) };
             setEvents(prev => [newEvent, ...prev]);
         });
-        socket.on('game-updated', (updates: any) => {
+        socket.on('game-updated', (updates: { deleteEventId?: string }) => {
             if (updates.deleteEventId) {
                 setEvents(prev => prev.filter(e => e.id !== updates.deleteEventId));
             }
@@ -245,7 +256,7 @@ export default function FullLogPage() {
                                         {['score', 'foul', 'timeout', 'miss'].map(t => (
                                             <button
                                                 key={t}
-                                                onClick={() => setEditingEvent({ ...editingEvent!, type: t as any })}
+                                                onClick={() => setEditingEvent({ ...editingEvent!, type: t as 'score' | 'foul' | 'timeout' | 'miss' })}
                                                 className={cn(
                                                     "p-3 rounded-xl border text-xs font-black uppercase tracking-widest transition-all",
                                                     editingEvent.type === t

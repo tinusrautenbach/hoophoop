@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
     Shield, Search, User, Check, ShieldAlert, ArrowRight, 
     Users, Building2, Trash2, Plus, Minus, ChevronDown, ChevronUp,
-    Crown, RotateCcw, Link2, Trophy, X, Mail
+    Crown, RotateCcw, Link2, Trophy, Mail
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';

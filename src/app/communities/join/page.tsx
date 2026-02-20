@@ -13,7 +13,7 @@ function JoinContent() {
     
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
     const [error, setError] = useState('');
-    const [communityId, setCommunityId] = useState('');
+
 
     useEffect(() => {
         if (!token || !userId) return;
@@ -26,7 +26,6 @@ function JoinContent() {
         .then(async (res) => {
             if (res.ok) {
                 const data = await res.json();
-                setCommunityId(data.communityId);
                 setStatus('success');
                 setTimeout(() => router.push(`/communities/${data.communityId}`), 2000);
             } else {

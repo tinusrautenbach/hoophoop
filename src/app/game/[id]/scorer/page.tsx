@@ -6,8 +6,8 @@ import { useSocket } from '@/hooks/use-socket';
 import { useAuth } from '@/components/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Trophy, Clock, Users, ArrowLeft, ShieldAlert,
-    MoreHorizontal, Share2, QrCode, Copy, Check, X, Target, Move, Timer,
+    Clock, Users, ArrowLeft, ShieldAlert,
+    Share2, QrCode, Copy, Check, X,
     Home, Flag, Table, Eye, Globe, Users2, Settings, Trash2
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
@@ -37,12 +37,22 @@ type RosterEntry = {
     isActive: boolean;
 };
 
+type GameEventRaw = {
+    id: string;
+    type: string;
+    team: 'home' | 'guest';
+    createdAt?: string;
+    timestamp?: string;
+};
+
 type Scorer = {
     id: string;
     userId: string;
     role: 'owner' | 'co_scorer' | 'viewer';
     joinedAt: string;
 };
+
+
 
 type Game = {
     id: string;
@@ -120,10 +130,10 @@ export default function ScorerPage() {
                 setGame(data);
                 setIsTimerRunning(data.isTimerRunning);
                 if (data.events) {
-                    setEvents(data.events.map((e: any) => ({
+                    setEvents(data.events.map((e: GameEventRaw) => ({
                         ...e,
-                        timestamp: new Date(e.createdAt || e.timestamp)
-                    })));
+                        timestamp: new Date(e.createdAt || e.timestamp || Date.now())
+                    })) as GameEvent[]);
                 }
                 if (data.scorers) {
                     setScorers(data.scorers);
@@ -136,7 +146,7 @@ export default function ScorerPage() {
         if (!socket) return;
 
         // Listen for full game state on connection
-        const handleGameState = ({ game: gameState, events: gameEvents }: { game: Game, events: any[] }) => {
+        const handleGameState = ({ game: gameState, events: gameEvents }: { game: Game, events: GameEventRaw[] }) => {
             console.log('Scorer received game-state:', gameState);
             setGame(gameState);
             setIsTimerRunning(gameState.isTimerRunning);
@@ -144,10 +154,10 @@ export default function ScorerPage() {
                 setScorers(gameState.scorers);
             }
             if (gameEvents) {
-                setEvents(gameEvents.map((e: any) => ({
+                setEvents(gameEvents.map((e: GameEventRaw) => ({
                     ...e,
-                    timestamp: new Date(e.timestamp || e.createdAt)
-                })));
+                    timestamp: new Date(e.timestamp || e.createdAt || Date.now())
+                })) as GameEvent[]);
             }
         };
 
@@ -177,7 +187,7 @@ export default function ScorerPage() {
         socket.on('timer-started', handleTimerStarted);
         socket.on('timer-stopped', handleTimerStopped);
 
-        socket.on('game-updated', (updates: any) => {
+        socket.on('game-updated', (updates: Partial<Game> & { deleteEventId?: string }) => {
             if (updates.deleteEventId) {
                 setEvents(prev => prev.filter(e => e.id !== updates.deleteEventId));
             }
@@ -321,7 +331,7 @@ export default function ScorerPage() {
                 
                 // If the server returned updated game state (scores/fouls), update local state
                 // and broadcast it along with the deletion signal
-                const updates: any = { deleteEventId: eventId };
+                const updates: Partial<Game> & { deleteEventId: string } = { deleteEventId: eventId };
                 
                 if (data.game) {
                     setGame(prev => prev ? { ...prev, ...data.game } : null);
@@ -730,11 +740,6 @@ export default function ScorerPage() {
     // Note: World admin status is checked on the API side
     const canEditSettings = () => {
         if (!game || !userId) return false;
-        const isGameOwner = game.ownerId === userId;
-        const isCommunityOwner = game.community?.ownerId === userId;
-        const isCommunityAdmin = game.community?.members?.some(
-            m => m.userId === userId && m.role === 'admin'
-        );
         // Always allow the button to show - API will enforce world admin permissions
         // This covers: game owner, community owner, community admin, and world admin (enforced by API)
         return true;
@@ -743,12 +748,12 @@ export default function ScorerPage() {
     // Check if current user can delete this game
     const canDeleteGame = () => {
         if (!game || !userId) return false;
-        const isGameOwner = game.ownerId === userId;
-        const isCommunityOwner = game.community?.ownerId === userId;
-        const isCommunityAdmin = game.community?.members?.some(
+        const canDeleteGameOwner = game.ownerId === userId;
+        const canDeleteCommunityOwner = game.community?.ownerId === userId;
+        const canDeleteCommunityAdmin = game.community?.members?.some(
             m => m.userId === userId && m.role === 'admin'
         );
-        return isGameOwner || isCommunityOwner || isCommunityAdmin;
+        return canDeleteGameOwner || canDeleteCommunityOwner || canDeleteCommunityAdmin;
     };
 
     const handleDeleteGame = async () => {
