@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { io, Socket } from 'socket.io-client';
 import { GameCard } from '@/app/live/components/game-card';
-import { Wifi, WifiOff, Search, Calendar, Users, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Search, Calendar, Users, ArrowLeft, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -101,8 +100,6 @@ export default function CommunityPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
-    const [, setSocket] = useState<Socket | null>(null);
-    const [isConnected, setIsConnected] = useState(false);
 
     // Fetch community data and games
     const fetchData = useCallback(async () => {
@@ -209,39 +206,6 @@ export default function CommunityPage() {
         fetchSeasonDetails();
     }, [fetchSeasonDetails]);
 
-    // Setup socket connection
-    useEffect(() => {
-        if (!community) return;
-
-        const newSocket = io();
-        setSocket(newSocket);
-
-        newSocket.on('connect', () => {
-            setIsConnected(true);
-            // Join community room for real-time updates
-            newSocket.emit('join-community', community.id);
-        });
-
-        newSocket.on('disconnect', () => {
-            setIsConnected(false);
-        });
-
-        // Listen for community game updates
-        newSocket.on('community-game-update', (data: { gameId: string } & Partial<Game>) => {
-            setGames(prevGames => 
-                prevGames.map(game => 
-                    game.id === data.gameId 
-                        ? { ...game, ...data }
-                        : game
-                )
-            );
-        });
-
-        return () => {
-            newSocket.close();
-        };
-    }, [community]);
-
     // Filter games by search
     const filteredGames = games.filter(game => {
         if (!searchQuery) return true;
@@ -304,20 +268,7 @@ export default function CommunityPage() {
                                 </p>
                             </div>
                             
-                            {/* Connection Status */}
-                            <div className="flex items-center gap-2 text-sm">
-                                {isConnected ? (
-                                    <span className="flex items-center gap-1 text-green-500">
-                                        <Wifi className="w-4 h-4" />
-                                        Live
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-1 text-slate-500">
-                                        <WifiOff className="w-4 h-4" />
-                                        Disconnected
-                                    </span>
-                                )}
-                            </div>
+
                         </div>
                     )}
 

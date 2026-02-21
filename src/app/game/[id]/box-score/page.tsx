@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Share2, Download, X } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { useSocket } from '@/hooks/use-socket';
+import { useConvexGame } from '@/hooks/use-convex-game';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -93,7 +93,7 @@ type TeamStats = {
 export default function BoxScorePage() {
     const { id } = useParams();
     const router = useRouter();
-    const { socket } = useSocket(id as string);
+    const { gameState, gameEvents, isConnected } = useConvexGame(id as string);
     const [game, setGame] = useState<Game | null>(null);
     const [loading, setLoading] = useState(true);
     const [showShareModal, setShowShareModal] = useState(false);
@@ -107,28 +107,23 @@ export default function BoxScorePage() {
             });
     }, [id]);
 
-    // Listen for real-time updates
     useEffect(() => {
-        if (!socket) return;
+        if (!gameState || !gameEvents) return;
 
-        const handleGameState = ({ game: gameState, events }: { game: Game, events: GameEvent[] }) => {
-            setGame({ ...gameState, events });
-        };
-
-        socket.on('game-state', handleGameState);
-        socket.on('game-updated', (updates: Partial<Game>) => {
-            setGame(prev => prev ? { ...prev, ...updates } : null);
+        setGame(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                homeScore: gameState.homeScore ?? prev.homeScore,
+                guestScore: gameState.guestScore ?? prev.guestScore,
+                homeFouls: gameState.homeFouls ?? prev.homeFouls,
+                guestFouls: gameState.guestFouls ?? prev.guestFouls,
+                currentPeriod: gameState.currentPeriod ?? prev.currentPeriod,
+                status: gameState.status ?? prev.status,
+                events: gameEvents as GameEvent[],
+            };
         });
-
-        if (socket.connected) {
-            socket.emit('join-game', id);
-        }
-
-        return () => {
-            socket.off('game-state', handleGameState);
-            socket.off('game-updated');
-        };
-    }, [socket, id]);
+    }, [gameState, gameEvents]);
 
     const calculateTeamStats = (team: 'home' | 'guest'): TeamStats => {
         if (!game) return {

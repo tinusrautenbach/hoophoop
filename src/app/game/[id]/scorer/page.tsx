@@ -187,39 +187,18 @@ export default function ScorerPage() {
         })));
     }, [convexEvents]);
 
-    // We no longer need local timer ticking or periodic sync in the Scorer
-    // The server is now the authority.
-
-    const toggleTimer = () => {
-        if (!game || !socket || !userId) return;
+    const toggleTimer = async () => {
+        if (!game) return;
         
-        const action = isTimerRunning ? 'stop' : 'start';
-        const previousState = isTimerRunning;
-        
-        // Optimistic update
-        setIsTimerRunning(!isTimerRunning);
-        
-        // Emit with acknowledgment callback for error handling
-        socket.emit('timer-control', {
-            gameId: id,
-            action,
-            userId
-        }, (response: { success: boolean; error?: string; clockSeconds?: number; isTimerRunning?: boolean }) => {
-            if (!response?.success) {
-                // Revert optimistic update on failure
-                console.error(`[Timer] Failed to ${action} timer:`, response?.error);
-                setIsTimerRunning(previousState);
-                // Optionally show error to user (could add toast notification here)
+        try {
+            if (isTimerRunning) {
+                await stopTimer();
             } else {
-                // Confirm state matches server
-                if (response.isTimerRunning !== undefined) {
-                    setIsTimerRunning(response.isTimerRunning);
-                }
-                if (response.clockSeconds !== undefined) {
-                    setGame(prev => prev ? { ...prev, clockSeconds: response.clockSeconds! } : null);
-                }
+                await startTimer();
             }
-        });
+        } catch (error) {
+            console.error('Failed to toggle timer:', error);
+        }
     };
 
     const handleAddScorer = async (userIdToAdd: string) => {
@@ -233,7 +212,6 @@ export default function ScorerPage() {
             if (res.ok) {
                 const newScorer = await res.json();
                 setScorers(prev => [...prev, newScorer]);
-                // Could emit socket event here to notify other scorers
             } else {
                 console.error('Failed to add scorer');
             }
@@ -264,25 +242,16 @@ export default function ScorerPage() {
 
     const addEvent = async (event: Omit<GameEvent, 'id' | 'timestamp'>) => {
         try {
-            const res = await fetch(`/api/games/${id}/events`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    ...event,
-                    clockAt: game?.clockSeconds,
-                    period: game?.currentPeriod
-                }),
-                headers: { 'Content-Type': 'application/json' }
+            await addConvexEvent({
+                type: event.type,
+                period: event.period ?? game?.currentPeriod ?? 1,
+                clockAt: event.clockAt ?? game?.clockSeconds ?? 0,
+                team: event.team,
+                player: event.player,
+                value: event.value,
+                metadata: event.metadata,
+                description: event.description || '',
             });
-
-            if (res.ok) {
-                const persistedEvent = await res.json();
-                const newEvent: GameEvent = {
-                    ...persistedEvent,
-                    timestamp: new Date(persistedEvent.createdAt)
-                };
-                setEvents(prev => [newEvent, ...prev]);
-                socket?.emit('add-event', { gameId: id, event: newEvent });
-            }
         } catch (error) {
             console.error('Failed to save event:', error);
         }
@@ -290,28 +259,12 @@ export default function ScorerPage() {
 
     const deleteEvent = async (eventId: string) => {
         try {
-            const res = await fetch(`/api/games/${id}/events?eventId=${eventId}`, {
+            await removeEvent(eventId as any);
+            setEvents(prev => prev.filter(e => e.id !== eventId));
+            
+            fetch(`/api/games/${id}/events?eventId=${eventId}`, {
                 method: 'DELETE'
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setEvents(prev => prev.filter(e => e.id !== eventId));
-                
-                // If the server returned updated game state (scores/fouls), update local state
-                // and broadcast it along with the deletion signal
-                const updates: Partial<Game> & { deleteEventId: string } = { deleteEventId: eventId };
-                
-                if (data.game) {
-                    setGame(prev => prev ? { ...prev, ...data.game } : null);
-                    Object.assign(updates, data.game);
-                }
-
-                socket?.emit('update-game', {
-                    gameId: id,
-                    updates
-                });
-            }
+            }).catch(err => console.error('Failed to sync event deletion:', err));
         } catch (error) {
             console.error('Failed to delete event:', error);
         }
@@ -369,13 +322,6 @@ export default function ScorerPage() {
 
         setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
 
-        // Broadcast Event Update
-        socket?.emit('update-game', {
-            gameId: id,
-            updates: { updatedEvent }
-        });
-
-        // Persist Event Update to DB
         fetch(`/api/games/${id}/events`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -485,13 +431,7 @@ export default function ScorerPage() {
 
         // Auto-stop timer on timeout
         if (isTimerRunning) {
-            // Send stop command to server
-            socket?.emit('timer-control', {
-                gameId: id,
-                action: 'stop',
-                userId
-            });
-            setIsTimerRunning(false);
+            stopTimer();
         }
         setIsTimeoutOpen(false);
     };
@@ -524,34 +464,19 @@ export default function ScorerPage() {
 
         // Ensure timer is stopped on server
         if (isTimerRunning) {
-            socket?.emit('timer-control', {
-                gameId: id,
-                action: 'stop',
-                userId
-            });
-            setIsTimerRunning(false);
+            stopTimer();
         }
     };
 
-    const handleEndGame = () => {
+    const handleEndGame = async () => {
         if (!game) return;
         
-        // Stop timer if running
         if (isTimerRunning) {
-            socket?.emit('timer-control', {
-                gameId: id,
-                action: 'stop',
-                userId
-            });
-            setIsTimerRunning(false);
+            await stopTimer();
         }
         
-        // Update game status to final
-        updateGame({
-            status: 'final'
-        });
+        await updateGameStatus('final');
         
-        // Add end game event
         addEvent({
             type: 'game_end',
             team: 'home',
@@ -571,35 +496,10 @@ export default function ScorerPage() {
             });
             if (res.ok) {
                 const newPlayer = await res.json();
-                // Optimistically update or wait for socket? 
-                // Socket update usually comes from 'game-updated' but creating roster entry might not trigger it unless backend does.
-                // The API I wrote DOES insert an event, but doesn't explicitly broadcast 'game-updated' with new roster list.
-                // However, I should probably trigger a game reload or manual update.
-                // For now, let's update local state manually to feel responsive.
                 setGame(prev => prev ? {
                     ...prev,
                     rosters: [...prev.rosters, { ...newPlayer, points: 0, fouls: 0, isActive: false }]
                 } : null);
-                
-                // Also need to broadcast this change via socket if backend doesn't.
-                // Ideally backend should broadcast. My API implementation didn't emit socket events.
-                // I should assume the `game-updated` event might not fire for roster ADDITION unless I added that logic.
-                // But creating an EVENT (sub) usually triggers 'event-added'.
-                
-                // Let's emit a signal to refresh game state or just broadcast the roster change manually?
-                // Simpler: Just rely on local update and maybe socket 'game-updated' if I implement it in API.
-                // Since I didn't implement socket emit in the API route (it's serverless/next api route, hard to get socket.io instance directly without a separate server component or using the global io if initialized).
-                // Actually `server.ts` initializes io. Using it in Next.js API routes is tricky.
-                // So client-side emit is often easier for immediate feedback if security allows.
-                
-                socket?.emit('update-game', {
-                    gameId: id,
-                    updates: { 
-                        // Force a re-fetch or just send the new roster list?
-                        // Sending the whole roster list is heavy but safe.
-                        rosters: [...(game?.rosters || []), { ...newPlayer, points: 0, fouls: 0, isActive: false }]
-                    }
-                });
             }
         } catch (error) {
             console.error('Failed to add player:', error);
@@ -617,11 +517,6 @@ export default function ScorerPage() {
                 const updatedPlayer = await res.json();
                 const newRosters = game?.rosters.map(r => r.id === rosterId ? { ...r, ...updatedPlayer } : r) || [];
                 setGame(prev => prev ? { ...prev, rosters: newRosters } : null);
-                
-                socket?.emit('update-game', {
-                    gameId: id,
-                    updates: { rosters: newRosters }
-                });
             }
         } catch (error) {
             console.error('Failed to update player:', error);
@@ -636,25 +531,37 @@ export default function ScorerPage() {
             if (res.ok) {
                 const newRosters = game?.rosters.filter(r => r.id !== rosterId) || [];
                 setGame(prev => prev ? { ...prev, rosters: newRosters } : null);
-                
-                socket?.emit('update-game', {
-                    gameId: id,
-                    updates: { rosters: newRosters }
-                });
             }
         } catch (error) {
             console.error('Failed to remove player:', error);
         }
     };
 
-    const updateGame = (updates: Partial<Game> & { isTimerRunning?: boolean }) => {
-        if (!socket || !game) return;
+    const updateGame = async (updates: Partial<Game> & { isTimerRunning?: boolean }) => {
+        if (!game) return;
         const newState = { ...game, ...updates };
         setGame(newState);
-        socket.emit('update-game', { gameId: id, updates });
 
-        // Persist to DB - now includes isTimerRunning
-        if (Object.keys(updates).length > 0) {
+        if (updates.homeScore !== undefined || updates.guestScore !== undefined) {
+            if (updates.homeScore !== undefined) {
+                const diff = updates.homeScore - game.homeScore;
+                if (diff !== 0) await updateScore('home', diff);
+            }
+            if (updates.guestScore !== undefined) {
+                const diff = updates.guestScore - game.guestScore;
+                if (diff !== 0) await updateScore('guest', diff);
+            }
+        }
+        if (updates.homeFouls !== undefined) await updateFouls('home', updates.homeFouls);
+        if (updates.guestFouls !== undefined) await updateFouls('guest', updates.guestFouls);
+        if (updates.homeTimeouts !== undefined) await updateTimeouts('home', updates.homeTimeouts);
+        if (updates.guestTimeouts !== undefined) await updateTimeouts('guest', updates.guestTimeouts);
+        if (updates.clockSeconds !== undefined) await updateClock(updates.clockSeconds);
+        if (updates.currentPeriod !== undefined) await updatePeriod(updates.currentPeriod);
+        if (updates.possession !== undefined && updates.possession !== null) await updatePossession(updates.possession);
+        if (updates.status !== undefined) await updateGameStatus(updates.status);
+
+        if (Object.keys(updates).some(k => !['homeScore', 'guestScore', 'homeFouls', 'guestFouls', 'homeTimeouts', 'guestTimeouts', 'clockSeconds', 'currentPeriod', 'possession', 'status', 'isTimerRunning'].includes(k))) {
             fetch(`/api/games/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
