@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useConvexGame } from '@/hooks/use-convex-game';
+import { useHasuraGame } from '@/hooks/use-hasura-game';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, History, Download, Edit2, Search, X } from 'lucide-react';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
@@ -27,7 +27,7 @@ type GameEventRaw = {
 export default function FullLogPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { gameEvents, removeEvent, isConnected } = useConvexGame(id as string);
+    const { gameEvents, removeEvent, isConnected } = useHasuraGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
     const [events, setEvents] = useState<GameEvent[]>([]);

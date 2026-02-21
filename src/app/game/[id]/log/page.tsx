@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useConvexGame } from '@/hooks/use-convex-game';
+import { useHasuraGame } from '@/hooks/use-hasura-game';
 import { ArrowLeft, History, Search } from 'lucide-react';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
 
@@ -26,7 +26,7 @@ type Game = {
 export default function SpectatorLogPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { gameEvents, isConnected } = useConvexGame(id as string);
+    const { gameEvents, isConnected } = useHasuraGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
     const [events, setEvents] = useState<GameEvent[]>([]);

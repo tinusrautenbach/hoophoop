@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Share2, Download, X } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { useConvexGame } from '@/hooks/use-convex-game';
+import { useHasuraGame } from '@/hooks/use-hasura-game';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -93,7 +93,7 @@ type TeamStats = {
 export default function BoxScorePage() {
     const { id } = useParams();
     const router = useRouter();
-    const { gameState, gameEvents, isConnected } = useConvexGame(id as string);
+    const { gameState, gameEvents, isConnected } = useHasuraGame(id as string);
     const [game, setGame] = useState<Game | null>(null);
     const [loading, setLoading] = useState(true);
     const [showShareModal, setShowShareModal] = useState(false);

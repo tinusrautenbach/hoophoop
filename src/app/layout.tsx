@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 import { AuthProvider, SignedIn, SignedOut, UserButton, SignInButton } from '@/components/auth-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeToggleIcon } from '@/components/theme-toggle'
-import ConvexClientProvider from '@/components/ConvexClientProvider'
+import HasuraProvider from '@/components/HasuraProvider'
 import Link from 'next/link'
 import { syncUser } from "@/lib/auth-server";
 import { auth } from "@/lib/auth-server";
@@ -67,7 +67,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
-          <ConvexClientProvider>
+          <HasuraProvider>
             <ThemeProvider userTheme={userTheme}>
               <header className="border-b border-[var(--border)] p-4 flex justify-between items-center bg-[var(--card)]/50 backdrop-blur-md sticky top-0 z-50">
                 <Link href="/" className="flex items-center gap-2">
@@ -99,7 +99,7 @@ export default async function RootLayout({
                 {children}
               </main>
             </ThemeProvider>
-          </ConvexClientProvider>
+          </HasuraProvider>
         </AuthProvider>
       </body>
     </html>

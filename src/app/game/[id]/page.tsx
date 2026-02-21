@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useConvexGame } from '@/hooks/use-convex-game';
+import { useHasuraGame } from '@/hooks/use-hasura-game';
 import { motion } from 'framer-motion';
 import { Trophy, Table, RefreshCw, Wifi, WifiOff, Eye, Globe, Users2 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
@@ -64,7 +64,7 @@ export default function SpectatorPage() {
         currentClock,
         isTimerRunning,
         isConnected,
-    } = useConvexGame(id as string);
+    } = useHasuraGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
     const [loading, setLoading] = useState(true);
