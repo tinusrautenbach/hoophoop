@@ -57,22 +57,30 @@ describe('Team Members API Route', () => {
         it('should add a new member to the team', async () => {
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
 
-            (db.query.athletes.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
-            (db.query.teamMemberships.findFirst as unknown as { mockResolvedValue: (value: unknown) => { mockResolvedValueOnce: (value: unknown) => void } }).mockResolvedValue(null).mockResolvedValueOnce({
-                id: 'm1',
-                athleteId: 'a1',
-                teamId: 't1',
-                number: '23',
-                athlete: { id: 'a1', name: 'LeBron' }
-            });
-
-            const mockAthlete = { id: 'a1', name: 'LeBron' };
+            const mockAthlete = { id: 'a1', name: 'LeBron', firstName: 'LeBron', surname: '' };
             const mockMembership = { 
                 id: 'm1', 
                 athleteId: 'a1', 
                 teamId: 't1', 
                 number: '23' 
             };
+            const mockMembershipWithAthlete = {
+                id: 'm1',
+                athleteId: 'a1',
+                teamId: 't1',
+                number: '23',
+                athlete: mockAthlete
+            };
+
+            // First call - no existing athlete found, second call - find the created athlete
+            const athletesMock = db.query.athletes.findFirst as unknown as { mockResolvedValueOnce: (value: unknown) => { mockResolvedValueOnce: (value: unknown) => void } };
+            athletesMock.mockResolvedValueOnce(null);  // First call - no existing athlete
+            athletesMock.mockResolvedValueOnce(mockAthlete); // Second call - return the athlete we just created
+            
+            // No existing membership found
+            const membershipsMock = db.query.teamMemberships.findFirst as unknown as { mockResolvedValueOnce: (value: unknown) => { mockResolvedValueOnce: (value: unknown) => void } };
+            membershipsMock.mockResolvedValueOnce(null);  // First call - check for existing membership
+            membershipsMock.mockResolvedValueOnce(mockMembershipWithAthlete); // Second call - return full membership with athlete
 
             let insertCallCount = 0;
             (db.insert as unknown as { mockImplementation: (callback: unknown) => void }).mockImplementation(() => {
@@ -80,7 +88,9 @@ describe('Team Members API Route', () => {
                 return {
                     values: vi.fn().mockReturnValue({
                         returning: vi.fn().mockResolvedValue(
-                            insertCallCount === 1 ? [mockAthlete] : [mockMembership]
+                            insertCallCount === 1 ? [mockAthlete] : 
+                            insertCallCount === 2 ? [mockMembership] : 
+                            [{ id: 'ph1' }] // playerHistory insert
                         ),
                     }),
                 };
