@@ -64,7 +64,7 @@ export function SubsModal({ game, onClose, onSub, onAmendRoster }: SubsModalProp
                                     <ArrowDown size={12} className={team === 'home' ? "text-orange-300" : "text-slate-500"} />
                                 </div>
                                 <div className="text-xl font-black leading-none">{player.number}</div>
-                                <div className="text-[9px] font-bold truncate w-full text-center px-1">{player.name}</div>
+                                <div className="text-[27px] font-bold truncate w-full text-center px-1">{player.name}</div>
                             </button>
                         ))}
                         {active.length === 0 && (
@@ -92,7 +92,7 @@ export function SubsModal({ game, onClose, onSub, onAmendRoster }: SubsModalProp
                                     <ArrowUp size={12} className="text-green-500" />
                                 </div>
                                 <div className="text-xl font-black text-slate-500 group-hover:text-white transition-colors">{player.number}</div>
-                                <div className="text-[9px] font-bold text-slate-600 truncate w-full text-center px-1 group-hover:text-slate-400 transition-colors">{player.name}</div>
+                                <div className="text-[27px] font-bold text-slate-600 truncate w-full text-center px-1 group-hover:text-slate-400 transition-colors">{player.name}</div>
                             </button>
                         ))}
                         {bench.length === 0 && (
