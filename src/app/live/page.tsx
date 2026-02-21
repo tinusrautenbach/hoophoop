@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { GameCard } from './components/game-card';
-import { Wifi, WifiOff, Search, Calendar } from 'lucide-react';
+import { Search, Calendar } from 'lucide-react';
 
 interface Game {
     id: string;
@@ -62,8 +61,6 @@ export default function LivePage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
-    const [, setSocket] = useState<Socket | null>(null);
-    const [isConnected, setIsConnected] = useState(false);
 
     // Fetch games from API
     const fetchGames = useCallback(async () => {
@@ -92,49 +89,6 @@ export default function LivePage() {
     useEffect(() => {
         fetchGames();
     }, [fetchGames]);
-
-    // Setup socket connection
-    useEffect(() => {
-        const newSocket = io();
-        setSocket(newSocket);
-
-        newSocket.on('connect', () => {
-            setIsConnected(true);
-            // Join public games room for real-time updates
-            newSocket.emit('join-public-games');
-        });
-
-        newSocket.on('disconnect', () => {
-            setIsConnected(false);
-        });
-
-        // Listen for public game updates
-        newSocket.on('public-game-update', (data: { gameId: string } & Partial<Game>) => {
-            setGames(prevGames => 
-                prevGames.map(game => 
-                    game.id === data.gameId 
-                        ? { ...game, ...data }
-                        : game
-                )
-            );
-            
-            // Also update grouped games
-            setGroupedGames(prevGroups => 
-                prevGroups.map(group => ({
-                    ...group,
-                    games: group.games.map(game => 
-                        game.id === data.gameId 
-                            ? { ...game, ...data }
-                            : game
-                    )
-                }))
-            );
-        });
-
-        return () => {
-            newSocket.close();
-        };
-    }, []);
 
     // Filter games by search
     const filteredGames = games.filter(game => {
@@ -175,20 +129,7 @@ export default function LivePage() {
                             <p className="text-slate-400 text-sm">Real-time basketball scores from communities worldwide</p>
                         </div>
                         
-                        {/* Connection Status */}
-                        <div className="flex items-center gap-2 text-sm">
-                            {isConnected ? (
-                                <span className="flex items-center gap-1 text-green-500">
-                                    <Wifi className="w-4 h-4" />
-                                    Live
-                                </span>
-                            ) : (
-                                <span className="flex items-center gap-1 text-slate-500">
-                                    <WifiOff className="w-4 h-4" />
-                                    Disconnected
-                                </span>
-                            )}
-                        </div>
+
                     </div>
 
                     {/* Tabs */}

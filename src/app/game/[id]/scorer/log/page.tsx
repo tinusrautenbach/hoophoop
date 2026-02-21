@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useSocket } from '@/hooks/use-socket';
+import { useConvexGame } from '@/hooks/use-convex-game';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, History, Download, Edit2, Search, X } from 'lucide-react';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
@@ -27,7 +27,7 @@ type GameEventRaw = {
 export default function FullLogPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { socket } = useSocket(id as string);
+    const { gameEvents, removeEvent, isConnected } = useConvexGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
     const [events, setEvents] = useState<GameEvent[]>([]);
@@ -52,41 +52,27 @@ export default function FullLogPage() {
     }, [id]);
 
     useEffect(() => {
-        if (!socket) return;
-        socket.on('event-added', (event: GameEvent) => {
-            const newEvent = { ...event, timestamp: new Date(event.timestamp || Date.now()) };
-            setEvents(prev => [newEvent, ...prev]);
-        });
-        socket.on('game-updated', (updates: { deleteEventId?: string }) => {
-            if (updates.deleteEventId) {
-                setEvents(prev => prev.filter(e => e.id !== updates.deleteEventId));
-            }
-        });
-    }, [socket]);
+        if (!gameEvents) return;
+        const mappedEvents = gameEvents.map((e: { _id: string; createdAt: number; [key: string]: unknown }) => ({
+            ...e,
+            id: e._id,
+            timestamp: new Date(e.createdAt || Date.now()),
+        })) as unknown as GameEvent[];
+        setEvents(mappedEvents);
+    }, [gameEvents]);
 
     const deleteEvent = async (eventId: string) => {
         try {
-            const res = await fetch(`/api/games/${id}/events?eventId=${eventId}`, {
-                method: 'DELETE'
-            });
-
-            if (res.ok) {
-                setEvents(prev => prev.filter(e => e.id !== eventId));
-                socket?.emit('update-game', {
-                    gameId: id,
-                    updates: { deleteEventId: eventId }
-                });
-            }
+            await removeEvent(eventId as unknown as string);
+            setEvents(prev => prev.filter(e => e.id !== eventId));
         } catch (error) {
             console.error('Failed to delete event:', error);
         }
     };
 
     const handleSaveEdit = (updatedEvent: GameEvent) => {
-        // Optimistically update local state
         setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
 
-        // Persist to DB - only send valid fields
         fetch(`/api/games/${id}/events`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -101,17 +87,6 @@ export default function FullLogPage() {
                 metadata: updatedEvent.metadata
             })
         }).catch(err => console.error('Failed to persist event update:', err));
-
-        // Broadcast to other clients
-        socket?.emit('update-game', {
-            gameId: id,
-            updates: { updatedEvent }
-        });
-
-        // NOTE: In FullLogPage, we don't recalculate the full game score locally because 
-        // we might not have the full game logic/rosters loaded in the same way. 
-        // ideally the server or the main scorer page client handles the score reconciliation.
-        // However, for immediate feedback if the user goes back, we rely on the main page refetching or socket updates.
 
         setEditingEvent(null);
     };
