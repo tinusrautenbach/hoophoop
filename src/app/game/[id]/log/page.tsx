@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useSocket } from '@/hooks/use-socket';
+import { useHasuraGame } from '@/hooks/use-hasura-game';
 import { ArrowLeft, History, Search } from 'lucide-react';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
 
@@ -26,7 +26,7 @@ type Game = {
 export default function SpectatorLogPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { socket } = useSocket(id as string);
+    const { gameEvents, isConnected } = useHasuraGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
     const [events, setEvents] = useState<GameEvent[]>([]);
@@ -50,23 +50,14 @@ export default function SpectatorLogPage() {
     }, [id]);
 
     useEffect(() => {
-        if (!socket) return;
-        socket.on('event-added', (event: GameEvent) => {
-            const newEvent = { ...event, timestamp: new Date(event.timestamp || Date.now()) };
-            setEvents(prev => [newEvent, ...prev]);
-        });
-        socket.on('game-updated', (updates: { deleteEventId?: string; updatedEvent?: GameEvent }) => {
-            if (updates.deleteEventId) {
-                setEvents(prev => prev.filter(e => e.id !== updates.deleteEventId));
-            }
-            if (updates.updatedEvent) {
-                setEvents(prev => prev.map(e => e.id === updates.updatedEvent!.id ? {
-                    ...updates.updatedEvent!,
-                    timestamp: new Date(updates.updatedEvent!.timestamp || Date.now())
-                } : e));
-            }
-        });
-    }, [socket]);
+        if (!gameEvents) return;
+        const mappedEvents = gameEvents.map((e: { _id: string; createdAt: number; [key: string]: unknown }) => ({
+            ...e,
+            id: e._id,
+            timestamp: new Date(e.createdAt || Date.now()),
+        })) as unknown as GameEvent[];
+        setEvents(mappedEvents);
+    }, [gameEvents]);
 
     const filteredEvents = events.filter(e => {
         const matchesSearch = e.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||

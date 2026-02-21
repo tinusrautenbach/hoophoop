@@ -686,6 +686,89 @@
   - [x] `spec/test_policy.md` - Updated with load test requirements
   - [x] `spec/implementation_plan.md` - Marked Phase 16 as complete
 
+## Phase 18: Hasura Real-time Migration (NEW - OSS Alternative to Convex)
+- [ ] **18.1 Hasura Infrastructure Setup**:
+  - [ ] Create `docker-compose.hasura.yml` with Hasura GraphQL Engine + PostgreSQL
+  - [ ] Configure Hasura environment variables (admin secret, JWT secret, database URL)
+  - [ ] Set up Hasura metadata directory structure (`hasura/metadata/`)
+  - [ ] Configure JWT authentication integration with Clerk
+  - [ ] Add health check endpoint for Hasura service
+  
+- [ ] **18.2 Database Schema Migration to Hasura**:
+  - [ ] Track all existing tables in Hasura (`games`, `gameEvents`, `gameStates`, etc.)
+  - [ ] Set up relationships (games → gameEvents, games → gameStates)
+  - [ ] Configure permissions (owner can edit, spectators can view)
+  - [ ] Create views for public games listing
+  - [ ] Set up custom functions for complex queries if needed
+  
+- [ ] **18.3 Real-time Subscriptions Configuration**:
+  - [ ] Enable streaming subscriptions on `gameStates` table
+  - [ ] Enable streaming subscriptions on `gameEvents` table
+  - [ ] Configure `gamePresence` table for active user tracking
+  - [ ] Set up `timerSync` table subscriptions
+  - [ ] Configure subscription permissions (authenticated users only)
+  
+- [ ] **18.4 Event Triggers (Replacing Socket.io Events)**:
+  - [ ] Create event trigger on `gameEvents` insert → broadcast to subscribers
+  - [ ] Create event trigger on `gameStates` update → broadcast to subscribers
+  - [ ] Set up timer control webhook handlers (start/stop)
+  - [ ] Configure presence tracking (join/leave game events)
+  - [ ] Add serverless functions for event processing if needed
+  
+- [ ] **18.5 Frontend GraphQL Client Setup**:
+  - [ ] Install GraphQL client libraries (`urql` or `@apollo/client`)
+  - [ ] Create `HasuraProvider` component (similar to ConvexProvider)
+  - [ ] Set up GraphQL WebSocket client for subscriptions
+  - [ ] Configure authentication headers (JWT from Clerk)
+  - [ ] Add error handling and reconnection logic
+  
+- [ ] **18.6 useHasuraGame Hook (Socket.io Replacement)**:
+  - [ ] Create `useHasuraGame` hook with GraphQL subscriptions
+  - [ ] Subscribe to game state changes via GraphQL subscription
+  - [ ] Subscribe to game events stream
+  - [ ] Implement timer state subscription
+  - [ ] Add mutations for updateScore, updateFouls, etc.
+  - [ ] Implement timer control (start/stop) via GraphQL mutations
+  - [ ] Add presence tracking (join/leave game)
+  
+- [ ] **18.7 Migrate Game Pages to Hasura**:
+  - [ ] Update `src/app/game/[id]/page.tsx` (spectator) → useHasuraGame
+  - [ ] Update `src/app/game/[id]/scorer/page.tsx` → useHasuraGame
+  - [ ] Update `src/app/game/[id]/box-score/page.tsx` → GraphQL queries
+  - [ ] Update `src/app/game/[id]/log/page.tsx` → GraphQL subscriptions
+  - [ ] Update `src/app/live/page.tsx` → GraphQL subscription for public games
+  - [ ] Update `src/app/community/[slug]/page.tsx` → GraphQL subscriptions
+  
+- [ ] **18.8 Remove Socket.io and Convex Dependencies**:
+  - [ ] Remove `convex` package from dependencies
+  - [ ] Remove `@convex-dev/auth` package
+  - [ ] Remove `src/hooks/use-convex-game.ts`
+  - [ ] Remove `src/components/ConvexClientProvider.tsx`
+  - [ ] Remove `convex/` directory
+  - [ ] Keep Socket.io files removed (already done in Phase 16)
+  
+- [ ] **18.9 Hasura Metadata and Migrations**:
+  - [ ] Export Hasura metadata to `hasura/metadata/`
+  - [ ] Create migration files for any schema changes
+  - [ ] Set up seed data for testing
+  - [ ] Document Hasura console access and configuration
+  - [ ] Add Hasura CLI configuration (`config.yaml`)
+  
+- [ ] **18.10 Testing and Validation**:
+  - [ ] Update test utilities for GraphQL mocking
+  - [ ] Create tests for `useHasuraGame` hook
+  - [ ] Test real-time subscriptions with multiple clients
+  - [ ] Validate timer synchronization accuracy
+  - [ ] Test authentication/authorization flow
+  - [ ] Performance testing (compare with Socket.io benchmarks)
+  
+- [ ] **18.11 Documentation**:
+  - [ ] Update `CONVEX_MIGRATION.md` → `REALTIME_MIGRATION.md` (document both Convex and Hasura)
+  - [ ] Add `HASURA_SETUP.md` with setup instructions
+  - [ ] Document GraphQL schema and available queries/subscriptions
+  - [ ] Update environment variables documentation
+  - [ ] Add architecture diagram showing Hasura integration
+
 ## Phase 17: Database Backup & S3 Storage (NEW)
 - [x] **17.1 Backup Strategy**:
   - [x] Daily automated database backups at 2 AM UTC
