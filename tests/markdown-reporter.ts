@@ -2,29 +2,8 @@
 import fs from 'fs';
 import path from 'path';
 
-interface TestResult {
-  state: () => string;
-  errors?: Array<{ message?: string }>;
-}
-
-interface Test {
-  name: string;
-  result: () => TestResult;
-}
-
-interface TestCollection {
-  allTests: () => Test[];
-}
-
-interface TestFile {
-  moduleId?: string;
-  state?: () => string;
-  errors?: Array<{ message?: string }>;
-  children?: TestCollection;
-}
-
 export default class MarkdownReporter {
-  onTestRunEnd(files: TestFile[], _errors: unknown, _reason: unknown) {
+  onTestRunEnd(files: any[], _errors: any, _reason: any) {
     console.log('[MarkdownReporter] onTestRunEnd called with', files?.length, 'files');
     
     const testsDir = path.resolve(process.cwd(), 'tests');
@@ -39,16 +18,31 @@ export default class MarkdownReporter {
     const allTests = files.flatMap(f => [...(f.children?.allTests() || [])]);
     const totalTests = allTests.length;
     
-    const failedTests = allTests.filter(t => t.result?.().state() === 'failed').length;
+    // Helper to get test state safely
+    const getTestState = (t: any): string => {
+      if (!t.result) return 'skipped';
+      const result = typeof t.result === 'function' ? t.result() : t.result;
+      if (!result) return 'skipped';
+      const state = typeof result.state === 'function' ? result.state() : result.state;
+      return state || 'skipped';
+    };
+    
+    // Helper to get file state safely
+    const getFileState = (f: any): string => {
+      if (!f.state) return 'passed';
+      return typeof f.state === 'function' ? f.state() : f.state;
+    };
+    
+    const failedTests = allTests.filter(t => getTestState(t) === 'failed').length;
     const passedTests = totalTests - failedTests;
     
     // Check for files that failed at module level (import errors, etc.)
     const failedFiles = files.filter(f => {
       // Check if module itself failed
-      if (f.state?.() === 'failed') return true;
+      if (getFileState(f) === 'failed') return true;
       // Check if it has any failed tests
       const tests = [...(f.children?.allTests() || [])];
-      return tests.some(t => t.result?.().state() === 'failed');
+      return tests.some(t => getTestState(t) === 'failed');
     }).length;
     const passedFiles = totalFiles - failedFiles;
 
@@ -70,9 +64,9 @@ export default class MarkdownReporter {
       const fileName = path.relative(process.cwd(), file.moduleId || 'unknown');
       const fileTasks = [...(file.children?.allTests() || [])];
       const fTotal = fileTasks.length;
-      const fFailed = fileTasks.filter(t => t.result?.().state() === 'failed').length;
+      const fFailed = fileTasks.filter(t => getTestState(t) === 'failed').length;
       const fPassed = fTotal - fFailed;
-      const hasModuleError = file.state?.() === 'failed';
+      const hasModuleError = getFileState(file) === 'failed';
       const status = (fFailed > 0 || hasModuleError) ? '❌' : '✅';
       suiteContent += `| ${fileName} | ${status} | ${fPassed} | ${fFailed} | ${fTotal} |\n`;
     });
@@ -90,11 +84,11 @@ export default class MarkdownReporter {
       
       // Report module-level failures first
       files.forEach(file => {
-        if (file.state?.() === 'failed') {
+        if (getFileState(file) === 'failed') {
           reportContent += `### ${path.relative(process.cwd(), file.moduleId || 'unknown')}\n`;
           reportContent += `- **Module failed to load**\n`;
           if (file.errors && file.errors.length > 0) {
-            file.errors.forEach(err => {
+            file.errors.forEach((err: any) => {
               const cleanMsg = (err.message || 'Unknown error').replace(/\n/g, '\n  ');
               reportContent += `  \`\`\`\n  ${cleanMsg}\n  \`\`\`\n`;
             });
@@ -106,14 +100,14 @@ export default class MarkdownReporter {
       // Report test-level failures
       files.forEach(file => {
         const fileTasks = [...(file.children?.allTests() || [])];
-        const failures = fileTasks.filter(t => t.result?.().state() === 'failed');
+        const failures = fileTasks.filter(t => getTestState(t) === 'failed');
         if (failures.length > 0) {
           reportContent += `### ${path.relative(process.cwd(), file.moduleId || 'unknown')}\n`;
           failures.forEach(t => {
             reportContent += `- **${t.name}**\n`;
-            const result = t.result?.();
+            const result = typeof t.result === 'function' ? t.result() : t.result;
             if (result?.errors) {
-              result.errors.forEach(err => {
+              result.errors.forEach((err: any) => {
                 const cleanMsg = (err.message || 'No error message').replace(/\n/g, '\n  ');
                 reportContent += `  \`\`\`\n  ${cleanMsg}\n  \`\`\`\n`;
               });
