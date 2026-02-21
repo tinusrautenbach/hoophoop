@@ -79,3 +79,68 @@ This file defines the strict rules and guidelines for this project. Antigravity 
 - **Tracking**: Update `spec/security_test_schedule.md` with last run dates after each test cycle
 - **Blocking**: High/Critical security findings must be resolved before deployment
 - **Mock Auth Check**: Never deploy with `NEXT_PUBLIC_USE_MOCK_AUTH=true` in production
+
+## 12. Pre-Merge Verification & CI/CD Requirements (REQUIRED)
+
+### 12.1 Mandatory Automated Checks
+Before ANY merge to `main`, ALL of the following MUST pass:
+1. ✅ **Unit Tests** - All Vitest tests must pass (0 failures)
+2. ✅ **Linting** - ESLint must pass with zero errors
+3. ✅ **Type Checking** - TypeScript must compile without errors
+4. ✅ **Security Audit** - No high or critical vulnerabilities in `npm audit`
+5. ✅ **CI Workflow** - GitHub Actions CI workflow must be green
+
+### 12.2 Agent Pre-Merge Verification Protocol
+The agent MUST complete this checklist before requesting merge approval:
+
+1. **Local Verification** (before pushing):
+   ```bash
+   npm run lint
+   npm run test
+   ```
+   - Verify both commands exit with code 0
+
+2. **GitHub Verification** (after creating PR):
+   - Check PR page shows "All checks have passed"
+   - Verify no failing workflows
+   - Review any coverage reports
+
+3. **User Approval Request**:
+   - Summarize test results in approval request
+   - Confirm all status checks are green
+   - Wait for explicit "yes" before merging
+
+### 12.3 Deployment Pipeline Overview
+- **On PR**: CI workflow runs automatically
+- **On Merge**: Deploy workflow triggers Coolify webhook
+- **Blocking**: Failed tests BLOCK deployment (no exceptions)
+- **Notifications**: PR comments show deployment status
+
+### 12.4 Branch Protection Rules (MUST ENABLE)
+Repository owner MUST enable these settings:
+- Settings → Branches → Add rule for `main`
+- ☑️ Require a pull request before merging
+- ☑️ Require status checks to pass
+  - Select: `ci / lint`
+  - Select: `ci / typecheck`
+  - Select: `ci / security`
+  - Select: `ci / test`
+- ☑️ Require conversation resolution before merging
+- ☑️ Include administrators (apply to owners too)
+
+### 12.5 Emergency Procedures
+Even for urgent hotfixes:
+1. Create feature branch: `git checkout -b hotfix/critical-bug`
+2. Make minimal, focused changes
+3. Run full verification: `npm run lint && npm run test`
+4. Create PR and wait for ALL checks to pass
+5. Request expedited review but DO NOT bypass checks
+6. Merge only after green status
+
+### 12.6 Failure Handling
+If CI checks fail:
+1. **DO NOT MERGE** - Block merge until fixed
+2. Review failing workflow logs in GitHub Actions
+3. Fix issues locally on feature branch
+4. Push fixes and wait for re-check
+5. Repeat until all checks pass
