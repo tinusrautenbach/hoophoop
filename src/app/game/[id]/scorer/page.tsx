@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useSocket } from '@/hooks/use-socket';
+import { useConvexGame } from '@/hooks/use-convex-game';
 import { useAuth } from '@/components/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -91,14 +91,30 @@ type Game = {
 export default function ScorerPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { socket, isConnected } = useSocket(id as string);
     const { userId } = useAuth();
+    
+    const {
+        gameState: convexState,
+        gameEvents: convexEvents,
+        currentClock,
+        isTimerRunning,
+        isConnected,
+        updateScore,
+        updateFouls,
+        updateTimeouts,
+        updateClock,
+        updatePeriod,
+        updatePossession,
+        updateGameStatus,
+        startTimer,
+        stopTimer,
+        addEvent: addConvexEvent,
+        removeEvent,
+    } = useConvexGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
     const [loading, setLoading] = useState(true);
     const [scoringFor, setScoringFor] = useState<{ points: number, side?: 'home' | 'guest', isMiss?: boolean } | null>(null);
-    // isTimerRunning is now derived from game state, but we keep local state for optimistic UI
-    const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [isSubsOpen, setIsSubsOpen] = useState(false);
     const [isTimeEditing, setIsTimeEditing] = useState(false);
     const [tempTime, setTempTime] = useState<{ min: string, sec: string }>({ min: '10', sec: '00' });
@@ -118,17 +134,10 @@ export default function ScorerPage() {
     const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
-        if (userId && socket) {
-            socket.emit('authenticate', { userId });
-        }
-    }, [userId, socket]);
-
-    useEffect(() => {
         fetch(`/api/games/${id}`)
             .then(res => res.json())
             .then(data => {
                 setGame(data);
-                setIsTimerRunning(data.isTimerRunning);
                 if (data.events) {
                     setEvents(data.events.map((e: GameEventRaw) => ({
                         ...e,
@@ -143,88 +152,40 @@ export default function ScorerPage() {
     }, [id]);
 
     useEffect(() => {
-        if (!socket) return;
+        if (!convexState || !game) return;
+        
+        setGame(prev => prev ? {
+            ...prev,
+            homeScore: convexState.homeScore ?? prev.homeScore,
+            guestScore: convexState.guestScore ?? prev.guestScore,
+            homeFouls: convexState.homeFouls ?? prev.homeFouls,
+            guestFouls: convexState.guestFouls ?? prev.guestFouls,
+            homeTimeouts: convexState.homeTimeouts ?? prev.homeTimeouts,
+            guestTimeouts: convexState.guestTimeouts ?? prev.guestTimeouts,
+            currentPeriod: convexState.currentPeriod ?? prev.currentPeriod,
+            possession: convexState.possession ?? prev.possession,
+            status: convexState.status ?? prev.status,
+            clockSeconds: currentClock,
+            isTimerRunning,
+        } : null);
+    }, [convexState, currentClock, isTimerRunning, game]);
 
-        // Listen for full game state on connection
-        const handleGameState = ({ game: gameState, events: gameEvents }: { game: Game, events: GameEventRaw[] }) => {
-            console.log('Scorer received game-state:', gameState);
-            setGame(gameState);
-            setIsTimerRunning(gameState.isTimerRunning);
-            if (gameState.scorers) {
-                setScorers(gameState.scorers);
-            }
-            if (gameEvents) {
-                setEvents(gameEvents.map((e: GameEventRaw) => ({
-                    ...e,
-                    timestamp: new Date(e.timestamp || e.createdAt || Date.now())
-                })) as GameEvent[]);
-            }
-        };
-
-        const handleClockUpdate = (data: { gameId: string, clockSeconds: number, isTimerRunning: boolean }) => {
-            if (data.gameId === id) {
-                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
-                setIsTimerRunning(data.isTimerRunning);
-            }
-        };
-
-        const handleTimerStarted = (data: { gameId: string, clockSeconds: number }) => {
-            if (data.gameId === id) {
-                setIsTimerRunning(true);
-                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
-            }
-        };
-
-        const handleTimerStopped = (data: { gameId: string, clockSeconds: number }) => {
-            if (data.gameId === id) {
-                setIsTimerRunning(false);
-                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
-            }
-        };
-
-        socket.on('game-state', handleGameState);
-        socket.on('clock-update', handleClockUpdate);
-        socket.on('timer-started', handleTimerStarted);
-        socket.on('timer-stopped', handleTimerStopped);
-
-        socket.on('game-updated', (updates: Partial<Game> & { deleteEventId?: string }) => {
-            if (updates.deleteEventId) {
-                setEvents(prev => prev.filter(e => e.id !== updates.deleteEventId));
-            }
-            setGame(prev => prev ? { ...prev, ...updates } : null);
-        });
-        socket.on('event-added', (event: GameEvent) => {
-            // Convert string timestamp back to Date if needed
-            const newEvent = {
-                ...event,
-                timestamp: new Date(event.timestamp)
-            };
-            setEvents(prev => [newEvent, ...prev]);
-        });
-
-        // Emit join-game AFTER setting up listeners to avoid race condition
-        if (socket.connected) {
-            console.log('Scorer emitting join-game for:', id);
-            socket.emit('join-game', id);
-        }
-
-        // Handle reconnection - re-join game room when socket reconnects
-        const handleConnect = () => {
-            console.log('[Scorer] Socket reconnected, re-joining game:', id);
-            socket.emit('join-game', id);
-        };
-        socket.on('connect', handleConnect);
-
-        return () => {
-            socket.off('game-state', handleGameState);
-            socket.off('clock-update', handleClockUpdate);
-            socket.off('timer-started', handleTimerStarted);
-            socket.off('timer-stopped', handleTimerStopped);
-            socket.off('game-updated');
-            socket.off('event-added');
-            socket.off('connect', handleConnect);
-        };
-    }, [socket, id]);
+    useEffect(() => {
+        if (!convexEvents) return;
+        
+        setEvents(convexEvents.map((e: { _id: string; type: string; period: number; clockAt: number; team?: 'home' | 'guest'; player?: string; value?: number; metadata?: Record<string, unknown>; description: string; createdAt: number }) => ({
+            id: e._id,
+            type: e.type,
+            period: e.period,
+            clockAt: e.clockAt,
+            team: e.team || 'home',
+            player: e.player,
+            value: e.value,
+            metadata: e.metadata as { points?: number; shotType?: '2pt' | '3pt' | 'ft' },
+            description: e.description,
+            timestamp: new Date(e.createdAt),
+        })));
+    }, [convexEvents]);
 
     // We no longer need local timer ticking or periodic sync in the Scorer
     // The server is now the authority.
