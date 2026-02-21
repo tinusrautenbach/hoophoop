@@ -30,6 +30,7 @@
     - [x] Vertical feed at bottom (showing last 10 entries).
     - [x] Expandable action items.
     - [x] Edit/Delete modal for individual events.
+    - [ ] **Shot Statistics Display**: Show made/attempts ratio (e.g., "+2 (1/3)") for each scoring event, tracking player's shooting percentage by shot type (FT/2PT/3PT) within the game.
   - [x] **3.2.3 Status Indicators**: Possession arrow, Foul Count alerts (Bonus indicators).
   - [x] **3.2.4 Points-First Flow**: Support for clicking points then selecting player/team.
 - [x] **3.3 Roster Enforcement & Positioning**:
