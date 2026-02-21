@@ -1,18 +1,23 @@
-export const api = {
-  games: {
-    getGameState: "games:getGameState",
-    getGameEvents: "games:getGameEvents",
-    getPublicGames: "games:getPublicGames",
-    getCommunityGames: "games:getCommunityGames",
-    getGamePresence: "games:getGamePresence",
-    getTimerState: "games:getTimerState",
-    updateGameState: "games:updateGameState",
-    addGameEvent: "games:addGameEvent",
-    controlTimer: "games:controlTimer",
-    joinGame: "games:joinGame",
-    leaveGame: "games:leaveGame",
-    deleteGameEvent: "games:deleteGameEvent",
-  }
-};
+/* eslint-disable */
+/**
+ * Generated `api` utility.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
+ */
 
-export const internal = {};
+import { anyApi, componentsGeneric } from "convex/server";
+
+/**
+ * A utility for referencing Convex functions in your app's API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
+export const api = anyApi;
+export const internal = anyApi;
+export const components = componentsGeneric();
