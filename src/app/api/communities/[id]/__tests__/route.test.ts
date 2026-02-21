@@ -9,6 +9,12 @@ vi.mock('@/db', () => ({
             communities: {
                 findFirst: vi.fn(),
             },
+            users: {
+                findMany: vi.fn(),
+            },
+            games: {
+                findMany: vi.fn(),
+            },
         },
         update: vi.fn(() => ({
             set: vi.fn(() => ({
@@ -77,6 +83,8 @@ describe('Community [id] API Route', () => {
             };
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
+            (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
+            (db.query.users.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1' }) 
@@ -98,6 +106,8 @@ describe('Community [id] API Route', () => {
             };
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
+            (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
+            (db.query.users.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1' }) 
@@ -116,6 +126,10 @@ describe('Community [id] API Route', () => {
             };
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
             (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockCommunity);
+            (db.query.games.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([
+                { id: 'game-1', homeTeamName: 'Game 1', createdAt: new Date().toISOString() }
+            ]);
+            (db.query.users.findMany as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue([]);
 
             const response = await GET(new Request('http://localhost'), { 
                 params: Promise.resolve({ id: 'community-1' }) 

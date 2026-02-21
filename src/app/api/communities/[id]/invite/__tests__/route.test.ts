@@ -9,6 +9,9 @@ vi.mock('@/db', () => ({
             communities: {
                 findFirst: vi.fn(),
             },
+            users: {
+                findFirst: vi.fn(),
+            },
         },
         insert: vi.fn(() => ({
             values: vi.fn(() => ({
@@ -77,7 +80,14 @@ describe('Community Invite API Route', () => {
             (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
+                name: 'Test Community',
                 members: [{ userId: 'user_admin', role: 'admin' }]
+            });
+
+            (db.query.users.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
+                id: 'user_admin',
+                firstName: 'Admin',
+                lastName: 'User'
             });
 
             const mockInvite = {
@@ -111,7 +121,14 @@ describe('Community Invite API Route', () => {
             (db.query.communities.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'community-1',
                 ownerId: 'user_owner',
+                name: 'Test Community',
                 members: []
+            });
+
+            (db.query.users.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
+                id: 'user_owner',
+                firstName: 'Owner',
+                lastName: 'User'
             });
 
             (db.insert as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
