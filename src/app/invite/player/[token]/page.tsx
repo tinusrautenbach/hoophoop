@@ -6,6 +6,23 @@ import { useAuth, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { Check, X, Loader2, User, Trophy } from 'lucide-react';
 import Link from 'next/link';
 
+type Invitation = {
+  athlete: {
+    name: string;
+  } | null;
+  email: string;
+  expiresAt: string;
+};
+
+type InvitationResponse = {
+  error?: string;
+  athlete?: {
+    name: string;
+  };
+  email?: string;
+  expiresAt?: string;
+};
+
 export default function PlayerInvitationPage() {
   const params = useParams();
   const router = useRouter();
@@ -13,7 +30,7 @@ export default function PlayerInvitationPage() {
   const token = params.token as string;
   
   const [loading, setLoading] = useState(true);
-  const [invitation, setInvitation] = useState<any>(null);
+    const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -22,11 +39,15 @@ export default function PlayerInvitationPage() {
     // Fetch invitation details
     fetch(`/api/players/invitations/${token}`)
       .then(res => res.json())
-      .then(data => {
+      .then((data: InvitationResponse) => {
         if (data.error) {
           setError(data.error);
-        } else {
-          setInvitation(data);
+        } else if (data.email && data.expiresAt) {
+          setInvitation({
+            athlete: data.athlete || null,
+            email: data.email,
+            expiresAt: data.expiresAt
+          });
         }
         setLoading(false);
       })
@@ -55,7 +76,7 @@ export default function PlayerInvitationPage() {
       } else {
         setError(data.error || 'Failed to accept invitation');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to accept invitation');
     } finally {
       setAccepting(false);
@@ -180,7 +201,7 @@ export default function PlayerInvitationPage() {
 
         <div className="mt-6 text-center text-xs text-[var(--muted-foreground)]">
           <p>This invitation was sent to: {invitation?.email}</p>
-          <p className="mt-1">Expires: {new Date(invitation?.expiresAt).toLocaleDateString()}</p>
+          <p className="mt-1">Expires: {invitation?.expiresAt ? new Date(invitation.expiresAt).toLocaleDateString() : 'Unknown'}</p>
         </div>
       </div>
     </div>

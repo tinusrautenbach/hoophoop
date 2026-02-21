@@ -3,9 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/use-socket';
-import { motion } from 'framer-motion';
 import { ArrowLeft, History, Search } from 'lucide-react';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
+
+type GameEventRaw = {
+    createdAt?: string;
+    timestamp?: string;
+};
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -13,12 +17,18 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+type Game = {
+    id: string;
+    homeTeamName: string;
+    guestTeamName: string;
+};
+
 export default function SpectatorLogPage() {
     const { id } = useParams();
     const router = useRouter();
     const { socket } = useSocket(id as string);
 
-    const [game, setGame] = useState<any>(null);
+    const [game, setGame] = useState<Game | null>(null);
     const [events, setEvents] = useState<GameEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -30,10 +40,10 @@ export default function SpectatorLogPage() {
             .then(data => {
                 setGame(data);
                 if (data.events) {
-                    setEvents(data.events.map((e: any) => ({
+                    setEvents(data.events.map((e: GameEventRaw) => ({
                         ...e,
-                        timestamp: new Date(e.createdAt || e.timestamp)
-                    })));
+                        timestamp: new Date(e.createdAt || e.timestamp || Date.now())
+                    })) as GameEvent[]);
                 }
                 setLoading(false);
             });
@@ -42,17 +52,17 @@ export default function SpectatorLogPage() {
     useEffect(() => {
         if (!socket) return;
         socket.on('event-added', (event: GameEvent) => {
-            const newEvent = { ...event, timestamp: new Date(event.timestamp) };
+            const newEvent = { ...event, timestamp: new Date(event.timestamp || Date.now()) };
             setEvents(prev => [newEvent, ...prev]);
         });
-        socket.on('game-updated', (updates: any) => {
+        socket.on('game-updated', (updates: { deleteEventId?: string; updatedEvent?: GameEvent }) => {
             if (updates.deleteEventId) {
                 setEvents(prev => prev.filter(e => e.id !== updates.deleteEventId));
             }
             if (updates.updatedEvent) {
-                setEvents(prev => prev.map(e => e.id === updates.updatedEvent.id ? {
-                    ...updates.updatedEvent,
-                    timestamp: new Date(updates.updatedEvent.timestamp)
+                setEvents(prev => prev.map(e => e.id === updates.updatedEvent!.id ? {
+                    ...updates.updatedEvent!,
+                    timestamp: new Date(updates.updatedEvent!.timestamp || Date.now())
                 } : e));
             }
         });

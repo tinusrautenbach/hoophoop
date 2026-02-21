@@ -10,7 +10,13 @@ type Community = {
     name: string;
     type: string;
     ownerId: string;
-    members: any[];
+    members: CommunityMember[];
+};
+
+type CommunityMember = {
+    id: string;
+    userId: string;
+    role: string;
 };
 
 export default function CommunitiesPage() {

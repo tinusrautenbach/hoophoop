@@ -66,6 +66,25 @@ interface Team {
 
 type TabType = 'live' | 'historical' | 'teams' | 'seasons';
 
+type Season = {
+    id: string;
+    name: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+};
+
+type Standing = {
+    teamId: string;
+    teamName: string;
+    played: number;
+    wins: number;
+    losses: number;
+    pointsFor: number;
+    pointsAgainst: number;
+    pointDiff: number;
+};
+
 export default function CommunityPage() {
     const params = useParams();
     const slug = params.slug as string;
@@ -74,9 +93,9 @@ export default function CommunityPage() {
     const [community, setCommunity] = useState<Community | null>(null);
     const [games, setGames] = useState<Game[]>([]);
     const [teams, setTeams] = useState<Team[]>([]);
-    const [seasons, setSeasons] = useState<any[]>([]);
+    const [seasons, setSeasons] = useState<Season[]>([]);
     const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
-    const [standings, setStandings] = useState<any[]>([]);
+    const [standings, setStandings] = useState<Standing[]>([]);
     const [seasonGames, setSeasonGames] = useState<Game[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');

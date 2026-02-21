@@ -34,6 +34,21 @@ type ClaimRequest = {
     } | null;
 };
 
+type ClaimApiItem = {
+    id: string;
+    athleteId: string;
+    userId: string;
+    status: string;
+    requestedAt: string;
+};
+
+type UserApiItem = {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+};
+
 export default function ApproveClaimPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
     const [requestId, setRequestId] = useState<string>('');
@@ -64,7 +79,7 @@ export default function ApproveClaimPage({ params }: { params: Promise<{ id: str
             }
 
             const data = await res.json();
-            const claimRequest = data.claims?.find((c: any) => c.id === id);
+            const claimRequest = data.claims?.find((c: ClaimApiItem) => c.id === id);
             
             if (!claimRequest) {
                 setError('Claim request not found');
@@ -77,7 +92,7 @@ export default function ApproveClaimPage({ params }: { params: Promise<{ id: str
 
             const userRes = await fetch(`/api/admin/users`);
             const usersData = userRes.ok ? await userRes.json() : { users: [] };
-            const claimant = usersData.users?.find((u: any) => u.id === claimRequest.userId);
+            const claimant = usersData.users?.find((u: UserApiItem) => u.id === claimRequest.userId);
 
             setClaim({
                 ...claimRequest,
@@ -162,7 +177,7 @@ export default function ApproveClaimPage({ params }: { params: Promise<{ id: str
                 </div>
                 <h1 className="text-3xl font-black uppercase tracking-tight mb-2">Claim Approved!</h1>
                 <p className="text-slate-500 mb-8 max-w-md">
-                    The player profile has been successfully linked to the claimant's account. An email notification has been sent.
+                    The player profile has been successfully linked to the claimant&apos;s account. An email notification has been sent.
                 </p>
                 <button 
                     onClick={() => router.push('/admin')}

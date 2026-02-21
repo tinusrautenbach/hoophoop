@@ -34,6 +34,21 @@ type ClaimRequest = {
     } | null;
 };
 
+type ClaimApiItem = {
+    id: string;
+    athleteId: string;
+    userId: string;
+    status: string;
+    requestedAt: string;
+};
+
+type UserApiItem = {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+};
+
 export default function RejectClaimPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
     const [requestId, setRequestId] = useState<string>('');
@@ -65,7 +80,7 @@ export default function RejectClaimPage({ params }: { params: Promise<{ id: stri
             }
 
             const data = await res.json();
-            const claimRequest = data.claims?.find((c: any) => c.id === id);
+            const claimRequest = data.claims?.find((c: ClaimApiItem) => c.id === id);
             
             if (!claimRequest) {
                 setError('Claim request not found');
@@ -78,7 +93,7 @@ export default function RejectClaimPage({ params }: { params: Promise<{ id: stri
 
             const userRes = await fetch(`/api/admin/users`);
             const usersData = userRes.ok ? await userRes.json() : { users: [] };
-            const claimant = usersData.users?.find((u: any) => u.id === claimRequest.userId);
+            const claimant = usersData.users?.find((u: UserApiItem) => u.id === claimRequest.userId);
 
             setClaim({
                 ...claimRequest,

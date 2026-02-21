@@ -34,6 +34,21 @@ type ClaimRequest = {
     } | null;
 };
 
+type ClaimApiItem = {
+    id: string;
+    athleteId: string;
+    userId: string;
+    status: string;
+    requestedAt: string;
+};
+
+type UserApiItem = {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+};
+
 export default function CommunityApproveClaimPage({ 
     params 
 }: { 
@@ -70,7 +85,7 @@ export default function CommunityApproveClaimPage({
             }
 
             const data = await res.json();
-            const claimRequest = data.claims?.find((c: any) => c.id === reqId);
+            const claimRequest = data.claims?.find((c: ClaimApiItem) => c.id === reqId);
             
             if (!claimRequest) {
                 setError('Claim request not found');
@@ -84,7 +99,7 @@ export default function CommunityApproveClaimPage({
             // Fetch user details from the claim
             const userRes = await fetch(`/api/admin/users`);
             const usersData = userRes.ok ? await userRes.json() : { users: [] };
-            const claimant = usersData.users?.find((u: any) => u.id === claimRequest.userId);
+            const claimant = usersData.users?.find((u: UserApiItem) => u.id === claimRequest.userId);
 
             setClaim({
                 ...claimRequest,
@@ -171,7 +186,7 @@ export default function CommunityApproveClaimPage({
                 </div>
                 <h1 className="text-3xl font-black uppercase tracking-tight mb-2">Claim Approved!</h1>
                 <p className="text-slate-500 mb-8 max-w-md">
-                    The player profile has been successfully linked to the claimant's account. An email notification has been sent.
+                    The player profile has been successfully linked to the claimant&apos;s account. An email notification has been sent.
                 </p>
                 <button 
                     onClick={() => router.push('/admin')}

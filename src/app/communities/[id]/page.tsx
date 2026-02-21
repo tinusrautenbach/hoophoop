@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users, Trophy, Settings, Mail, Copy, Check, Shield, Eye, ShieldAlert, Trash2, RotateCcw, Calendar } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, Mail, Copy, Check, Shield, Eye, ShieldAlert, Trash2, RotateCcw, Calendar } from 'lucide-react';
 import { useAuth } from '@/components/auth-provider';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -12,24 +12,118 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+type TabType = 'overview' | 'teams' | 'seasons' | 'tournaments' | 'members' | 'settings' | 'deleted-games';
+
+type Community = {
+    id: string;
+    name: string;
+    type: string;
+    ownerId: string;
+    members: CommunityMember[];
+    teams?: Team[];
+    seasons?: Season[];
+    games?: Game[];
+};
+
+type CommunityMember = {
+    id: string;
+    userId: string;
+    displayName: string;
+    userEmail?: string;
+    role: string;
+};
+
+type Team = {
+    id: string;
+    name: string;
+    shortCode: string | null;
+    color: string | null;
+    createdAt: string;
+    teamSeasons?: TeamSeason[];
+    memberships?: Membership[];
+};
+
+type TeamSeason = {
+    id: string;
+    seasonId: string;
+    teamId?: string;
+    season?: {
+        id: string;
+        name: string;
+    };
+    team?: {
+        id: string;
+        name: string;
+        color?: string;
+    };
+};
+
+type Season = {
+    id: string;
+    name: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+    description?: string;
+    teamSeasons?: TeamSeason[];
+};
+
+type Tournament = {
+    id: string;
+    name: string;
+    status: string;
+    type: string;
+    startDate: string;
+    endDate: string;
+    teams?: { id: string }[];
+};
+
+type Game = {
+    id: string;
+    homeTeamName: string;
+    guestTeamName: string;
+    homeScore: number;
+    guestScore: number;
+    status: string;
+    createdAt: string;
+};
+
+type DeletedGame = {
+    id: string;
+    homeTeamName: string;
+    guestTeamName: string;
+    homeScore: number;
+    guestScore: number;
+    deletedAt: string;
+    ownerName: string;
+};
+
+type Membership = {
+    id: string;
+    athleteId: string;
+    athlete?: {
+        name: string;
+    };
+};
+
 export default function CommunityDashboard() {
     const { id } = useParams();
     const router = useRouter();
     const { userId } = useAuth();
     
-    const [community, setCommunity] = useState<any>(null);
+    const [community, setCommunity] = useState<Community | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'overview' | 'teams' | 'seasons' | 'tournaments' | 'members' | 'settings' | 'deleted-games'>('overview');
-    const [communityTeams, setCommunityTeams] = useState<any[]>([]);
-    const [communitySeasons, setCommunitySeasons] = useState<any[]>([]);
-    const [communityTournaments, setCommunityTournaments] = useState<any[]>([]);
+    const [communityTeams, setCommunityTeams] = useState<Team[]>([]);
+    const [communitySeasons, setCommunitySeasons] = useState<Season[]>([]);
+    const [communityTournaments, setCommunityTournaments] = useState<Tournament[]>([]);
     const [tournamentsLoading, setTournamentsLoading] = useState(false);
-    const [teamsLoading, setTeamsLoading] = useState(false);
+
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('scorer');
     const [inviteLink, setInviteLink] = useState('');
     const [copied, setCopied] = useState(false);
-    const [deletedGames, setDeletedGames] = useState<any[]>([]);
+    const [deletedGames, setDeletedGames] = useState<DeletedGame[]>([]);
     const [deletedGamesLoading, setDeletedGamesLoading] = useState(false);
     const [memberTab, setMemberTab] = useState<'users' | 'athletes'>('users');
 
@@ -227,7 +321,7 @@ export default function CommunityDashboard() {
     if (!community) return null;
 
     const isOwner = community.ownerId === userId;
-    const currentUserMember = community.members.find((m: any) => m.userId === userId);
+    const currentUserMember = community.members.find((m: CommunityMember) => m.userId === userId);
     const isAdmin = isOwner || currentUserMember?.role === 'admin';
     const isScorer = isOwner || isAdmin || currentUserMember?.role === 'scorer';
 
@@ -266,7 +360,7 @@ export default function CommunityDashboard() {
                 {['overview', 'teams', 'seasons', 'tournaments', 'members', 'settings', ...(isAdmin ? ['deleted-games'] : [])].map((tab) => (
                     <button
                         key={tab}
-                        onClick={() => setActiveTab(tab as any)}
+                                                    onClick={() => setActiveTab(tab as TabType)}
                         className={cn(
                             "pb-4 px-2 text-sm font-bold uppercase tracking-widest transition-all whitespace-nowrap",
                             activeTab === tab
@@ -287,7 +381,7 @@ export default function CommunityDashboard() {
                             <h3 className="text-lg font-bold mb-4">Recent Games</h3>
                             {community.games && community.games.length > 0 ? (
                                 <div className="space-y-3">
-                                    {community.games.map((game: any) => {
+                                    {community.games?.map((game: Game) => {
                                         // Route to scorer interface for live/scheduled games OR if user has scorer rights
                                         // Otherwise route to spectator page for finished games
                                         const shouldGoToScorer = game.status !== 'final' || isScorer;
@@ -345,9 +439,7 @@ export default function CommunityDashboard() {
                             </button>
                         </div>
 
-                        {teamsLoading ? (
-                            <div className="text-center py-12 text-slate-500">Loading teams...</div>
-                        ) : communityTeams.length > 0 ? (
+                        {communityTeams.length > 0 ? (
                             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                                 {communityTeams.map((team) => {
                                     const teamSeasons = team.teamSeasons || [];
@@ -396,7 +488,7 @@ export default function CommunityDashboard() {
                                                 
                                                 {teamSeasons.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1">
-                                                        {teamSeasons.map((ts: any) => (
+                                                                {teamSeasons.map((ts: TeamSeason) => (
                                                             <span 
                                                                 key={ts.id}
                                                                 className="text-[10px] px-2 py-1 rounded-full bg-orange-500/20 text-orange-500"
@@ -415,7 +507,7 @@ export default function CommunityDashboard() {
                                                         {/* Current seasons with remove button */}
                                                         {teamSeasons.length > 0 && (
                                                             <div className="space-y-1">
-                                                                {teamSeasons.map((ts: any) => (
+                                                    {teamSeasons.map((ts: TeamSeason) => (
                                                                     <div key={ts.id} className="flex items-center justify-between bg-card/50 px-2 py-1 rounded">
                                                                         <span className="text-xs">{ts.season?.name}</span>
                                                                         <button
@@ -441,8 +533,8 @@ export default function CommunityDashboard() {
                                                             >
                                                                 <option value="">Add to season...</option>
                                                                 {communitySeasons
-                                                                    .filter((s: any) => !teamSeasons.some((ts: any) => ts.seasonId === s.id))
-                                                                    .map((season: any) => (
+                                                                    .filter((s: Season) => !teamSeasons.some((ts: TeamSeason) => ts.seasonId === s.id))
+                                                                    .map((season: Season) => (
                                                                         <option key={season.id} value={season.id}>
                                                                             {season.name} ({season.status})
                                                                         </option>
@@ -604,7 +696,7 @@ export default function CommunityDashboard() {
                                             {/* List of teams in season */}
                                             {season.teamSeasons && season.teamSeasons.length > 0 ? (
                                                 <div className="space-y-1 max-h-40 overflow-y-auto">
-                                                    {season.teamSeasons.map((ts: any) => (
+                                                    {season.teamSeasons.map((ts) => (
                                                         <div key={ts.id} className="flex items-center justify-between bg-card/50 px-3 py-2 rounded-lg">
                                                             <div className="flex items-center gap-2">
                                                                 <div 
@@ -678,8 +770,8 @@ export default function CommunityDashboard() {
                                                         >
                                                             <option value="">+ Add team to season...</option>
                                                             {communityTeams
-                                                                .filter((t: any) => !season.teamSeasons?.some((ts: any) => ts.teamId === t.id))
-                                                                .map((team: any) => (
+                                                                .filter((t: Team) => !season.teamSeasons?.some((ts: TeamSeason) => ts.teamId === t.id))
+                                                                .map((team: Team) => (
                                                                     <option key={team.id} value={team.id}>{team.name}</option>
                                                                 ))}
                                                         </select>
@@ -859,7 +951,7 @@ export default function CommunityDashboard() {
 
                                 {/* Members List */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {community.members.map((member: any) => (
+                                    {community.members.map((member: CommunityMember) => (
                                         <div key={member.id} className="bg-input border border-border p-4 rounded-xl flex items-center justify-between group hover:border-border transition-all">
                                             <div className="flex items-center gap-3">
                                                 <div className={cn(
@@ -924,7 +1016,7 @@ export default function CommunityDashboard() {
                                             required
                                         >
                                             <option value="">Select athlete...</option>
-                                            {community.teams?.flatMap((t: any) => t.memberships || []).map((m: any) => (
+                                            {community.teams?.flatMap((t: Team) => t.memberships || []).map((m) => (
                                                 <option key={m.id} value={m.athleteId}>{m.athlete?.name || 'Unknown'}</option>
                                             ))}
                                         </select>
@@ -969,7 +1061,7 @@ export default function CommunityDashboard() {
                                 <div className="text-center py-8 text-slate-500 italic">No deleted games found.</div>
                             ) : (
                                 <div className="space-y-3">
-                                    {deletedGames.map((game: any) => (
+                                    {deletedGames.map((game: DeletedGame) => (
                                         <div key={game.id} className="flex justify-between items-center bg-background p-3 rounded-xl border border-border">
                                             <div>
                                                 <div className="font-bold text-sm">

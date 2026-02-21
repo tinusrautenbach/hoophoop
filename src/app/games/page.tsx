@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Trophy, Clock, Users, ArrowRight, Calendar, Settings, Eye, Globe, Users2 } from 'lucide-react';
+import { Trophy, ArrowRight, Calendar, Settings, Eye, Globe, Users2 } from 'lucide-react';
 import Link from 'next/link';
 
 type Game = {

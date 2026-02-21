@@ -5,7 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, Edit2, History, User, Shield, Globe, BarChart3, Trophy, TrendingUp, Activity, Mail, X, Copy, Check } from 'lucide-react';
 
-  type Player = {
+type Season = {
+  id: string;
+  name: string;
+  status: string;
+};
+
+type Player = {
   id: string;
   name: string;
   firstName: string | null;
@@ -95,7 +101,7 @@ export default function PlayerProfilePage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'stats' | 'history'>('overview');
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
-  const [seasons, setSeasons] = useState<any[]>([]);
+    const [seasons, setSeasons] = useState<Season[]>([]);
   
   // Invitation state
   const [showInviteModal, setShowInviteModal] = useState(false);

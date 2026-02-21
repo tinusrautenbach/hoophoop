@@ -7,6 +7,10 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         include: ['**/*.test.ts', '**/*.test.tsx'],
+        exclude: [
+            '**/node_modules/**',
+            '**/tests/load/**', // Exclude load tests - they should be run manually
+        ],
         reporters: ['default', path.resolve(__dirname, 'markdown-reporter.ts')],
         alias: {
             '@': path.resolve(__dirname, '../src'),

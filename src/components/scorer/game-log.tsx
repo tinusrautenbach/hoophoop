@@ -20,7 +20,7 @@ export type GameEvent = {
     timestamp: Date;
     clockAt?: number;
     period?: number;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
 };
 
 interface GameLogProps {
