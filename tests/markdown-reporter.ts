@@ -1,9 +1,30 @@
-// @ts-nocheck
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import fs from 'fs';
 import path from 'path';
+
+interface TestResult {
+  state: () => string;
+  errors?: Array<{ message?: string }>;
+}
+
+interface Test {
+  name: string;
+  result: () => TestResult;
+}
+
+interface TestCollection {
+  allTests: () => Test[];
+}
+
+interface TestFile {
+  moduleId?: string;
+  state?: () => string;
+  errors?: Array<{ message?: string }>;
+  children?: TestCollection;
+}
+
 export default class MarkdownReporter {
-  onTestRunEnd(files: any, _errors: any, _reason: any) {
+  onTestRunEnd(files: TestFile[], _errors: unknown, _reason: unknown) {
     console.log('[MarkdownReporter] onTestRunEnd called with', files?.length, 'files');
     
     const testsDir = path.resolve(process.cwd(), 'tests');
@@ -18,7 +39,7 @@ export default class MarkdownReporter {
     const allTests = files.flatMap(f => [...(f.children?.allTests() || [])]);
     const totalTests = allTests.length;
     
-    const failedTests = allTests.filter(t => t.result?.().state === 'failed').length;
+    const failedTests = allTests.filter(t => t.result?.().state() === 'failed').length;
     const passedTests = totalTests - failedTests;
     
     // Check for files that failed at module level (import errors, etc.)
@@ -27,7 +48,7 @@ export default class MarkdownReporter {
       if (f.state?.() === 'failed') return true;
       // Check if it has any failed tests
       const tests = [...(f.children?.allTests() || [])];
-      return tests.some(t => t.result?.().state === 'failed');
+      return tests.some(t => t.result?.().state() === 'failed');
     }).length;
     const passedFiles = totalFiles - failedFiles;
 
@@ -49,9 +70,9 @@ export default class MarkdownReporter {
       const fileName = path.relative(process.cwd(), file.moduleId || 'unknown');
       const fileTasks = [...(file.children?.allTests() || [])];
       const fTotal = fileTasks.length;
-      const fFailed = fileTasks.filter(t => t.result?.().state === 'failed').length;
+      const fFailed = fileTasks.filter(t => t.result?.().state() === 'failed').length;
       const fPassed = fTotal - fFailed;
-      const hasModuleError = file.state?.() === 'fail';
+      const hasModuleError = file.state?.() === 'failed';
       const status = (fFailed > 0 || hasModuleError) ? '❌' : '✅';
       suiteContent += `| ${fileName} | ${status} | ${fPassed} | ${fFailed} | ${fTotal} |\n`;
     });
@@ -69,10 +90,10 @@ export default class MarkdownReporter {
       
       // Report module-level failures first
       files.forEach(file => {
-        if (file.state?.() === 'fail') {
+        if (file.state?.() === 'failed') {
           reportContent += `### ${path.relative(process.cwd(), file.moduleId || 'unknown')}\n`;
           reportContent += `- **Module failed to load**\n`;
-          if (file.errors?.length > 0) {
+          if (file.errors && file.errors.length > 0) {
             file.errors.forEach(err => {
               const cleanMsg = (err.message || 'Unknown error').replace(/\n/g, '\n  ');
               reportContent += `  \`\`\`\n  ${cleanMsg}\n  \`\`\`\n`;
@@ -85,7 +106,7 @@ export default class MarkdownReporter {
       // Report test-level failures
       files.forEach(file => {
         const fileTasks = [...(file.children?.allTests() || [])];
-        const failures = fileTasks.filter(t => t.result?.().state === 'failed');
+        const failures = fileTasks.filter(t => t.result?.().state() === 'failed');
         if (failures.length > 0) {
           reportContent += `### ${path.relative(process.cwd(), file.moduleId || 'unknown')}\n`;
           failures.forEach(t => {
