@@ -208,6 +208,13 @@ export default function ScorerPage() {
             socket.emit('join-game', id);
         }
 
+        // Handle reconnection - re-join game room when socket reconnects
+        const handleConnect = () => {
+            console.log('[Scorer] Socket reconnected, re-joining game:', id);
+            socket.emit('join-game', id);
+        };
+        socket.on('connect', handleConnect);
+
         return () => {
             socket.off('game-state', handleGameState);
             socket.off('clock-update', handleClockUpdate);
@@ -215,6 +222,7 @@ export default function ScorerPage() {
             socket.off('timer-stopped', handleTimerStopped);
             socket.off('game-updated');
             socket.off('event-added');
+            socket.off('connect', handleConnect);
         };
     }, [socket, id]);
 

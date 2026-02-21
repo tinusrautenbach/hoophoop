@@ -148,6 +148,13 @@ export default function SpectatorPage() {
             console.log('Spectator emitting join-game for:', id);
             socket.emit('join-game', id);
         }
+
+        // Handle reconnection - re-join game room when socket reconnects
+        const handleConnect = () => {
+            console.log('[Spectator] Socket reconnected, re-joining game:', id);
+            socket.emit('join-game', id);
+        };
+        socket.on('connect', handleConnect);
         
         return () => {
             socket.off('game-state', handleGameState);
@@ -156,6 +163,7 @@ export default function SpectatorPage() {
             socket.off('timer-stopped', handleTimerStopped);
             socket.off('game-updated');
             socket.off('event-added');
+            socket.off('connect', handleConnect);
         };
     }, [socket, id]);
 
