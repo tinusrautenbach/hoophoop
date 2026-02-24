@@ -84,4 +84,4 @@ ENV PORT 3000
 # set hostname to localhost
 ENV HOSTNAME "0.0.0.0"
 
-CMD ["sh", "-c", "node scripts/force-migrate-hasura.mjs && node scripts/migrate.mjs && node scripts/apply-hasura-metadata.mjs && node server.js"]
+CMD ["sh", "-c", "node scripts/force-migrate-hasura.mjs && node server.js"]
