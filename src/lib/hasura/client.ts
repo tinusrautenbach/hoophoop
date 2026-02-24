@@ -44,12 +44,19 @@ export async function graphqlRequest<T = unknown>(
   variables?: Record<string, unknown>
 ): Promise<T> {
   const hasuraUrl = process.env.NEXT_PUBLIC_HASURA_URL || 'http://localhost:8080/v1/graphql';
+  const adminSecret = process.env.NEXT_PUBLIC_HASURA_ADMIN_SECRET || process.env.HASURA_ADMIN_SECRET;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (adminSecret) {
+    headers['X-Hasura-Admin-Secret'] = adminSecret;
+  }
 
   const response = await fetch(hasuraUrl, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({
       query,
       variables,
