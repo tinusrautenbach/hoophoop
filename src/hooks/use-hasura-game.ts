@@ -291,7 +291,7 @@ export function useHasuraGame(gameId: string) {
         variables: { gameId },
       },
       {
-        next: (result: ExecutionResult<{ gameStates: Array<Record<string, unknown>> }>) => {
+        next: (result) => {
           setIsConnected(true);
           const states = result.data?.gameStates;
           if (states && states.length > 0) {
@@ -327,16 +327,16 @@ export function useHasuraGame(gameId: string) {
     const eventsUnsubscribe = client.subscribe<
       { hasura_game_events: Array<{
         id: string;
-        gameId: string;
+        game_id: string;
         type: string;
         period: number;
-        clockAt: number;
+        clock_at: number;
         team: string;
         player: string;
         value: number;
         metadata: Record<string, unknown>;
         description: string;
-        createdAt: string;
+        created_at: string;
       }> }
     >(
       {
@@ -360,7 +360,7 @@ export function useHasuraGame(gameId: string) {
         variables: { gameId },
       },
       {
-        next: (result: ExecutionResult<{ hasura_game_events: Array<Record<string, unknown>> }>) => {
+        next: (result) => {
           const events = result.data?.hasura_game_events;
           if (events) {
             const mappedEvents = events.map((e) => ({
@@ -390,6 +390,9 @@ export function useHasuraGame(gameId: string) {
               }
             });
           }
+        },
+        complete: () => {
+          console.log('[Hasura] Game events subscription completed');
         },
       }
     );
@@ -422,7 +425,7 @@ export function useHasuraGame(gameId: string) {
         variables: { gameId },
       },
       {
-        next: (result: ExecutionResult<{ timerSync: Array<Record<string, unknown>> }>) => {
+        next: (result) => {
           const timers = result.data?.timerSync;
           if (timers && timers.length > 0) {
             const timer = timers[0];
