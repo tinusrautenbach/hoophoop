@@ -107,9 +107,9 @@ export default function SpectatorPage() {
     useEffect(() => {
         if (!convexEvents) return;
         
-        setEvents(convexEvents.map((e: { _id: string; type: string; period: number; clockAt: number; team?: 'home' | 'guest'; player?: string; value?: number; metadata?: Record<string, unknown>; description: string; createdAt: number }) => ({
+        setEvents(convexEvents.map((e) => ({
             id: e._id,
-            type: e.type,
+            type: e.type as GameEvent['type'],
             period: e.period,
             clockAt: e.clockAt,
             team: e.team || 'home',
@@ -118,7 +118,7 @@ export default function SpectatorPage() {
             metadata: e.metadata as { points?: number; shotType?: '2pt' | '3pt' | 'ft' },
             description: e.description,
             timestamp: new Date(e.createdAt),
-        })));
+        })) as GameEvent[]);
     }, [convexEvents]);
 
     const formatTime = (seconds: number) => {
