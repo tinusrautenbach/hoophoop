@@ -1,0 +1,179 @@
+table:
+  name: game_states
+  schema: public
+configuration:
+  column_config:
+    clock_seconds:
+      custom_name: clockSeconds
+    current_period:
+      custom_name: currentPeriod
+    game_id:
+      custom_name: gameId
+    guest_fouls:
+      custom_name: guestFouls
+    guest_score:
+      custom_name: guestScore
+    guest_timeouts:
+      custom_name: guestTimeouts
+    home_fouls:
+      custom_name: homeFouls
+    home_score:
+      custom_name: homeScore
+    home_timeouts:
+      custom_name: homeTimeouts
+    is_timer_running:
+      custom_name: isTimerRunning
+    updated_at:
+      custom_name: updatedAt
+    updated_by:
+      custom_name: updatedBy
+  custom_column_names:
+    clock_seconds: clockSeconds
+    current_period: currentPeriod
+    game_id: gameId
+    guest_fouls: guestFouls
+    guest_score: guestScore
+    guest_timeouts: guestTimeouts
+    home_fouls: homeFouls
+    home_score: homeScore
+    home_timeouts: homeTimeouts
+    is_timer_running: isTimerRunning
+    updated_at: updatedAt
+    updated_by: updatedBy
+  custom_name: gameStates
+  identifier: gameStates
+  custom_root_fields:
+    delete: deleteGameStates
+    delete_by_pk: deleteGameStatesByPk
+    insert: insertGameStates
+    insert_one: insertGameStatesOne
+    select: gameStates
+    select_aggregate: gameStatesAggregate
+    select_by_pk: gameStatesByPk
+    update: updateGameStates
+    update_by_pk: updateGameStatesByPk
+object_relationships:
+  - name: game
+    using:
+      foreign_key_constraint_on: game_id
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - clock_seconds
+        - current_period
+        - game_id
+        - guest_fouls
+        - guest_score
+        - guest_timeouts
+        - home_fouls
+        - home_score
+        - home_timeouts
+        - is_timer_running
+        - possession
+        - status
+        - updated_at
+        - updated_by
+      filter: {}
+      allow_aggregations: true
+  - role: user
+    permission:
+      columns:
+        - clock_seconds
+        - current_period
+        - game_id
+        - guest_fouls
+        - guest_score
+        - guest_timeouts
+        - home_fouls
+        - home_score
+        - home_timeouts
+        - is_timer_running
+        - possession
+        - status
+        - updated_at
+        - updated_by
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: anonymous
+    permission:
+      check: {}
+      columns:
+        - clock_seconds
+        - current_period
+        - game_id
+        - guest_fouls
+        - guest_score
+        - guest_timeouts
+        - home_fouls
+        - home_score
+        - home_timeouts
+        - is_timer_running
+        - possession
+        - status
+        - updated_at
+        - updated_by
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - clock_seconds
+        - current_period
+        - game_id
+        - guest_fouls
+        - guest_score
+        - guest_timeouts
+        - home_fouls
+        - home_score
+        - home_timeouts
+        - is_timer_running
+        - possession
+        - status
+        - updated_at
+        - updated_by
+update_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - clock_seconds
+        - current_period
+        - guest_fouls
+        - guest_score
+        - guest_timeouts
+        - home_fouls
+        - home_score
+        - home_timeouts
+        - is_timer_running
+        - possession
+        - status
+        - updated_at
+        - updated_by
+      filter: {}
+      check: {}
+  - role: user
+    permission:
+      columns:
+        - clock_seconds
+        - current_period
+        - guest_fouls
+        - guest_score
+        - guest_timeouts
+        - home_fouls
+        - home_score
+        - home_timeouts
+        - is_timer_running
+        - possession
+        - status
+        - updated_at
+        - updated_by
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: anonymous
+    permission:
+      filter: {}
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

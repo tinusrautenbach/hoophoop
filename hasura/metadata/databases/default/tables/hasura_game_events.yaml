@@ -1,0 +1,153 @@
+table:
+  name: hasura_game_events
+  schema: public
+configuration:
+  column_config:
+    clock_at:
+      custom_name: clockAt
+    created_at:
+      custom_name: createdAt
+    created_by:
+      custom_name: createdBy
+    event_id:
+      custom_name: eventId
+    game_id:
+      custom_name: gameId
+    metadata:
+      custom_name: metadata
+  custom_column_names:
+    clock_at: clockAt
+    created_at: createdAt
+    created_by: createdBy
+    event_id: eventId
+    game_id: gameId
+    metadata: metadata
+  custom_name: gameEvents
+  identifier: gameEvents
+  custom_root_fields:
+    delete: deleteGameEvents
+    delete_by_pk: deleteGameEventsByPk
+    insert: insertGameEvents
+    insert_one: insertGameEventsOne
+    select: gameEvents
+    select_aggregate: gameEventsAggregate
+    select_by_pk: gameEventsByPk
+    update: updateGameEvents
+    update_by_pk: updateGameEventsByPk
+object_relationships:
+  - name: game
+    using:
+      foreign_key_constraint_on: game_id
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - clock_at
+        - created_at
+        - created_by
+        - description
+        - event_id
+        - game_id
+        - id
+        - metadata
+        - period
+        - player
+        - team
+        - type
+        - value
+      filter: {}
+      allow_aggregations: true
+  - role: user
+    permission:
+      columns:
+        - clock_at
+        - created_at
+        - created_by
+        - description
+        - event_id
+        - game_id
+        - id
+        - metadata
+        - period
+        - player
+        - team
+        - type
+        - value
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: anonymous
+    permission:
+      check: {}
+      columns:
+        - clock_at
+        - created_at
+        - created_by
+        - description
+        - event_id
+        - game_id
+        - id
+        - metadata
+        - period
+        - player
+        - team
+        - type
+        - value
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - clock_at
+        - created_at
+        - created_by
+        - description
+        - event_id
+        - game_id
+        - id
+        - metadata
+        - period
+        - player
+        - team
+        - type
+        - value
+update_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - clock_at
+        - created_at
+        - created_by
+        - description
+        - event_id
+        - metadata
+        - period
+        - player
+        - team
+        - type
+        - value
+      filter: {}
+      check: {}
+  - role: user
+    permission:
+      columns:
+        - clock_at
+        - created_at
+        - created_by
+        - description
+        - event_id
+        - metadata
+        - period
+        - player
+        - team
+        - type
+        - value
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: anonymous
+    permission:
+      filter: {}
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []
