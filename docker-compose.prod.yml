@@ -86,6 +86,8 @@ services:
   # Hasura GraphQL Engine for real-time subscriptions
   hasura:
     image: hasura/graphql-engine:v2.40.0
+    # Use 'ports' so Coolify can bind domain to this port
+    # Coolify will handle SSL termination and reverse proxy
     ports:
       - "8080:8080"
     depends_on:
@@ -96,11 +98,11 @@ services:
       HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgres@db:5432/bball
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_DEV_MODE: "false"
-      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-myadminsecretkey}
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET}
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
-
       HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "true"
-      HASURA_GRAPHQL_CORS_DOMAIN: "*"
+      # CORS: Allow your main domain to make requests
+      HASURA_GRAPHQL_CORS_DOMAIN: "${NEXT_PUBLIC_APP_URL}"
 
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
