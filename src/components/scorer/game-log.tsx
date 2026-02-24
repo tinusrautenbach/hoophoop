@@ -54,7 +54,9 @@ const iconMap = {
 export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick, hideHeader = false }: GameLogProps) {
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    const displayedEvents = limit ? events.slice(0, limit) : events;
+    // Reverse events so latest are at the top
+    const reversedEvents = [...events].reverse();
+    const displayedEvents = limit ? reversedEvents.slice(0, limit) : reversedEvents;
 
     return (
         <div className="flex flex-col gap-1 p-2 bg-black/20 rounded-2xl border border-white/5">

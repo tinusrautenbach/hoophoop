@@ -152,23 +152,26 @@ export default function ScorerPage() {
     }, [id]);
 
     useEffect(() => {
-        if (!convexState || !game) return;
+        if (!convexState) return;
         
-        setGame(prev => prev ? {
-            ...prev,
-            homeScore: convexState.homeScore ?? prev.homeScore,
-            guestScore: convexState.guestScore ?? prev.guestScore,
-            homeFouls: convexState.homeFouls ?? prev.homeFouls,
-            guestFouls: convexState.guestFouls ?? prev.guestFouls,
-            homeTimeouts: convexState.homeTimeouts ?? prev.homeTimeouts,
-            guestTimeouts: convexState.guestTimeouts ?? prev.guestTimeouts,
-            currentPeriod: convexState.currentPeriod ?? prev.currentPeriod,
-            possession: convexState.possession ?? prev.possession,
-            status: convexState.status ?? prev.status,
-            clockSeconds: currentClock,
-            isTimerRunning,
-        } : null);
-    }, [convexState, currentClock, isTimerRunning, game]);
+        setGame(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                homeScore: convexState.homeScore ?? prev.homeScore,
+                guestScore: convexState.guestScore ?? prev.guestScore,
+                homeFouls: convexState.homeFouls ?? prev.homeFouls,
+                guestFouls: convexState.guestFouls ?? prev.guestFouls,
+                homeTimeouts: convexState.homeTimeouts ?? prev.homeTimeouts,
+                guestTimeouts: convexState.guestTimeouts ?? prev.guestTimeouts,
+                currentPeriod: convexState.currentPeriod ?? prev.currentPeriod,
+                possession: convexState.possession ?? prev.possession,
+                status: convexState.status ?? prev.status,
+                clockSeconds: currentClock,
+                isTimerRunning,
+            };
+        });
+    }, [convexState, currentClock, isTimerRunning]);
 
     useEffect(() => {
         if (!convexEvents) return;
