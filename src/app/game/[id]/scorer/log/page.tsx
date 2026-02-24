@@ -53,7 +53,7 @@ export default function FullLogPage() {
 
     useEffect(() => {
         if (!gameEvents) return;
-        const mappedEvents = gameEvents.map((e: { _id: string; createdAt: number; [key: string]: unknown }) => ({
+        const mappedEvents = gameEvents.map((e) => ({
             ...e,
             id: e._id,
             timestamp: new Date(e.createdAt || Date.now()),
