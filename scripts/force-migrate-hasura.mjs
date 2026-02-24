@@ -185,8 +185,10 @@ async function trackTablesInHasura() {
                 updated_by: { custom_name: 'updatedBy' }
             }, ['game_id', 'is_running', 'started_at', 'initial_clock_seconds', 
                 'current_clock_seconds', 'updated_at', 'updated_by']);
-            
             console.log('[Hasura] All tables tracked successfully!');
+            
+            // Reload metadata so tables appear in GraphQL schema
+            await reloadHasuraMetadata();
             return;
             
         } catch (err) {
@@ -197,6 +199,10 @@ async function trackTablesInHasura() {
             }
         }
     }
+    
+    // Even if tracking had errors, try to reload metadata
+    // (tables might have been tracked in previous attempts)
+    await reloadHasuraMetadata();
     
     console.error('[Hasura] Failed to track tables after all attempts');
 }
@@ -321,6 +327,41 @@ async function trackSingleTable(tableName, customName, rootFields, columnConfig,
         }
         
         console.log(`[Hasura] ✓ ${tableName} setup complete`);
+        
+    } catch (err) {
+        console.error(`[Hasura] ✗ Failed to track ${tableName}:`, err.message);
+        throw err;
+    }
+}
+
+async function reloadHasuraMetadata() {
+    console.log('[Hasura] Reloading metadata to apply changes...');
+    
+    try {
+        const response = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
+            },
+            body: JSON.stringify({
+                type: 'reload_metadata',
+                args: {
+                    reload_sources: true
+                }
+            })
+        });
+        
+        if (response.ok) {
+            console.log('[Hasura] ✓ Metadata reloaded successfully');
+        } else {
+            const error = await response.text();
+            console.error('[Hasura] ✗ Failed to reload metadata:', error.substring(0, 200));
+        }
+    } catch (err) {
+        console.error('[Hasura] ✗ Error reloading metadata:', err.message);
+    }
+}
         
     } catch (err) {
         console.error(`[Hasura] ✗ Failed to track ${tableName}:`, err.message);
