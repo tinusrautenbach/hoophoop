@@ -105,7 +105,7 @@ services:
       HASURA_GRAPHQL_CORS_DOMAIN: "${NEXT_PUBLIC_APP_URL}"
 
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
