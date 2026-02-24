@@ -53,7 +53,7 @@ type Game = {
     totalPeriods: number;
     status: 'scheduled' | 'live' | 'final';
     rosters: RosterEntry[];
-    events: GameEvent[];
+    events: BoxScoreGameEvent[];
 };
 
 type PlayerStats = {
