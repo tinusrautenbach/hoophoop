@@ -14,7 +14,8 @@ function cn(...inputs: ClassValue[]) {
 
 type EventType = 'score' | 'foul' | 'timeout' | 'sub' | 'turnover' | 'block' | 'steal' | 'rebound_off' | 'rebound_def' | 'period_start' | 'period_end' | 'clock_start' | 'clock_stop' | 'undo' | 'miss';
 
-type GameEvent = {
+// Use GameEvent from useHasuraGame hook - maps _id to id
+type BoxScoreGameEvent = {
     id: string;
     type: EventType;
     period: number;
@@ -120,7 +121,7 @@ export default function BoxScorePage() {
                 guestFouls: gameState.guestFouls ?? prev.guestFouls,
                 currentPeriod: gameState.currentPeriod ?? prev.currentPeriod,
                 status: gameState.status ?? prev.status,
-                events: gameEvents as GameEvent[],
+                events: gameEvents.map(e => ({...e, id: e._id})) as BoxScoreGameEvent[],
             };
         });
     }, [gameState, gameEvents]);
