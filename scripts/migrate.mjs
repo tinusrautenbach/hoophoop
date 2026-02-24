@@ -11,19 +11,35 @@ const runMigrate = async () => {
     const sql = postgres(connectionString, { max: 1 });
     const db = drizzle(sql);
 
-    console.log('Running migrations...');
+    console.log('[Migrate] Running migrations...');
 
     const start = Date.now();
     await migrate(db, { migrationsFolder: './drizzle/migrations' });
     const end = Date.now();
 
-    console.log(`Migrations completed in ${end - start}ms`);
-
-    process.exit(0);
+    console.log(`[Migrate] Migrations completed in ${end - start}ms`);
+    
+    // Verify tables exist
+    console.log('[Migrate] Verifying Hasura sync tables...');
+    const tables = await sql`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name IN ('game_states', 'hasura_game_events', 'timer_sync')
+    `;
+    
+    console.log(`[Migrate] Found ${tables.length}/3 Hasura tables: ${tables.map(t => t.table_name).join(', ') || 'none'}`);
+    
+    if (tables.length < 3) {
+        console.warn('[Migrate] WARNING: Some Hasura tables are missing!');
+    }
+    
+    await sql.end();
+    console.log('[Migrate] Migration complete, proceeding...');
 };
 
 runMigrate().catch((err) => {
-    console.error('Migration failed');
+    console.error('[Migrate] Migration failed');
     console.error(err);
     process.exit(1);
 });

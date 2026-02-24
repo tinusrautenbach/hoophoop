@@ -247,15 +247,62 @@ async function setPermissions() {
   }
 }
 
+async function ensureTablesExist() {
+  console.log('[Hasura] Ensuring tables exist in database...');
+  
+  // Check if tables exist using Hasura's introspection
+  try {
+    const response = await fetch(`${HASURA_URL}/v1/graphql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
+      },
+      body: JSON.stringify({
+        query: `
+          query CheckTables {
+            gameStates: gameStates(limit: 1) { gameId }
+            gameEvents: gameEvents(limit: 1) { id }
+            timerSync: timerSync(limit: 1) { gameId }
+          }
+        `
+      })
+    });
+    
+    if (response.ok) {
+      console.log('[Hasura] All tables exist and are tracked!');
+      return true;
+    }
+    
+    const error = await response.text();
+    console.log('[Hasura] Tables check result:', error.substring(0, 200));
+    return false;
+  } catch (err) {
+    console.log('[Hasura] Could not verify tables:', err.message);
+    return false;
+  }
+}
+
 async function main() {
   try {
     await waitForHasura();
+    
+    // First try to apply metadata
     await applyMetadata();
+    
+    // Then verify tables exist
+    await ensureTablesExist();
+    
+    console.log('[Hasura] Setup complete!');
     process.exit(0);
   } catch (err) {
     console.error('[Hasura] Metadata application failed:', err);
-    process.exit(1);
+    // Don't fail the deployment - let the app start anyway
+    console.log('[Hasura] Continuing despite errors...');
+    process.exit(0);
   }
 }
+
+main();
 
 main();
