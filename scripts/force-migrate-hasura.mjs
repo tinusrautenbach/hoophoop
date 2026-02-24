@@ -362,12 +362,6 @@ async function reloadHasuraMetadata() {
         console.error('[Hasura] ✗ Error reloading metadata:', err.message);
     }
 }
-        
-    } catch (err) {
-        console.error(`[Hasura] ✗ Failed to track ${tableName}:`, err.message);
-        throw err;
-    }
-}
 
 runForceMigrate().catch((err) => {
     console.error('[ForceMigrate] Failed:', err);
