@@ -9,6 +9,25 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const HASURA_URL = process.env.NEXT_PUBLIC_HASURA_URL?.replace('/v1/graphql', '') || 'http://hasura:8080';
 const HASURA_ADMIN_SECRET = process.env.HASURA_ADMIN_SECRET || 'myadminsecretkey';
 
+// Helper function for fetch with retries
+async function fetchWithRetry(url, options, maxRetries = 5) {
+    let lastError;
+    
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            const response = await fetch(url, options);
+            return response;
+        } catch (err) {
+            lastError = err;
+            const delay = Math.min(1000 * Math.pow(2, i), 10000);
+            console.log(`[Hasura] Retry ${i + 1}/${maxRetries} after ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+    
+    throw lastError;
+}
+
 const runForceMigrate = async () => {
     if (!process.env.DATABASE_URL) {
         throw new Error('DATABASE_URL is not defined');
@@ -74,6 +93,8 @@ async function waitForHasura(maxAttempts = 30) {
             const response = await fetch(`${HASURA_URL}/healthz`, { method: 'GET' });
             if (response.ok) {
                 console.log('[Hasura] Hasura is ready!');
+                // Add a small delay after healthz passes to ensure Hasura is fully initialized
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 return true;
             }
         } catch (err) {}
@@ -90,228 +111,220 @@ async function trackTablesInHasura() {
     
     await waitForHasura();
     
-    const tables = [
-        {
-            table: { schema: 'public', name: 'game_states' },
-            configuration: {
-                custom_name: 'gameStates',
-                custom_root_fields: {
-                    select: 'gameStates',
-                    select_by_pk: 'gameStatesByPk',
-                    select_aggregate: 'gameStatesAggregate',
-                    insert: 'insertGameStates',
-                    insert_one: 'insertGameStatesOne',
-                    update: 'updateGameStates',
-                    update_by_pk: 'updateGameStatesByPk',
-                    delete: 'deleteGameStates',
-                    delete_by_pk: 'deleteGameStatesByPk'
-                },
-                column_config: {
-                    game_id: { custom_name: 'gameId' },
-                    home_score: { custom_name: 'homeScore' },
-                    guest_score: { custom_name: 'guestScore' },
-                    home_fouls: { custom_name: 'homeFouls' },
-                    guest_fouls: { custom_name: 'guestFouls' },
-                    home_timeouts: { custom_name: 'homeTimeouts' },
-                    guest_timeouts: { custom_name: 'guestTimeouts' },
-                    clock_seconds: { custom_name: 'clockSeconds' },
-                    is_timer_running: { custom_name: 'isTimerRunning' },
-                    current_period: { custom_name: 'currentPeriod' },
-                    updated_at: { custom_name: 'updatedAt' },
-                    updated_by: { custom_name: 'updatedBy' }
-                }
-            }
-        },
-        {
-            table: { schema: 'public', name: 'hasura_game_events' },
-            configuration: {
-                custom_name: 'gameEvents',
-                custom_root_fields: {
-                    select: 'gameEvents',
-                    select_by_pk: 'gameEventsByPk',
-                    select_aggregate: 'gameEventsAggregate',
-                    insert: 'insertGameEvents',
-                    insert_one: 'insertGameEventsOne',
-                    update: 'updateGameEvents',
-                    update_by_pk: 'updateGameEventsByPk',
-                    delete: 'deleteGameEvents',
-                    delete_by_pk: 'deleteGameEventsByPk'
-                },
-                column_config: {
-                    game_id: { custom_name: 'gameId' },
-                    event_id: { custom_name: 'eventId' },
-                    clock_at: { custom_name: 'clockAt' },
-                    created_at: { custom_name: 'createdAt' },
-                    created_by: { custom_name: 'createdBy' }
-                }
-            }
-        },
-        {
-            table: { schema: 'public', name: 'timer_sync' },
-            configuration: {
-                custom_name: 'timerSync',
-                custom_root_fields: {
-                    select: 'timerSync',
-                    select_by_pk: 'timerSyncByPk',
-                    select_aggregate: 'timerSyncAggregate',
-                    insert: 'insertTimerSync',
-                    insert_one: 'insertTimerSyncOne',
-                    update: 'updateTimerSync',
-                    update_by_pk: 'updateTimerSyncByPk',
-                    delete: 'deleteTimerSync',
-                    delete_by_pk: 'deleteTimerSyncByPk'
-                },
-                column_config: {
-                    game_id: { custom_name: 'gameId' },
-                    is_running: { custom_name: 'isRunning' },
-                    started_at: { custom_name: 'startedAt' },
-                    initial_clock_seconds: { custom_name: 'initialClockSeconds' },
-                    current_clock_seconds: { custom_name: 'currentClockSeconds' },
-                    updated_at: { custom_name: 'updatedAt' },
-                    updated_by: { custom_name: 'updatedBy' }
-                }
-            }
-        }
-    ];
-
-    // Track each table
-    for (const tableConfig of tables) {
+    // Retry the entire tracking process up to 3 times
+    for (let attempt = 0; attempt < 3; attempt++) {
+        console.log(`[Hasura] Tracking attempt ${attempt + 1}/3...`);
+        
         try {
-            console.log(`[Hasura] Tracking table: ${tableConfig.table.name}...`);
+            // First track game_states
+            await trackSingleTable('game_states', 'gameStates', {
+                select: 'gameStates',
+                select_by_pk: 'gameStatesByPk',
+                select_aggregate: 'gameStatesAggregate',
+                insert: 'insertGameStates',
+                insert_one: 'insertGameStatesOne',
+                update: 'updateGameStates',
+                update_by_pk: 'updateGameStatesByPk',
+                delete: 'deleteGameStates',
+                delete_by_pk: 'deleteGameStatesByPk'
+            }, {
+                game_id: { custom_name: 'gameId' },
+                home_score: { custom_name: 'homeScore' },
+                guest_score: { custom_name: 'guestScore' },
+                home_fouls: { custom_name: 'homeFouls' },
+                guest_fouls: { custom_name: 'guestFouls' },
+                home_timeouts: { custom_name: 'homeTimeouts' },
+                guest_timeouts: { custom_name: 'guestTimeouts' },
+                clock_seconds: { custom_name: 'clockSeconds' },
+                is_timer_running: { custom_name: 'isTimerRunning' },
+                current_period: { custom_name: 'currentPeriod' },
+                updated_at: { custom_name: 'updatedAt' },
+                updated_by: { custom_name: 'updatedBy' }
+            }, ['game_id', 'home_score', 'guest_score', 'home_fouls', 'guest_fouls', 
+                'home_timeouts', 'guest_timeouts', 'clock_seconds', 'is_timer_running',
+                'current_period', 'possession', 'status', 'updated_at', 'updated_by']);
             
-            const response = await fetch(`${HASURA_URL}/v1/metadata`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
-                },
-                body: JSON.stringify({
-                    type: 'pg_track_table',
-                    args: tableConfig
-                })
-            });
+            // Then track hasura_game_events
+            await trackSingleTable('hasura_game_events', 'gameEvents', {
+                select: 'gameEvents',
+                select_by_pk: 'gameEventsByPk',
+                select_aggregate: 'gameEventsAggregate',
+                insert: 'insertGameEvents',
+                insert_one: 'insertGameEventsOne',
+                update: 'updateGameEvents',
+                update_by_pk: 'updateGameEventsByPk',
+                delete: 'deleteGameEvents',
+                delete_by_pk: 'deleteGameEventsByPk'
+            }, {
+                game_id: { custom_name: 'gameId' },
+                event_id: { custom_name: 'eventId' },
+                clock_at: { custom_name: 'clockAt' },
+                created_at: { custom_name: 'createdAt' },
+                created_by: { custom_name: 'createdBy' }
+            }, ['id', 'game_id', 'event_id', 'type', 'period', 'clock_at', 'team', 
+                'player', 'value', 'metadata', 'description', 'created_at', 'created_by']);
             
-            const result = await response.text();
+            // Finally track timer_sync
+            await trackSingleTable('timer_sync', 'timerSync', {
+                select: 'timerSync',
+                select_by_pk: 'timerSyncByPk',
+                select_aggregate: 'timerSyncAggregate',
+                insert: 'insertTimerSync',
+                insert_one: 'insertTimerSyncOne',
+                update: 'updateTimerSync',
+                update_by_pk: 'updateTimerSyncByPk',
+                delete: 'deleteTimerSync',
+                delete_by_pk: 'deleteTimerSyncByPk'
+            }, {
+                game_id: { custom_name: 'gameId' },
+                is_running: { custom_name: 'isRunning' },
+                started_at: { custom_name: 'startedAt' },
+                initial_clock_seconds: { custom_name: 'initialClockSeconds' },
+                current_clock_seconds: { custom_name: 'currentClockSeconds' },
+                updated_at: { custom_name: 'updatedAt' },
+                updated_by: { custom_name: 'updatedBy' }
+            }, ['game_id', 'is_running', 'started_at', 'initial_clock_seconds', 
+                'current_clock_seconds', 'updated_at', 'updated_by']);
             
-            if (response.ok) {
-                console.log(`[Hasura] ✓ Successfully tracked ${tableConfig.table.name}`);
-            } else if (result.includes('already tracked') || result.includes('already exists')) {
-                console.log(`[Hasura] ✓ ${tableConfig.table.name} already tracked`);
-            } else {
-                console.error(`[Hasura] ✗ Error tracking ${tableConfig.table.name}:`, result.substring(0, 200));
-            }
+            console.log('[Hasura] All tables tracked successfully!');
+            return;
+            
         } catch (err) {
-            console.error(`[Hasura] ✗ Failed to track ${tableConfig.table.name}:`, err.message);
+            console.error(`[Hasura] Attempt ${attempt + 1} failed:`, err.message);
+            if (attempt < 2) {
+                console.log('[Hasura] Waiting 5s before retry...');
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
         }
     }
     
-    // Set permissions
-    await setPermissions();
-    
-    console.log('[Hasura] Table tracking complete!');
+    console.error('[Hasura] Failed to track tables after all attempts');
 }
 
-async function setPermissions() {
-    console.log('[Hasura] Setting permissions...');
+async function trackSingleTable(tableName, customName, rootFields, columnConfig, columns) {
+    console.log(`[Hasura] Tracking table: ${tableName}...`);
     
-    const permissions = [
-        {
-            table: { schema: 'public', name: 'game_states' },
-            columns: ['game_id', 'home_score', 'guest_score', 'home_fouls', 'guest_fouls', 
-                      'home_timeouts', 'guest_timeouts', 'clock_seconds', 'is_timer_running',
-                      'current_period', 'possession', 'status', 'updated_at', 'updated_by']
-        },
-        {
-            table: { schema: 'public', name: 'hasura_game_events' },
-            columns: ['id', 'game_id', 'event_id', 'type', 'period', 'clock_at', 'team', 
-                      'player', 'value', 'metadata', 'description', 'created_at', 'created_by']
-        },
-        {
-            table: { schema: 'public', name: 'timer_sync' },
-            columns: ['game_id', 'is_running', 'started_at', 'initial_clock_seconds', 
-                      'current_clock_seconds', 'updated_at', 'updated_by']
+    try {
+        // Track the table with retries
+        const trackResponse = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
+            },
+            body: JSON.stringify({
+                type: 'pg_track_table',
+                args: {
+                    table: { schema: 'public', name: tableName },
+                    configuration: {
+                        custom_name: customName,
+                        custom_root_fields: rootFields,
+                        column_config: columnConfig
+                    }
+                }
+            })
+        });
+        
+        const trackResult = await trackResponse.text();
+        
+        if (trackResponse.ok) {
+            console.log(`[Hasura] ✓ Successfully tracked ${tableName}`);
+        } else if (trackResult.includes('already tracked') || trackResult.includes('already exists')) {
+            console.log(`[Hasura] ✓ ${tableName} already tracked`);
+        } else {
+            console.error(`[Hasura] ✗ Error tracking ${tableName}:`, trackResult.substring(0, 200));
+            throw new Error(`Failed to track ${tableName}`);
         }
-    ];
-    
-    for (const perm of permissions) {
-        try {
-            // Select permissions
-            const selectResponse = await fetch(`${HASURA_URL}/v1/metadata`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
-                },
-                body: JSON.stringify({
-                    type: 'pg_create_select_permission',
-                    args: {
-                        table: perm.table,
-                        role: 'anonymous',
-                        permission: {
-                            columns: perm.columns,
-                            filter: {},
-                            allow_aggregations: true
-                        }
+        
+        // Small delay between tracking and permissions
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Set select permissions
+        console.log(`[Hasura] Setting select permissions for ${tableName}...`);
+        const selectResponse = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
+            },
+            body: JSON.stringify({
+                type: 'pg_create_select_permission',
+                args: {
+                    table: { schema: 'public', name: tableName },
+                    role: 'anonymous',
+                    permission: {
+                        columns: columns,
+                        filter: {},
+                        allow_aggregations: true
                     }
-                })
-            });
-            
-            if (selectResponse.ok || (await selectResponse.text()).includes('already exists')) {
-                console.log(`[Hasura] ✓ Select permissions for ${perm.table.name}`);
-            }
-            
-            // Insert permissions
-            const insertResponse = await fetch(`${HASURA_URL}/v1/metadata`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
-                },
-                body: JSON.stringify({
-                    type: 'pg_create_insert_permission',
-                    args: {
-                        table: perm.table,
-                        role: 'anonymous',
-                        permission: {
-                            check: {},
-                            columns: perm.columns
-                        }
-                    }
-                })
-            });
-            
-            if (insertResponse.ok || (await insertResponse.text()).includes('already exists')) {
-                console.log(`[Hasura] ✓ Insert permissions for ${perm.table.name}`);
-            }
-            
-            // Update permissions
-            const updateResponse = await fetch(`${HASURA_URL}/v1/metadata`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
-                },
-                body: JSON.stringify({
-                    type: 'pg_create_update_permission',
-                    args: {
-                        table: perm.table,
-                        role: 'anonymous',
-                        permission: {
-                            columns: perm.columns,
-                            filter: {},
-                            check: {}
-                        }
-                    }
-                })
-            });
-            
-            if (updateResponse.ok || (await updateResponse.text()).includes('already exists')) {
-                console.log(`[Hasura] ✓ Update permissions for ${perm.table.name}`);
-            }
-            
-        } catch (err) {
-            console.error(`[Hasura] ✗ Permissions error for ${perm.table.name}:`, err.message);
+                }
+            })
+        });
+        
+        if (selectResponse.ok || (await selectResponse.text()).includes('already exists')) {
+            console.log(`[Hasura] ✓ Select permissions for ${tableName}`);
         }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Set insert permissions
+        console.log(`[Hasura] Setting insert permissions for ${tableName}...`);
+        const insertResponse = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
+            },
+            body: JSON.stringify({
+                type: 'pg_create_insert_permission',
+                args: {
+                    table: { schema: 'public', name: tableName },
+                    role: 'anonymous',
+                    permission: {
+                        check: {},
+                        columns: columns
+                    }
+                }
+            })
+        });
+        
+        if (insertResponse.ok || (await insertResponse.text()).includes('already exists')) {
+            console.log(`[Hasura] ✓ Insert permissions for ${tableName}`);
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Set update permissions
+        console.log(`[Hasura] Setting update permissions for ${tableName}...`);
+        const updateResponse = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
+            },
+            body: JSON.stringify({
+                type: 'pg_create_update_permission',
+                args: {
+                    table: { schema: 'public', name: tableName },
+                    role: 'anonymous',
+                    permission: {
+                        columns: columns,
+                        filter: {},
+                        check: {}
+                    }
+                }
+            })
+        });
+        
+        if (updateResponse.ok || (await updateResponse.text()).includes('already exists')) {
+            console.log(`[Hasura] ✓ Update permissions for ${tableName}`);
+        }
+        
+        console.log(`[Hasura] ✓ ${tableName} setup complete`);
+        
+    } catch (err) {
+        console.error(`[Hasura] ✗ Failed to track ${tableName}:`, err.message);
+        throw err;
     }
 }
 
