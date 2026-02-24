@@ -29,6 +29,10 @@ services:
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - BACKUP_BUCKET=${BACKUP_BUCKET:-bball-db-backups}
       - BACKUP_PREFIX=${BACKUP_PREFIX:-backups}
+      # Hasura GraphQL Configuration
+      - NEXT_PUBLIC_HASURA_URL=${NEXT_PUBLIC_HASURA_URL:-http://localhost:8080/v1/graphql}
+      - HASURA_ADMIN_SECRET=${HASURA_ADMIN_SECRET:-myadminsecretkey}
+
     depends_on:
       db:
         condition: service_healthy
@@ -78,6 +82,31 @@ services:
       - backup_logs:/app/logs
     restart: always
     # This service runs cron in the foreground, performing daily backups at 2 AM UTC
+
+  # Hasura GraphQL Engine for real-time subscriptions
+  hasura:
+    image: hasura/graphql-engine:v2.40.0
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgres@db:5432/bball
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_DEV_MODE: "false"
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET:-myadminsecretkey}
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
+
+      HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "true"
+      HASURA_GRAPHQL_CORS_DOMAIN: "*"
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   postgres_data:

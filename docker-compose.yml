@@ -47,11 +47,11 @@ services:
       HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgres@db:5432/bball
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_DEV_MODE: "true"
-      HASURA_GRAPHQL_ADMIN_SECRET: myadminsecretkey
+      HASURA_GRAPHQL_ADMIN_SECRET: qwer1234
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
-      HASURA_GRAPHQL_JWT_SECRET: '{"type":"RS256","jwk_url":"https://clerk.your-domain.com/.well-known/jwks.json"}'
+
       HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "true"
-      HASURA_GRAPHQL_WS_READ_COOKIE: "true"
+
 
 volumes:
   postgres_data:
