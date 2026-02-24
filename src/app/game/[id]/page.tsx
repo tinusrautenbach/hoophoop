@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useSocket } from '@/hooks/use-socket';
+import { useHasuraGame } from '@/hooks/use-hasura-game';
 import { motion } from 'framer-motion';
 import { Trophy, Table, RefreshCw, Wifi, WifiOff, Eye, Globe, Users2 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
@@ -57,13 +57,18 @@ type Game = {
 export default function SpectatorPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { socket, isConnected } = useSocket(id as string);
+    
+    const {
+        gameState: convexState,
+        gameEvents: convexEvents,
+        currentClock,
+        isTimerRunning,
+        isConnected,
+    } = useHasuraGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
     const [loading, setLoading] = useState(true);
-    const [isTimerRunning, setIsTimerRunning] = useState(false);
     const [events, setEvents] = useState<GameEvent[]>([]);
-    const [hasReceivedGameState, setHasReceivedGameState] = useState(false);
     const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
 
     useEffect(() => {
@@ -72,103 +77,49 @@ export default function SpectatorPage() {
             .then(data => {
                 setGame(data);
                 setLoading(false);
+                setLastSyncTime(new Date());
             });
     }, [id]);
 
     useEffect(() => {
-        if (!socket) return;
+        if (!convexState) return;
         
-        // Listen for full game state on connection
-        const handleGameState = ({ game: gameState, events: gameEvents }: { game: Game, events: GameEventRaw[] }) => {
-            console.log('[Spectator] Received game-state event:', { 
-                isTimerRunning: gameState.isTimerRunning, 
-                clockSeconds: gameState.clockSeconds,
-                hasGameState: !!gameState 
-            });
-            setGame(gameState);
-            console.log('[Spectator] Setting isTimerRunning to:', gameState.isTimerRunning);
-            setIsTimerRunning(gameState.isTimerRunning);
-            setHasReceivedGameState(true);
-            setLastSyncTime(new Date());
-            if (gameEvents) {
-                setEvents(gameEvents.map((e: GameEventRaw) => ({
-                    ...e,
-                    timestamp: new Date(e.timestamp || e.createdAt || Date.now())
-                })) as GameEvent[]);
-            }
-        };
-
-        const handleClockUpdate = (data: { gameId: string, clockSeconds: number, isTimerRunning: boolean }) => {
-            if (data.gameId === id) {
-                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
-                setIsTimerRunning(data.isTimerRunning);
-                // Keep "Last sync" updated to show the connection is alive
-                // But maybe don't update on EVERY tick to avoid UI thrashing?
-                // For now, let's update it every tick to be sure.
-                setLastSyncTime(new Date());
-            }
-        };
-
-        const handleTimerStarted = (data: { gameId: string, clockSeconds: number }) => {
-            if (data.gameId === id) {
-                setIsTimerRunning(true);
-                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
-            }
-        };
-
-        const handleTimerStopped = (data: { gameId: string, clockSeconds: number }) => {
-            if (data.gameId === id) {
-                setIsTimerRunning(false);
-                setGame(prev => prev ? { ...prev, clockSeconds: data.clockSeconds } : null);
-            }
-        };
-        
-        socket.on('game-state', handleGameState);
-        socket.on('clock-update', handleClockUpdate);
-        socket.on('timer-started', handleTimerStarted);
-        socket.on('timer-stopped', handleTimerStopped);
-        
-        socket.on('game-updated', (updates: Partial<Game> & { isTimerRunning?: boolean }) => {
-            setGame(prev => prev ? { ...prev, ...updates } : null);
-            if (updates.isTimerRunning !== undefined) {
-                setIsTimerRunning(updates.isTimerRunning);
-            }
-        });
-
-        socket.on('event-added', (event: GameEvent) => {
-            const newEvent = {
-                ...event,
-                timestamp: new Date(event.timestamp)
+        setGame(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                homeScore: convexState.homeScore ?? prev.homeScore,
+                guestScore: convexState.guestScore ?? prev.guestScore,
+                homeFouls: convexState.homeFouls ?? prev.homeFouls,
+                guestFouls: convexState.guestFouls ?? prev.guestFouls,
+                homeTimeouts: convexState.homeTimeouts ?? prev.homeTimeouts,
+                guestTimeouts: convexState.guestTimeouts ?? prev.guestTimeouts,
+                currentPeriod: convexState.currentPeriod ?? prev.currentPeriod,
+                possession: convexState.possession ?? prev.possession,
+                status: convexState.status ?? prev.status,
+                clockSeconds: currentClock,
+                isTimerRunning,
             };
-            setEvents(prev => [newEvent, ...prev]);
         });
+        setLastSyncTime(new Date());
+    }, [convexState, currentClock, isTimerRunning]);
 
-        // Emit join-game AFTER setting up listeners to avoid race condition
-        if (socket.connected) {
-            console.log('Spectator emitting join-game for:', id);
-            socket.emit('join-game', id);
-        }
-
-        // Handle reconnection - re-join game room when socket reconnects
-        const handleConnect = () => {
-            console.log('[Spectator] Socket reconnected, re-joining game:', id);
-            socket.emit('join-game', id);
-        };
-        socket.on('connect', handleConnect);
+    useEffect(() => {
+        if (!convexEvents) return;
         
-        return () => {
-            socket.off('game-state', handleGameState);
-            socket.off('clock-update', handleClockUpdate);
-            socket.off('timer-started', handleTimerStarted);
-            socket.off('timer-stopped', handleTimerStopped);
-            socket.off('game-updated');
-            socket.off('event-added');
-            socket.off('connect', handleConnect);
-        };
-    }, [socket, id]);
-
-    // Local ticking is removed - we rely on the server's clock-update event (every second)
-    // or manual sync. This ensures we show exactly what the server says.
+        setEvents(convexEvents.map((e: { _id: string; type: string; period: number; clockAt: number; team?: 'home' | 'guest'; player?: string; value?: number; metadata?: Record<string, unknown>; description: string; createdAt: number }) => ({
+            id: e._id,
+            type: e.type,
+            period: e.period,
+            clockAt: e.clockAt,
+            team: e.team || 'home',
+            player: e.player,
+            value: e.value,
+            metadata: e.metadata as { points?: number; shotType?: '2pt' | '3pt' | 'ft' },
+            description: e.description,
+            timestamp: new Date(e.createdAt),
+        })));
+    }, [convexEvents]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -177,30 +128,18 @@ export default function SpectatorPage() {
     };
 
     const handleManualSync = () => {
-        if (socket && socket.connected) {
-            console.log('[Spectator] Manual sync requested for game:', id);
-            socket.emit('join-game', id);
-            // Also fetch fresh data from API as fallback
-            fetch(`/api/games/${id}`)
-                .then(res => res.json())
-                .then(data => {
-                    console.log('[Spectator] API response:', { 
-                        isTimerRunning: data.isTimerRunning, 
-                        clockSeconds: data.clockSeconds 
-                    });
-                    setGame(data);
-                    console.log('[Spectator] Setting isTimerRunning from API to:', data.isTimerRunning);
-                    setIsTimerRunning(data.isTimerRunning);
-                    setHasReceivedGameState(true);
-                    setLastSyncTime(new Date());
-                    if (data.events) {
-                        setEvents(data.events.map((e: GameEventRaw) => ({
-                            ...e,
-                            timestamp: new Date(e.createdAt || e.timestamp || Date.now())
-                        })) as GameEvent[]);
-                    }
-                });
-        }
+        fetch(`/api/games/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                setGame(data);
+                setLastSyncTime(new Date());
+                if (data.events) {
+                    setEvents(data.events.map((e: GameEventRaw) => ({
+                        ...e,
+                        timestamp: new Date(e.createdAt || e.timestamp || Date.now())
+                    })) as GameEvent[]);
+                }
+            });
     };
 
     if (loading || !game) return (
@@ -244,14 +183,14 @@ export default function SpectatorPage() {
                                 onClick={handleManualSync}
                                 className={cn(
                                     "flex items-center gap-1 px-2 py-1 rounded-full text-[8px] sm:text-[10px] font-bold uppercase transition-all",
-                                    hasReceivedGameState
+                                    isConnected
                                         ? "bg-green-500/20 text-green-500 hover:bg-green-500/30"
                                         : "bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 animate-pulse"
                                 )}
                                 title="Sync Game Data"
                             >
                                 <RefreshCw size={10} className="sm:w-3 sm:h-3" />
-                                {hasReceivedGameState ? 'Synced' : 'Sync'}
+                                {isConnected ? 'Synced' : 'Sync'}
                             </button>
                         </div>
                     </div>

@@ -523,3 +523,63 @@ export const tournamentAwardsRelations = relations(tournamentAwards, ({ one }) =
     athlete: one(athletes, { fields: [tournamentAwards.athleteId], references: [athletes.id] }),
     team: one(teams, { fields: [tournamentAwards.teamId], references: [teams.id] }),
 }));
+
+// --- HASURA REAL-TIME SYNC TABLES ---
+// These tables are specifically for Hasura GraphQL subscriptions and real-time game state synchronization
+
+export const gameStates = pgTable('game_states', {
+    gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).primaryKey().notNull(),
+    homeScore: integer('home_score').default(0).notNull(),
+    guestScore: integer('guest_score').default(0).notNull(),
+    homeFouls: integer('home_fouls').default(0).notNull(),
+    guestFouls: integer('guest_fouls').default(0).notNull(),
+    homeTimeouts: integer('home_timeouts').default(3).notNull(),
+    guestTimeouts: integer('guest_timeouts').default(3).notNull(),
+    clockSeconds: integer('clock_seconds').default(600).notNull(),
+    isTimerRunning: boolean('is_timer_running').default(false).notNull(),
+    currentPeriod: integer('current_period').default(1).notNull(),
+    possession: text('possession'), // 'home' or 'guest'
+    status: text('status').default('scheduled').notNull(), // 'scheduled', 'live', 'final'
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedBy: text('updated_by'),
+});
+
+export const hasuraGameEvents = pgTable('hasura_game_events', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).notNull(),
+    eventId: text('event_id'), // Client-generated event ID for deduplication
+    type: text('type').notNull(),
+    period: integer('period').notNull(),
+    clockAt: integer('clock_at').notNull(),
+    team: text('team'), // 'home' or 'guest'
+    player: text('player'),
+    value: integer('value'),
+    metadata: jsonb('metadata'),
+    description: text('description').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    createdBy: text('created_by'),
+});
+
+export const timerSync = pgTable('timer_sync', {
+    gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).primaryKey().notNull(),
+    isRunning: boolean('is_running').default(false).notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    initialClockSeconds: integer('initial_clock_seconds').notNull(),
+    currentClockSeconds: integer('current_clock_seconds').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedBy: text('updated_by'),
+});
+
+// --- HASURA SYNC TABLE RELATIONS ---
+
+export const gameStatesRelations = relations(gameStates, ({ one }) => ({
+    game: one(games, { fields: [gameStates.gameId], references: [games.id] }),
+}));
+
+export const hasuraGameEventsRelations = relations(hasuraGameEvents, ({ one }) => ({
+    game: one(games, { fields: [hasuraGameEvents.gameId], references: [games.id] }),
+}));
+
+export const timerSyncRelations = relations(timerSync, ({ one }) => ({
+    game: one(games, { fields: [timerSync.gameId], references: [games.id] }),
+}));

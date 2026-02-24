@@ -1,0 +1,122 @@
+table:
+  name: timer_sync
+  schema: public
+configuration:
+  column_config:
+    current_clock_seconds:
+      custom_name: currentClockSeconds
+    game_id:
+      custom_name: gameId
+    initial_clock_seconds:
+      custom_name: initialClockSeconds
+    is_running:
+      custom_name: isRunning
+    started_at:
+      custom_name: startedAt
+    updated_at:
+      custom_name: updatedAt
+    updated_by:
+      custom_name: updatedBy
+  custom_column_names:
+    current_clock_seconds: currentClockSeconds
+    game_id: gameId
+    initial_clock_seconds: initialClockSeconds
+    is_running: isRunning
+    started_at: startedAt
+    updated_at: updatedAt
+    updated_by: updatedBy
+  custom_name: timerSync
+  identifier: timerSync
+  custom_root_fields:
+    delete: deleteTimerSync
+    delete_by_pk: deleteTimerSyncByPk
+    insert: insertTimerSync
+    insert_one: insertTimerSyncOne
+    select: timerSync
+    select_aggregate: timerSyncAggregate
+    select_by_pk: timerSyncByPk
+    update: updateTimerSync
+    update_by_pk: updateTimerSyncByPk
+object_relationships:
+  - name: game
+    using:
+      foreign_key_constraint_on: game_id
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - current_clock_seconds
+        - game_id
+        - initial_clock_seconds
+        - is_running
+        - started_at
+        - updated_at
+        - updated_by
+      filter: {}
+      allow_aggregations: true
+  - role: user
+    permission:
+      columns:
+        - current_clock_seconds
+        - game_id
+        - initial_clock_seconds
+        - is_running
+        - started_at
+        - updated_at
+        - updated_by
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: anonymous
+    permission:
+      check: {}
+      columns:
+        - current_clock_seconds
+        - game_id
+        - initial_clock_seconds
+        - is_running
+        - started_at
+        - updated_at
+        - updated_by
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - current_clock_seconds
+        - game_id
+        - initial_clock_seconds
+        - is_running
+        - started_at
+        - updated_at
+        - updated_by
+update_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - current_clock_seconds
+        - initial_clock_seconds
+        - is_running
+        - started_at
+        - updated_at
+        - updated_by
+      filter: {}
+      check: {}
+  - role: user
+    permission:
+      columns:
+        - current_clock_seconds
+        - initial_clock_seconds
+        - is_running
+        - started_at
+        - updated_at
+        - updated_by
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: anonymous
+    permission:
+      filter: {}
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []
