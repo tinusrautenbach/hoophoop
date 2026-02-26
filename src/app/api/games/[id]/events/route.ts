@@ -3,7 +3,35 @@ import { db } from '@/db';
 import { gameEvents, games, gameRosters } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { eq, and, sql } from 'drizzle-orm';
+import { graphqlRequest } from '@/lib/hasura/client';
 
+const UPSERT_GAME_STATE_MUTATION = `
+  mutation UpsertGameStateAfterEventDelete(
+    $gameId: uuid!
+    $homeScore: Int!
+    $guestScore: Int!
+    $homeFouls: Int!
+    $guestFouls: Int!
+    $updatedAt: timestamptz!
+  ) {
+    insertGameStatesOne(
+      object: {
+        gameId: $gameId
+        homeScore: $homeScore
+        guestScore: $guestScore
+        homeFouls: $homeFouls
+        guestFouls: $guestFouls
+        updatedAt: $updatedAt
+      }
+      on_conflict: {
+        constraint: game_states_pkey
+        update_columns: [homeScore, guestScore, homeFouls, guestFouls, updatedAt]
+      }
+    ) {
+      gameId
+    }
+  }
+`;
 export async function POST(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -124,7 +152,7 @@ export async function DELETE(
 
         await db.delete(gameEvents).where(eq(gameEvents.id, eventId));
 
-        // Return the updated game state (simplified)
+        // Sync updated scores/fouls to Hasura game_states so real-time subscribers see the change
         const updatedGame = await db.query.games.findFirst({
             where: eq(games.id, gameId),
             columns: {
@@ -134,6 +162,22 @@ export async function DELETE(
                 guestFouls: true
             }
         });
+
+        if (updatedGame) {
+            try {
+                await graphqlRequest(UPSERT_GAME_STATE_MUTATION, {
+                    gameId,
+                    homeScore: updatedGame.homeScore,
+                    guestScore: updatedGame.guestScore,
+                    homeFouls: updatedGame.homeFouls,
+                    guestFouls: updatedGame.guestFouls,
+                    updatedAt: new Date().toISOString(),
+                });
+            } catch (hasuraError) {
+                // Non-fatal: log but don't fail the request — Postgres is the source of truth
+                console.error('Failed to sync game state to Hasura after event delete:', hasuraError);
+            }
+        }
 
         return NextResponse.json({ success: true, game: updatedGame });
     } catch (error) {
