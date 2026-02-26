@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, SignOutButton } from '@/components/auth-provider';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { User, Mail, Shield, History, LogOut, ArrowRight, Trophy, School, Globe, Palette, Send, X, RefreshCw } from 'lucide-react';
+import { User, Mail, Shield, History, LogOut, ArrowRight, Trophy, School, Globe, Palette, Send, X, RefreshCw, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import packageJson from '../../../package.json';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -243,6 +244,14 @@ export default function ProfilePage() {
                                 Logout
                             </button>
                         </SignOutButton>
+                    </div>
+                </div>
+
+                {/* App Version */}
+                <div className="flex justify-end px-2 -mt-4">
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-[var(--muted-foreground)] opacity-50">
+                        <Tag size={10} />
+                        v{packageJson.version}
                     </div>
                 </div>
 
