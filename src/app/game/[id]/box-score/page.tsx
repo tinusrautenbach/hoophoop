@@ -111,6 +111,7 @@ export default function BoxScorePage() {
     useEffect(() => {
         if (!gameState || !gameEvents) return;
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: syncs Hasura subscription data to local state
         setGame(prev => {
             if (!prev) return null;
             return {

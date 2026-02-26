@@ -262,7 +262,7 @@ export default function ScorerPage() {
 
     const deleteEvent = async (eventId: string) => {
         try {
-            await removeEvent(eventId as any);
+            await removeEvent(eventId);
             setEvents(prev => prev.filter(e => e.id !== eventId));
             
             fetch(`/api/games/${id}/events?eventId=${eventId}`, {

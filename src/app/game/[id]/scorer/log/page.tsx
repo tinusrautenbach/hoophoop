@@ -58,6 +58,7 @@ export default function FullLogPage() {
             id: e._id,
             timestamp: new Date(e.createdAt || Date.now()),
         })) as unknown as GameEvent[];
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: syncs Hasura subscription data to local state
         setEvents(mappedEvents);
     }, [gameEvents]);
 

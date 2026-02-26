@@ -16,6 +16,18 @@ const eslintConfig = defineConfig([
     "aws/dist/**",
     "aws/cli/**",
   ]),
+  // eslint-plugin-react@7.x calls getFilename() (removed in ESLint v10) to detect the React version.
+  // Providing the version explicitly in settings bypasses that code path entirely.
+  {
+    settings: {
+      react: {
+        version: "19",
+      },
+    },
+    rules: {
+      "react/display-name": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

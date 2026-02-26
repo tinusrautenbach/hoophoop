@@ -563,7 +563,7 @@ export function useHasuraGame(gameId: string) {
       updatedAt: new Date().toISOString(),
       updatedBy: userId || 'anonymous',
     });
-  }, [gameId, userId]);
+  }, [gameId, userId, gameState]);
 
   const updatePeriod = useCallback(async (currentPeriod: number) => {
     if (!gameState) return;
@@ -573,7 +573,7 @@ export function useHasuraGame(gameId: string) {
       updatedAt: new Date().toISOString(),
       updatedBy: userId || 'anonymous',
     });
-  }, [gameId, userId]);
+  }, [gameId, userId, gameState]);
 
   const updatePossession = useCallback(async (possession: 'home' | 'guest') => {
     if (!gameState) return;
@@ -583,7 +583,7 @@ export function useHasuraGame(gameId: string) {
       updatedAt: new Date().toISOString(),
       updatedBy: userId || 'anonymous',
     });
-  }, [gameId, userId]);
+  }, [gameId, userId, gameState]);
 
   const initGameState = useCallback(async (initialClockSeconds: number = 600) => {
     await graphqlRequest(UPDATE_GAME_STATE_MUTATION, {
@@ -631,7 +631,7 @@ export function useHasuraGame(gameId: string) {
       updatedAt: new Date().toISOString(),
       updatedBy: userId || 'anonymous',
     });
-  }, [gameId, userId]);
+  }, [gameId, userId, gameState]);
 
   // State for the ticking clock display
   const [displayClock, setDisplayClock] = useState(600);
@@ -647,6 +647,7 @@ export function useHasuraGame(gameId: string) {
     };
     
     // Set initial value
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: syncs external timer subscription to display state
     setDisplayClock(calculateClock());
     
     // If timer is running, set up interval to update every second

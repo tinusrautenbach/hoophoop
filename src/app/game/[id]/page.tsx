@@ -84,6 +84,7 @@ export default function SpectatorPage() {
     useEffect(() => {
         if (!hasuraState) return;
         
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: syncs Hasura subscription data to local state
         setGame(prev => {
             if (!prev) return prev;
             return {
@@ -107,6 +108,7 @@ export default function SpectatorPage() {
     useEffect(() => {
         if (!hasuraEvents) return;
         
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: syncs Hasura subscription events to local state
         setEvents(hasuraEvents.map((e) => ({
             id: e._id,
             type: e.type as GameEvent['type'],
