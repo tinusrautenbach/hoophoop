@@ -104,8 +104,6 @@ services:
       HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "true"
       # CORS: Allow your main domain to make requests
       HASURA_GRAPHQL_CORS_DOMAIN: "${NEXT_PUBLIC_APP_URL}"
-      # CORS: Allow your main domain to make requests
-      HASURA_GRAPHQL_CORS_DOMAIN: "${NEXT_PUBLIC_APP_URL}"
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
