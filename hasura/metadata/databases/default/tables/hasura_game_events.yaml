@@ -76,6 +76,23 @@ select_permissions:
       filter: {}
       allow_aggregations: true
 insert_permissions:
+  - role: anonymous
+    permission:
+      check: {}
+      columns:
+        - clock_at
+        - created_at
+        - created_by
+        - description
+        - event_id
+        - game_id
+        - id
+        - metadata
+        - period
+        - player
+        - team
+        - type
+        - value
   - role: user
     permission:
       check: {}
@@ -111,6 +128,9 @@ update_permissions:
       filter: {}
       check: {}
 delete_permissions:
+  - role: anonymous
+    permission:
+      filter: {}
   - role: user
     permission:
       filter: {}
