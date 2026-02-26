@@ -115,7 +115,7 @@
   - [x] **Live Games Tab**: Display all games with `visibility = 'public_general'` and `status = 'live'`, grouped by community.
   - [x] **Historical Tab**: Display completed public games, grouped by community, sortable by date.
   - [x] Search/filter by team name, community name, date range.
-  - [ ] Real-time score updates on live tab (Socket.io removed — needs Hasura subscription migration, tracked in 18.7).
+  - [x] Real-time score updates on live tab (Hasura WebSocket subscription — `LiveGameStates` — implemented).
   - [x] Game card component: Team names, score, period, clock, community badge.
 - [x] **8.3 Community Portal**:
   - [x] Create public page at `/community/[slug]` (no auth required).
@@ -123,7 +123,7 @@
   - [x] **Live Games Tab**: All live games for this community (both `public_general` and `public_community` visibility).
   - [x] **Historical Tab**: All completed community games with search/filter.
   - [x] **Teams Tab** (optional): List of community teams with rosters.
-  - [ ] Real-time updates via Hasura subscription (Socket.io removed — needs migration, tracked in 18.7).
+  - [x] Real-time updates via Hasura subscription (`CommunityLiveGameStates` — implemented).
 - [x] **8.4 Game Creation UI Update**:
   - [x] Add visibility toggle (Private / Public General / Public Community) to game creation form.
   - [x] Show visibility badge on game list and game detail pages.
