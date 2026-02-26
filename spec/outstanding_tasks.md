@@ -40,11 +40,11 @@ This file tracks all incomplete tasks from the implementation plan.
   - [ ] Integrate logging into key API routes (Game Create, Score Update)
 
 ## Phase 9: Bench Selection & Scoring UX Improvements
-- [ ] **9.5 Score Recalculation on Event Deletion**:
-  - [ ] When a SCORE event is deleted from the game log, re-reduce all remaining SCORE events
-  - [ ] Update `games.home_score` and `games.guest_score` in the database
-  - [ ] Broadcast updated totals to all clients via Socket.io
-  - [ ] Ensure the scorer UI, spectator UI, and box score all reflect the recalculated score
+- [x] **9.5 Score Recalculation on Event Deletion** (Done):
+  - [x] When a SCORE event is deleted from the game log, re-reduce all remaining SCORE events
+  - [x] Update `games.home_score` and `games.guest_score` in the database
+  - [x] Broadcast updated totals to all clients via Hasura subscription
+  - [x] Ensure the scorer UI, spectator UI, and box score all reflect the recalculated score
 
 ## Phase 12: Mobile Application (React Native) - SUSPENDED
 > **Note**: Mobile app development has been suspended. The `/mobile` directory has been removed from the codebase.

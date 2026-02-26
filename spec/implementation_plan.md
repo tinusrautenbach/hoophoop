@@ -154,11 +154,11 @@
   - [x] Allow removing a player from game roster mid-game.
   - [x] Jersey number changes broadcast to all scorers/spectators in real-time.
   - [x] Log jersey number changes in activity history.
-- [x] **9.5 Score Recalculation on Event Deletion** (Partial — DB update done, broadcast missing):
+- [x] **9.5 Score Recalculation on Event Deletion** (Done):
   - [x] When a SCORE event is deleted from the game log, re-reduce all remaining SCORE events.
   - [x] Update `games.home_score` and `games.guest_score` in the database.
-  - [ ] Broadcast updated totals to all clients via Hasura subscription (gameStates mutation triggers subscriber update).
-  - [ ] Ensure the scorer UI, spectator UI, and box score all reflect the recalculated score.
+  - [x] Broadcast updated totals to all clients via Hasura subscription (gameStates mutation triggers subscriber update).
+  - [x] Ensure the scorer UI, spectator UI, and box score all reflect the recalculated score.
 
 ## Phase 10: Player Search, DOB & Team Roster Improvements (Done)
 - [x] **10.1 Player Schema Updates**:
@@ -750,7 +750,7 @@
   - [x] `convex/` source directory removed
   - [x] Remove stale test artifacts: `tests/integration/convex-game.test.ts` (deleted)
   - [x] Remove stale test utility: `src/lib/test/convex-test-utils.ts` (deleted)
-  - [ ] Remove `.convex/` hidden config directory
+  - [x] Remove `.convex/` hidden config directory
   - [x] Load test `tests/load/load-test-10k-spectators-100-games.test.ts` deleted (Socket.io-based, no longer applicable)
   
 - [ ] **18.9 Hasura Metadata and Migrations** (Partial — 3 tables exported):
