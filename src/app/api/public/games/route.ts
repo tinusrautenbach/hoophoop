@@ -112,11 +112,12 @@ export async function GET(request: Request) {
         }
         
         const groupedGames = filteredGames.reduce<Record<string, CommunityGroup>>((acc, game) => {
+            const communityId = game.community?.id || '__none__';
             const communityName = game.community?.name || 'Independent';
             const communitySlug = game.community?.slug || 'independent';
             
-            if (!acc[communityName]) {
-                acc[communityName] = {
+            if (!acc[communityId]) {
+                acc[communityId] = {
                     community: {
                         name: communityName,
                         slug: communitySlug,
@@ -126,7 +127,7 @@ export async function GET(request: Request) {
                 };
             }
             
-            acc[communityName].games.push(game);
+            acc[communityId].games.push(game);
             return acc;
         }, {});
 

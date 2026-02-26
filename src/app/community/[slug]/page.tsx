@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { GameCard } from '@/app/live/components/game-card';
 import { Search, Calendar, Users, ArrowLeft, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { getHasuraWsClient } from '@/lib/hasura/client';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -100,7 +101,7 @@ export default function CommunityPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
-
+    const unsubscribeRef = useRef<(() => void) | null>(null);
     // Fetch community data and games
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -206,6 +207,91 @@ export default function CommunityPage() {
         fetchSeasonDetails();
     }, [fetchSeasonDetails]);
 
+    // Subscribe to live game state updates via Hasura WebSocket (live tab only)
+    useEffect(() => {
+        if (activeTab !== 'live') {
+            if (unsubscribeRef.current) {
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+            return;
+        }
+
+        const client = getHasuraWsClient();
+        const unsubscribe = client.subscribe<{
+            gameStates: Array<{
+                gameId: string;
+                homeScore: number;
+                guestScore: number;
+                homeFouls: number;
+                guestFouls: number;
+                homeTimeouts: number;
+                guestTimeouts: number;
+                clockSeconds: number;
+                currentPeriod: number;
+                possession: string;
+                status: string;
+                isTimerRunning: boolean;
+            }>;
+        }>(
+            {
+                query: `
+                    subscription CommunityLiveGameStates {
+                        gameStates(where: { status: { _eq: "live" } }) {
+                            gameId
+                            homeScore
+                            guestScore
+                            homeFouls
+                            guestFouls
+                            homeTimeouts
+                            guestTimeouts
+                            clockSeconds
+                            currentPeriod
+                            possession
+                            status
+                            isTimerRunning
+                        }
+                    }
+                `,
+            },
+            {
+                next: (result) => {
+                    const states = result.data?.gameStates;
+                    if (!states) return;
+                    setGames(prev => prev.map(game => {
+                        const liveState = states.find(s => s.gameId === game.id);
+                        if (!liveState) return game;
+                        return {
+                            ...game,
+                            homeScore: liveState.homeScore,
+                            guestScore: liveState.guestScore,
+                            homeFouls: liveState.homeFouls,
+                            guestFouls: liveState.guestFouls,
+                            homeTimeouts: liveState.homeTimeouts,
+                            guestTimeouts: liveState.guestTimeouts,
+                            clockSeconds: liveState.clockSeconds,
+                            currentPeriod: liveState.currentPeriod,
+                            possession: liveState.possession as 'home' | 'guest' | null,
+                            status: liveState.status as Game['status'],
+                            isTimerRunning: liveState.isTimerRunning,
+                        };
+                    }));
+                },
+                error: (err) => {
+                    console.error('[Hasura] Community live games subscription error:', err);
+                },
+                complete: () => {
+                    console.log('[Hasura] Community live games subscription completed');
+                },
+            }
+        );
+
+        unsubscribeRef.current = unsubscribe;
+        return () => {
+            unsubscribe();
+            unsubscribeRef.current = null;
+        };
+    }, [activeTab]);
     // Filter games by search
     const filteredGames = games.filter(game => {
         if (!searchQuery) return true;

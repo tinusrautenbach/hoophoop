@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameCard } from './components/game-card';
 import { Search, Calendar } from 'lucide-react';
+import { getHasuraWsClient } from '@/lib/hasura/client';
 
 interface Game {
     id: string;
@@ -61,6 +62,7 @@ export default function LivePage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+    const unsubscribeRef = useRef<(() => void) | null>(null);
 
     // Fetch games from API
     const fetchGames = useCallback(async () => {
@@ -90,6 +92,93 @@ export default function LivePage() {
         fetchGames();
     }, [fetchGames]);
 
+    // Subscribe to live game state updates via Hasura WebSocket (live tab only)
+    useEffect(() => {
+        if (activeTab !== 'live') {
+            // Clean up subscription when leaving live tab
+            if (unsubscribeRef.current) {
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+            return;
+        }
+
+        const client = getHasuraWsClient();
+        const unsubscribe = client.subscribe<{
+            gameStates: Array<{
+                gameId: string;
+                homeScore: number;
+                guestScore: number;
+                homeFouls: number;
+                guestFouls: number;
+                homeTimeouts: number;
+                guestTimeouts: number;
+                clockSeconds: number;
+                currentPeriod: number;
+                possession: string;
+                status: string;
+                isTimerRunning: boolean;
+            }>;
+        }>(
+            {
+                query: `
+                    subscription LiveGameStates {
+                        gameStates(where: { status: { _eq: "live" } }) {
+                            gameId
+                            homeScore
+                            guestScore
+                            homeFouls
+                            guestFouls
+                            homeTimeouts
+                            guestTimeouts
+                            clockSeconds
+                            currentPeriod
+                            possession
+                            status
+                            isTimerRunning
+                        }
+                    }
+                `,
+            },
+            {
+                next: (result) => {
+                    const states = result.data?.gameStates;
+                    if (!states) return;
+                    // Patch matching games with fresh real-time state
+                    setGames(prev => prev.map(game => {
+                        const liveState = states.find(s => s.gameId === game.id);
+                        if (!liveState) return game;
+                        return {
+                            ...game,
+                            homeScore: liveState.homeScore,
+                            guestScore: liveState.guestScore,
+                            homeFouls: liveState.homeFouls,
+                            guestFouls: liveState.guestFouls,
+                            homeTimeouts: liveState.homeTimeouts,
+                            guestTimeouts: liveState.guestTimeouts,
+                            clockSeconds: liveState.clockSeconds,
+                            currentPeriod: liveState.currentPeriod,
+                            possession: liveState.possession as 'home' | 'guest' | null,
+                            status: liveState.status as Game['status'],
+                            isTimerRunning: liveState.isTimerRunning,
+                        };
+                    }));
+                },
+                error: (err) => {
+                    console.error('[Hasura] Live games subscription error:', err);
+                },
+                complete: () => {
+                    console.log('[Hasura] Live games subscription completed');
+                },
+            }
+        );
+
+        unsubscribeRef.current = unsubscribe;
+        return () => {
+            unsubscribe();
+            unsubscribeRef.current = null;
+        };
+    }, [activeTab]);
     // Filter games by search
     const filteredGames = games.filter(game => {
         if (!searchQuery) return true;
@@ -237,7 +326,7 @@ export default function LivePage() {
                         ) : (
                             // Show grouped by community
                             filteredGroupedGames.map((group) => (
-                                <div key={group.community.slug}>
+                                <div key={group.community.id ?? `name:${group.community.name}`}>
                                     <h2 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
                                         {group.community.name}
                                         <span className="text-sm text-slate-500 font-normal">

@@ -59,8 +59,8 @@ export default function SpectatorPage() {
     const router = useRouter();
     
     const {
-        gameState: convexState,
-        gameEvents: convexEvents,
+        gameState: hasuraState,
+        gameEvents: hasuraEvents,
         currentClock,
         isTimerRunning,
         isConnected,
@@ -82,32 +82,32 @@ export default function SpectatorPage() {
     }, [id]);
 
     useEffect(() => {
-        if (!convexState) return;
+        if (!hasuraState) return;
         
         setGame(prev => {
             if (!prev) return prev;
             return {
                 ...prev,
-                homeScore: convexState.homeScore ?? prev.homeScore,
-                guestScore: convexState.guestScore ?? prev.guestScore,
-                homeFouls: convexState.homeFouls ?? prev.homeFouls,
-                guestFouls: convexState.guestFouls ?? prev.guestFouls,
-                homeTimeouts: convexState.homeTimeouts ?? prev.homeTimeouts,
-                guestTimeouts: convexState.guestTimeouts ?? prev.guestTimeouts,
-                currentPeriod: convexState.currentPeriod ?? prev.currentPeriod,
-                possession: convexState.possession ?? prev.possession,
-                status: convexState.status ?? prev.status,
+                homeScore: hasuraState.homeScore ?? prev.homeScore,
+                guestScore: hasuraState.guestScore ?? prev.guestScore,
+                homeFouls: hasuraState.homeFouls ?? prev.homeFouls,
+                guestFouls: hasuraState.guestFouls ?? prev.guestFouls,
+                homeTimeouts: hasuraState.homeTimeouts ?? prev.homeTimeouts,
+                guestTimeouts: hasuraState.guestTimeouts ?? prev.guestTimeouts,
+                currentPeriod: hasuraState.currentPeriod ?? prev.currentPeriod,
+                possession: hasuraState.possession ?? prev.possession,
+                status: hasuraState.status ?? prev.status,
                 clockSeconds: currentClock,
                 isTimerRunning,
             };
         });
         setLastSyncTime(new Date());
-    }, [convexState, currentClock, isTimerRunning]);
+    }, [hasuraState, currentClock, isTimerRunning]);
 
     useEffect(() => {
-        if (!convexEvents) return;
+        if (!hasuraEvents) return;
         
-        setEvents(convexEvents.map((e) => ({
+        setEvents(hasuraEvents.map((e) => ({
             id: e._id,
             type: e.type as GameEvent['type'],
             period: e.period,
@@ -119,7 +119,7 @@ export default function SpectatorPage() {
             description: e.description,
             timestamp: new Date(e.createdAt),
         })) as GameEvent[]);
-    }, [convexEvents]);
+    }, [hasuraEvents]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
