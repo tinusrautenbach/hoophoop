@@ -13,11 +13,10 @@ let tokenGetter: (() => Promise<string | null>) | null = null;
  */
 export function registerTokenGetter(getter: () => Promise<string | null>): void {
   tokenGetter = getter;
-  // Reset the ws client so it reconnects with fresh auth on next use
-  if (wsClient) {
-    wsClient.dispose();
-    wsClient = null;
-  }
+  // Do NOT dispose the existing ws client here — subscriptions already set up by the
+  // useHasuraGame hook would be orphaned on the old client. The connectionParams callback
+  // closes over `tokenGetter` by reference, so any new WS connection (after the current one
+  // drops or reconnects) will automatically use the updated token.
 }
 
 async function getToken(): Promise<string | null> {

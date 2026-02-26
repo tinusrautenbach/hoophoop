@@ -50,7 +50,7 @@ export default function SpectatorLogPage() {
     }, [id]);
 
     useEffect(() => {
-        if (!gameEvents) return;
+        if (!gameEvents || gameEvents.length === 0) return;
         const mappedEvents = gameEvents.map((e) => ({
             ...e,
             id: e._id,

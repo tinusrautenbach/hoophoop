@@ -490,12 +490,15 @@ export function useHasuraGame(gameId: string) {
   const startTimer = useCallback(async () => {
     if (!gameState) return;
     const now = new Date().toISOString();
+    // Use timerState.currentClockSeconds as the resume point (written by stopTimer).
+    // Fall back to gameState.clockSeconds if no timerState yet.
+    const clockToResume = timerState?.currentClockSeconds ?? gameState.clockSeconds;
     await graphqlRequest(CONTROL_TIMER_MUTATION, {
       gameId,
       isRunning: true,
       startedAt: now,
-      initialClockSeconds: gameState.clockSeconds,
-      currentClockSeconds: gameState.clockSeconds,
+      initialClockSeconds: clockToResume,
+      currentClockSeconds: clockToResume,
       updatedAt: now,
       updatedBy: userId || 'anonymous',
     });
@@ -504,7 +507,7 @@ export function useHasuraGame(gameId: string) {
       updatedAt: now,
       updatedBy: userId || 'anonymous',
     });
-  }, [gameState, gameId, userId]);
+  }, [gameState, timerState, gameId, userId]);
 
   const stopTimer = useCallback(async () => {
     if (!gameState || !timerState) return;
