@@ -53,7 +53,7 @@ select_permissions:
         - updated_at
         - updated_by
       filter: {}
-      allow_aggregations: true
+      allow_aggregations: false
   - role: user
     permission:
       columns:
@@ -67,17 +67,6 @@ select_permissions:
       filter: {}
       allow_aggregations: true
 insert_permissions:
-  - role: anonymous
-    permission:
-      check: {}
-      columns:
-        - current_clock_seconds
-        - game_id
-        - initial_clock_seconds
-        - is_running
-        - started_at
-        - updated_at
-        - updated_by
   - role: user
     permission:
       check: {}
@@ -90,17 +79,6 @@ insert_permissions:
         - updated_at
         - updated_by
 update_permissions:
-  - role: anonymous
-    permission:
-      columns:
-        - current_clock_seconds
-        - initial_clock_seconds
-        - is_running
-        - started_at
-        - updated_at
-        - updated_by
-      filter: {}
-      check: {}
   - role: user
     permission:
       columns:
@@ -113,9 +91,6 @@ update_permissions:
       filter: {}
       check: {}
 delete_permissions:
-  - role: anonymous
-    permission:
-      filter: {}
   - role: user
     permission:
       filter: {}

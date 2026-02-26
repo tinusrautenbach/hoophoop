@@ -84,17 +84,14 @@ Or manually through the console:
 2. Data → Manage → Track tables
 3. Track: `game_states`, `hasura_game_events`, `timer_sync`
 
-### 5. Set Permissions
+### 5. Permissions
 
-The metadata files include permissions for `anonymous` and `user` roles:
-- **anonymous**: Full read/write access (for public games)
-- **user**: Full read/write access
+Permissions are already configured in the metadata files for two roles:
+- **`anonymous`**: `SELECT` only — unauthenticated spectators can read live game state
+- **`user`**: Full `SELECT` / `INSERT` / `UPDATE` / `DELETE` — Clerk-authenticated scorers can mutate game state
 
-For production with authenticated games, modify the permissions in:
-- `/hasura/metadata/databases/default/tables/game_states.yaml`
-- `/hasura/metadata/databases/default/tables/hasura_game_events.yaml`
-- `/hasura/metadata/databases/default/tables/timer_sync.yaml`
-
+This is enforced at the Hasura layer via the `HASURA_GRAPHQL_JWT_SECRET` env var (see docker-compose files)
+and the `HASURA_GRAPHQL_UNAUTHORIZED_ROLE=anonymous` fallback for unauthenticated WebSocket connections.
 ## Usage
 
 ### Frontend Integration
@@ -193,15 +190,25 @@ hasura metadata reload
 2. Ensure Row Level Security (RLS) policies are correct
 3. Check the `HASURA_GRAPHQL_UNAUTHORIZED_ROLE` env var
 
-## Security Considerations
+## Security
 
-The current configuration allows anonymous access for public games. For production with authenticated games:
+Authentication is implemented via Clerk JWT. The setup is:
 
-1. Update RLS policies to check game visibility
-2. Add JWT authentication via Clerk
-3. Configure Hasura JWT secret with your Clerk JWKS endpoint
-4. Modify permissions to restrict based on user roles
+1. **`docker-compose.yml`** and **`docker-compose.prod.yml`** set `HASURA_GRAPHQL_JWT_SECRET` pointing to the
+   Clerk JWKS endpoint (`{"type":"RS256","jwk_url":"..."}`).
+2. **`HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous`** — unauthenticated WebSocket connections receive the
+   read-only `anonymous` role, enabling spectating without login.
+3. **`HasuraProvider.tsx`** — calls `registerTokenGetter()` with Clerk's `getToken` on mount. The Hasura
+   WebSocket client and HTTP client both send `Authorization: Bearer <token>` automatically.
+4. **`HASURA_ADMIN_SECRET`** is server-side only — never set `NEXT_PUBLIC_HASURA_ADMIN_SECRET`.
 
+### Role Permissions Summary
+
+| Table | anonymous | user |
+|---|---|---|
+| `game_states` | SELECT | SELECT, INSERT, UPDATE, DELETE |
+| `hasura_game_events` | SELECT | SELECT, INSERT, UPDATE, DELETE |
+| `timer_sync` | SELECT | SELECT, INSERT, UPDATE, DELETE |
 ## Resources
 
 - [Hasura Documentation](https://hasura.io/docs/latest/index/)

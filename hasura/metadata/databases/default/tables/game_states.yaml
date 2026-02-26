@@ -75,7 +75,7 @@ select_permissions:
         - updated_at
         - updated_by
       filter: {}
-      allow_aggregations: true
+      allow_aggregations: false
   - role: user
     permission:
       columns:
@@ -96,24 +96,6 @@ select_permissions:
       filter: {}
       allow_aggregations: true
 insert_permissions:
-  - role: anonymous
-    permission:
-      check: {}
-      columns:
-        - clock_seconds
-        - current_period
-        - game_id
-        - guest_fouls
-        - guest_score
-        - guest_timeouts
-        - home_fouls
-        - home_score
-        - home_timeouts
-        - is_timer_running
-        - possession
-        - status
-        - updated_at
-        - updated_by
   - role: user
     permission:
       check: {}
@@ -133,24 +115,6 @@ insert_permissions:
         - updated_at
         - updated_by
 update_permissions:
-  - role: anonymous
-    permission:
-      columns:
-        - clock_seconds
-        - current_period
-        - guest_fouls
-        - guest_score
-        - guest_timeouts
-        - home_fouls
-        - home_score
-        - home_timeouts
-        - is_timer_running
-        - possession
-        - status
-        - updated_at
-        - updated_by
-      filter: {}
-      check: {}
   - role: user
     permission:
       columns:
@@ -170,9 +134,6 @@ update_permissions:
       filter: {}
       check: {}
 delete_permissions:
-  - role: anonymous
-    permission:
-      filter: {}
   - role: user
     permission:
       filter: {}

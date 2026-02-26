@@ -3,6 +3,30 @@ import { createClient, Client } from 'graphql-ws';
 // GraphQL WebSocket client for Hasura subscriptions
 let wsClient: Client | null = null;
 
+// Token getter — injected by the app after Clerk initializes
+let tokenGetter: (() => Promise<string | null>) | null = null;
+
+/**
+ * Register a function that returns the current Clerk session token.
+ * Call this once from the root of the app (e.g. in a layout or provider)
+ * after Clerk is ready.
+ */
+export function registerTokenGetter(getter: () => Promise<string | null>): void {
+  tokenGetter = getter;
+  // Reset the ws client so it reconnects with fresh auth on next use
+  if (wsClient) {
+    wsClient.dispose();
+    wsClient = null;
+  }
+}
+
+async function getToken(): Promise<string | null> {
+  if (tokenGetter) {
+    return tokenGetter();
+  }
+  return null;
+}
+
 export function getHasuraWsClient(): Client {
   if (!wsClient) {
     const hasuraUrl = process.env.NEXT_PUBLIC_HASURA_URL || 'http://localhost:8080/v1/graphql';
@@ -11,8 +35,16 @@ export function getHasuraWsClient(): Client {
 
     wsClient = createClient({
       url: wsUrl,
-      connectionParams: () => {
-        // Public access for now - no auth required
+      connectionParams: async () => {
+        const token = await getToken();
+        if (token) {
+          return {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          };
+        }
+        // No token — connect as anonymous (read-only public game data only)
         return {};
       },
       retryAttempts: Infinity,
@@ -44,14 +76,24 @@ export async function graphqlRequest<T = unknown>(
   variables?: Record<string, unknown>
 ): Promise<T> {
   const hasuraUrl = process.env.NEXT_PUBLIC_HASURA_URL || 'http://localhost:8080/v1/graphql';
-  const adminSecret = process.env.NEXT_PUBLIC_HASURA_ADMIN_SECRET || process.env.HASURA_ADMIN_SECRET;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  if (adminSecret) {
-    headers['X-Hasura-Admin-Secret'] = adminSecret;
+  // Prefer user JWT over admin secret — admin secret is a server-side fallback only
+  const token = await getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else {
+    // Server-side usage (e.g. scripts, migrations) — never expose in client bundle
+    const adminSecret =
+      typeof window === 'undefined'
+        ? process.env.HASURA_ADMIN_SECRET
+        : undefined;
+    if (adminSecret) {
+      headers['X-Hasura-Admin-Secret'] = adminSecret;
+    }
   }
 
   const response = await fetch(hasuraUrl, {

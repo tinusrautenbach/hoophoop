@@ -100,7 +100,10 @@ services:
       HASURA_GRAPHQL_DEV_MODE: "false"
       HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET}
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
+      HASURA_GRAPHQL_JWT_SECRET: '{"type":"RS256","jwk_url":"https://clerk.hoophoop.net/.well-known/jwks.json"}'
       HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "true"
+      # CORS: Allow your main domain to make requests
+      HASURA_GRAPHQL_CORS_DOMAIN: "${NEXT_PUBLIC_APP_URL}"
       # CORS: Allow your main domain to make requests
       HASURA_GRAPHQL_CORS_DOMAIN: "${NEXT_PUBLIC_APP_URL}"
 
