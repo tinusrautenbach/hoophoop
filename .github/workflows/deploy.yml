@@ -22,7 +22,7 @@ jobs:
           response=$(curl -s -w "\n%{http_code}" -X POST \
             "https://cool2.2zero50.com/webhooks/source/github/events/manual" \
             -H "Content-Type: application/json" \
-            -d "{\"ref\":\"${{ github.sha }}\",\"repository\":{\"full_name\":\"${{ github.repository }}\"}}")
+            -d "{\"ref\":\"${{ github.sha }}\",\"branch\":\"main\",\"repository\":{\"full_name\":\"${{ github.repository }}\"}}")
           
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
