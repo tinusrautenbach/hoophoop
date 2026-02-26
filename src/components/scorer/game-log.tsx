@@ -52,9 +52,9 @@ const iconMap = {
 };
 
 /**
- * For a scoring event, compute the player's made/attempts ratio for that shot
- * type (bucketed by value: 1=FT, 2=2PT, 3=3PT) up to and including this event
- * in chronological order.
+ * For a scoring or miss event, compute the player's made/attempts ratio for
+ * that shot type (bucketed by value: 1=FT, 2=2PT, 3=3PT) up to and including
+ * this event in chronological order.
  *
  * Returns a string like "(2/4)" or null when not applicable.
  */
@@ -62,7 +62,7 @@ function getShotRatio(
     event: GameEvent,
     allEvents: GameEvent[]
 ): string | null {
-    if (event.type !== 'score' || !event.player || !event.value) return null;
+    if ((event.type !== 'score' && event.type !== 'miss') || !event.player || !event.value) return null;
 
     // Sort chronologically (oldest first) so "up to now" slicing is correct
     const chronological = [...allEvents].sort(
@@ -148,7 +148,7 @@ export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick, hideHe
                                         <span className="text-slate-600 mx-1">•</span>
                                         <span className="text-slate-200">
                                             {(event.description || event.type).toUpperCase()} {event.value ? (event.type === 'miss' ? `-${event.value}` : `+${event.value}`) : ''}
-                                            {event.type === 'score' && event.player && (() => {
+                                            {(event.type === 'score' || event.type === 'miss') && event.player && (() => {
                                                 const ratio = getShotRatio(event, events);
                                                 return ratio ? (
                                                     <span className="text-slate-500 ml-1">{ratio}</span>
