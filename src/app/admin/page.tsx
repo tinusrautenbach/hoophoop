@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-    Shield, Search, User, Check, ShieldAlert, ArrowRight, 
+    Shield, Search, User, Check, ShieldAlert, ArrowRight, ExternalLink,
     Users, Building2, Trash2, Plus, Minus, ChevronDown, ChevronUp,
     Crown, RotateCcw, Link2, Trophy, Mail
 } from 'lucide-react';
@@ -619,6 +619,19 @@ export default function AdminDashboard() {
                 </div>
                 
                 <div className="flex gap-4">
+                    <button 
+                        onClick={async () => {
+                            const res = await fetch('/api/admin/hasura-console');
+                            if (!res.ok) { alert('Failed to get Hasura credentials'); return; }
+                            const { consoleUrl, adminSecret } = await res.json();
+                            await navigator.clipboard.writeText(adminSecret);
+                            window.open(consoleUrl, '_blank');
+                        }}
+                        title="Copies admin secret to clipboard, then opens Hasura Console"
+                        className="bg-card hover:bg-muted text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-colors"
+                    >
+                        Hasura Console <ExternalLink size={16} />
+                    </button>
                     <button 
                         onClick={() => router.push('/admin/players/merge')}
                         className="bg-card hover:bg-muted text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-colors"
