@@ -11,6 +11,7 @@ export default defineConfig({
             '**/node_modules/**',
             '**/tests/load/**', // Exclude load tests - they should be run manually
             '**/__tests__/integration.test.ts', // Exclude integration tests - they require running server
+            '**/__tests__/complete-api.test.ts', // Exclude DB integration tests - they require a running database
         ],
         reporters: ['default', path.resolve(__dirname, 'markdown-reporter.ts')],
         alias: {
