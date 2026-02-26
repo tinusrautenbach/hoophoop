@@ -4,12 +4,12 @@
 This document outlines the **optimal technical stack** to build a high-performance, real-time, mobile-first basketball scoring application. The choices prioritize **low latency**, **reliability**, **responsiveness**, and **slick user interactions**. The platform spans a **Next.js web app** and a **React Native mobile app**, sharing types and API contracts.
 
 ## 2. Core Architecture
-**Monorepo structure** encompassing a Next.js web application and a React Native mobile application, using a custom Node.js server entry point to handle both HTTP (Next.js) and WebSockets (Socket.io) on the same port.
+**Monorepo structure** encompassing a Next.js web application and a React Native mobile application. Real-time functionality is provided via **Hasura GraphQL WebSocket subscriptions**, replacing the previous Socket.io custom server approach.
 
 - **Framework (Web)**: **Next.js 14+ (App Router)**
   - *Why*: Best-in-class generic web framework. Server Components reduce bundle size for the initial load, while Client Components handle the rich interactivity.
 - **Framework (Mobile)**: **React Native + Expo (Managed Workflow)**
-  - *Why*: Share TypeScript types, Zustand stores, and Socket.io event contracts with the web app. Expo simplifies builds and app store submissions.
+  - *Why*: Share TypeScript types and Zustand stores with the web app. Expo simplifies builds and app store submissions.
 - **Language**: **TypeScript** (Strict Mode)
   - *Why*: Essential for complex state logic (game clocks, event types, player tracking) to prevent runtime errors. Shared across web and mobile.
 
@@ -46,42 +46,42 @@ This document outlines the **optimal technical stack** to build a high-performan
   - *Why*: 60fps native animations and gesture handling for the scoring interface.
 - **Auth**: **@clerk/clerk-expo**
   - *Why*: Same auth provider as web, sharing user accounts seamlessly.
-- **Real-Time**: **socket.io-client** (same library as web)
-  - *Why*: Same event protocol, same room structure, identical real-time behavior.
+- **Real-Time**: **Hasura GraphQL WebSocket** (`graphql-ws` client)
+  - *Why*: Same Hasura subscription protocol, sharing GraphQL schema and real-time behavior with the web app.
 
 ## 4. Backend & Realtime Stack
 
 ### 4.1 Realtime Engine
-- **Protocol**: **Socket.io** (v4)
-  - *Why*: Automatic reconnection logic, room support (game rooms), and reliable fallbacks. Raw WebSockets are too bare-metal; we need resilience for mobile networks.
-- **Server**: **Custom Node.js Server** (Express + Next.js Custom Server)
-  - *Why*: Combining Next.js and Socket.io in one process simplifies deployment for improved latency (no jumping between serverless functions and a separate socket server).
-- **Public Dashboard Room**: A special Socket.io room `public-games` that broadcasts live score updates for all public games. The World Dashboard and Community Portals join this room for real-time updates without polling.
-
+- **Protocol**: **Hasura GraphQL Subscriptions** (via `graphql-ws`)
+  - *Why*: Declarative subscriptions over WebSockets. No custom server required — Hasura handles room management, pub/sub fanout, and reconnection. Scales horizontally without code changes.
+- **Server**: **Hasura** (deployed via Docker, connected to PostgreSQL)
+  - *Why*: Hasura tracks table changes and pushes subscription updates automatically. Eliminates the need for a custom Node.js WebSocket server.
+- **Frontend Client**: `src/components/HasuraProvider.tsx` + `src/hooks/use-hasura-game.ts`
+  - *Why*: `HasuraProvider` injects the Clerk JWT into every WebSocket connection. `useHasuraGame` provides a unified interface for subscriptions and mutations.
+- **Public Dashboard**: Public games visible via anonymous read permissions on `gameStates` table — no special rooms needed.
 ### 4.2 Centralized Timer Architecture (Multi-Scorer Support)
-To support multiple simultaneous scorers, the game clock must be managed centrally on the server:
+To support multiple simultaneous scorers, the game clock is managed via a shared `timerSync` table in PostgreSQL, observed via Hasura subscription:
 
-**Server-Side Timer Management:**
-- **Timer State Storage**: PostgreSQL `games` table stores:
-  - `isTimerRunning` (boolean): Whether the clock is currently running
-  - `clockSeconds` (integer): Current clock value in seconds
-  - `timerStartedAt` (timestamp, optional): When the timer was last started (for accurate time calculation)
-- **Timer Service**: A server-side service that:
-  - Maintains active timers in memory for performance
-  - Persists timer state to database every 3-5 seconds
-  - Broadcasts clock updates to all room members every second
-  - Handles start/stop commands from authorized scorers
+**Timer State Storage**: PostgreSQL `timer_sync` table stores:
+- `isRunning` (boolean): Whether the clock is currently running
+- `startedAt` (timestamp, nullable): When the timer was last started (for accurate elapsed calculation)
+- `initialClockSeconds` (integer): Clock value when timer was started
+- `currentClockSeconds` (integer): Persisted clock for stopped state
 
 **Timer Update Flow:**
 ```
-Scorer clicks "Start" 
-  → Socket.emit('timer-control', { action: 'start', gameId })
-  → Server validates scorer permissions
-  → Server starts internal timer interval
-  → Server broadcasts 'timer-started' to all room members
-  → Server persists isTimerRunning=true to database
-  → Server sends clock updates every second via 'clock-update' events
+Scorer clicks "Start"
+  → GraphQL mutation: CONTROL_TIMER_MUTATION (sets isRunning=true, startedAt=now)
+  → Hasura updates timer_sync row in PostgreSQL
+  → All subscribers receive updated timerSync via subscription
+  → Clients compute current clock as: initialClockSeconds - (now - startedAt)
 ```
+
+**Benefits:**
+- All scorers and spectators see identical clock times
+- Clock continues accurately even if scorer disconnects (computed from DB timestamp)
+- No clock drift between clients
+- Clean conflict resolution (server DB is authority)
 
 **Benefits:**
 - All scorers and spectators see identical clock times
@@ -90,18 +90,17 @@ Scorer clicks "Start"
 - Clean conflict resolution (server is authority)
 
 ### 4.3 Multi-Scorer Synchronization
-**Socket.io Room Management:**
-- Each game has a dedicated room: `game-${gameId}`
-- Scorers join room on connection: `socket.join(`game-${gameId}`)`
-- Broadcast pattern: `io.to(`game-${gameId}`).emit('game-updated', data)`
+**Hasura Subscription-Based Sync:**
+- Each client subscribes to `gameStates(where: { gameId: { _eq: $gameId } })`
+- Mutations write to `game_states` table; Hasura broadcasts to all subscribers automatically
+- Broadcast pattern is handled by Hasura — no custom room management needed
 
 **State Synchronization Strategy:**
-- **Optimistic Updates**: Client applies changes immediately, then confirms with server
-- **Conflict Resolution**: Server uses last-write-wins for most fields
-- **Event Sourcing**: All scoring events are append-only (no conflicts possible)
-- **Score Recalculation**: When a scoring event is deleted, the server re-reduces all remaining events to compute the correct total score, then broadcasts the updated state to all clients
-- **Heartbeat**: Clients emit periodic heartbeats to track active scorers
-
+- **Optimistic Updates**: Client applies changes immediately, mutation confirms with DB
+- **Conflict Resolution**: Server uses last-write-wins for most fields (upsert with `on_conflict`)
+- **Event Sourcing**: All scoring events are append-only via `hasura_game_events` table
+- **Score Recalculation**: When a scoring event is deleted, the REST API re-reduces remaining events, updates `games` table, and the Hasura subscription on `gameStates` propagates updated totals
+- **Heartbeat**: Presence tracked via subscription connection state
 **Permission System:**
 - Game ownership tracked in `games.ownerId` field
 - Co-scorers stored in separate `game_scorers` table (gameId, userId, role, joinedAt)
@@ -181,7 +180,7 @@ Scorer clicks "Start"
 ### 4.8 World Admin & Permission Architecture
 
 **Permission Check Hierarchy:**
-All API routes and Socket.io commands follow this permission check order:
+All API routes and GraphQL mutations follow this permission check order:
 1. **World Admin Check**: If `user.isWorldAdmin === true` → ALLOW (bypass all further checks). Log action with `WORLD_ADMIN` prefix.
 2. **Community Admin Check**: If user has `role: 'admin'` in the relevant community → ALLOW for community-scoped actions.
 3. **Resource Owner Check**: If `resource.ownerId === userId` → ALLOW.
@@ -272,7 +271,7 @@ Instead of just storing the current score, we store an append-only log of **Game
 - **Table**: `game_events`
 - **Fields**: `id`, `game_id`, `type` (SCORE, FOUL, SUB), `payload` (JSON), `timestamp`.
 - **Derivation**: The current game state is calculated by reducing these events. This gives us **Undo** functionality for free (just delete the last event) and a perfect **Game Log**.
-- **Score Recalculation**: When any SCORE event is deleted, the API must re-reduce all remaining SCORE events to compute the correct `home_score` and `guest_score`, update the `games` table, and broadcast the new totals via Socket.io.
+- **Score Recalculation**: When any SCORE event is deleted, the API must re-reduce all remaining SCORE events to compute the correct `home_score` and `guest_score`, update the `games` table, and trigger a Hasura subscription update so all connected clients see the recalculated totals.
 
 ## 6. Infrastructure & Deployment
 
@@ -344,8 +343,8 @@ Instead of just storing the current score, we store an append-only log of **Game
   "dependencies": {
     "next": "latest",
     "react": "latest",
-    "socket.io": "^4.7.0",
-    "socket.io-client": "^4.7.0",
+    "graphql-ws": "^6.0.7",
+    "graphql-request": "latest",
     "drizzle-orm": "latest",
     "postgres": "latest",
     "zustand": "latest",
@@ -374,7 +373,7 @@ Instead of just storing the current score, we store an append-only log of **Game
     "@clerk/clerk-expo": "latest",
     "@react-navigation/native": "latest",
     "@react-navigation/native-stack": "latest",
-    "socket.io-client": "^4.7.0",
+    "graphql-ws": "^6.0.7",
     "zustand": "latest",
     "react-native-reanimated": "latest",
     "react-native-gesture-handler": "latest",

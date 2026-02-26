@@ -93,7 +93,7 @@ Experience the app live at [https://hoophoop.net](https://hoophoop.net)
 - **Framework**: [Next.js 15](https://nextjs.org/) with App Router
 - **Database**: PostgreSQL with [Drizzle ORM](https://orm.drizzle.team/)
 - **Authentication**: [Clerk](https://clerk.com/)
-- **Real-time**: [Socket.io](https://socket.io/) with custom server
+- **Real-time**: [Hasura](https://hasura.io/) GraphQL WebSocket subscriptions
 - **Styling**: Tailwind CSS with custom CSS variables
 - **State Management**: Zustand for client-side state
 - **Animations**: Framer Motion
@@ -159,7 +159,7 @@ hoophoop/
 │   ├── db/              # Database schema and config
 │   ├── hooks/           # Custom React hooks
 │   ├── lib/             # Utility functions
-│   ├── server/          # Socket.io server
+│   ├── server/          # Server utilities and custom handlers
 │   └── types/           # TypeScript types
 ├── mobile/              # React Native mobile app
 ├── spec/               # Implementation documentation
