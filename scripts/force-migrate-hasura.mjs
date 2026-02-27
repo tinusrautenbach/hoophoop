@@ -70,6 +70,17 @@ const runForceMigrate = async () => {
     } else {
         console.log('[ForceMigrate] All 3 Hasura tables exist in database.');
     }
+
+    // Ensure version column exists on game_states.
+    // Migration 0020 may be recorded in Drizzle's journal but the ALTER TABLE
+    // never actually applied. This direct SQL is idempotent and runs every deploy.
+    console.log('[ForceMigrate] Ensuring version column exists on game_states...');
+    try {
+        await sql.unsafe(`ALTER TABLE "game_states" ADD COLUMN IF NOT EXISTS "version" integer DEFAULT 1 NOT NULL`);
+        console.log('[ForceMigrate] ✓ version column ensured on game_states');
+    } catch (err) {
+        console.error('[ForceMigrate] ⚠ Failed to ensure version column:', err.message);
+    }
     
     await sql.end();
     
@@ -198,7 +209,7 @@ function buildMetadata() {
                                         'home_fouls', 'guest_fouls', 'home_timeouts',
                                         'guest_timeouts', 'clock_seconds', 'is_timer_running',
                                         'current_period', 'possession', 'status',
-                                        'updated_at', 'updated_by'
+                                        'updated_at', 'updated_by', 'version'
                                     ],
                                     filter: {},
                                     allow_aggregations: false
