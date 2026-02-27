@@ -212,7 +212,7 @@ function buildMetadata() {
                                         'home_fouls', 'guest_fouls', 'home_timeouts',
                                         'guest_timeouts', 'clock_seconds', 'is_timer_running',
                                         'current_period', 'possession', 'status',
-                                        'updated_at', 'updated_by', 'version'
+                                        'updated_at', 'updated_by'
                                     ],
                                     filter: {},
                                     allow_aggregations: true
@@ -242,8 +242,7 @@ function buildMetadata() {
                                         'home_score', 'guest_score', 'home_fouls',
                                         'guest_fouls', 'home_timeouts', 'guest_timeouts',
                                         'clock_seconds', 'is_timer_running', 'current_period',
-                                        'possession', 'status', 'updated_at', 'updated_by',
-                                        'version'
+                                        'possession', 'status', 'updated_at', 'updated_by'
                                     ],
                                     filter: {},
                                     check: {}
@@ -528,6 +527,7 @@ async function applyHasuraMetadata() {
             
             if (response.ok) {
                 console.log('[Hasura] ✓ Metadata applied successfully via replace_metadata');
+                console.log('[Hasura] replace_metadata response:', text.substring(0, 1000));
                 console.log('[Hasura] ✓ Custom root fields configured:');
                 console.log('[Hasura]   game_states      → gameStates, insertGameStatesOne, updateGameStates, updateGameStatesByPk, deleteGameStatesByPk');
                 console.log('[Hasura]   hasura_game_events → gameEvents, insertGameEventsOne, deleteGameEventsByPk');
