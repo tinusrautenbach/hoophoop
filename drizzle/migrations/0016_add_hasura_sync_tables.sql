@@ -63,28 +63,34 @@ ALTER TABLE "timer_sync" ENABLE ROW LEVEL SECURITY;
 
 -- Create permissive policies for anonymous access (for public games)
 -- In production, you may want to restrict this based on game visibility
+DROP POLICY IF EXISTS "Allow anonymous read on game_states" ON "game_states";
 CREATE POLICY "Allow anonymous read on game_states" 
     ON "game_states" FOR SELECT 
     USING (true);
 
+DROP POLICY IF EXISTS "Allow anonymous insert/update on game_states" ON "game_states";
 CREATE POLICY "Allow anonymous insert/update on game_states" 
     ON "game_states" FOR ALL 
     USING (true) 
     WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow anonymous read on hasura_game_events" ON "hasura_game_events";
 CREATE POLICY "Allow anonymous read on hasura_game_events" 
     ON "hasura_game_events" FOR SELECT 
     USING (true);
 
+DROP POLICY IF EXISTS "Allow anonymous insert/update on hasura_game_events" ON "hasura_game_events";
 CREATE POLICY "Allow anonymous insert/update on hasura_game_events" 
     ON "hasura_game_events" FOR ALL 
     USING (true) 
     WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow anonymous read on timer_sync" ON "timer_sync";
 CREATE POLICY "Allow anonymous read on timer_sync" 
     ON "timer_sync" FOR SELECT 
     USING (true);
 
+DROP POLICY IF EXISTS "Allow anonymous insert/update on timer_sync" ON "timer_sync";
 CREATE POLICY "Allow anonymous insert/update on timer_sync" 
     ON "timer_sync" FOR ALL 
     USING (true) 
