@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "tsx server.ts",
     "lint": "eslint",
-    "test": "vitest --config tests/vitest.config.ts"
+    "test": "vitest --config tests/vitest.config.ts",
+    "hasura:setup": "node scripts/migrate.mjs && node scripts/force-migrate-hasura.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.37.3",
