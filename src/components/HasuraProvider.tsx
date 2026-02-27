@@ -15,7 +15,7 @@ export default function HasuraProvider({
     // Register Clerk's getToken so the Hasura client can attach
     // the user's JWT to every request and WebSocket connection.
     // This runs once on mount and whenever the auth state changes.
-    registerTokenGetter(() => getToken());
+    registerTokenGetter(() => getToken({ template: 'hasura' }));
   }, [getToken]);
 
   return <>{children}</>;
