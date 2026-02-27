@@ -66,6 +66,7 @@ export async function POST(
             period: period || game.currentPeriod,
             metadata: metadata || {},
             createdAt: new Date(),
+            createdBy: userId,
         }).returning();
 
         // Log activity (non-fatal — don't block the response if logging fails)

@@ -359,6 +359,7 @@ export const gameEvents = pgTable('game_events', {
     description: text('description').notNull(),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdBy: text('created_by'), // Clerk userId of scorer who recorded this event
 });
 
 // Multi-scorer support - tracks authorized scorers for a game
@@ -369,8 +370,8 @@ export const gameScorers = pgTable('game_scorers', {
     gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).notNull(),
     userId: text('user_id').notNull(), // Clerk user ID
     role: scorerRoleEnum('role').default('co_scorer').notNull(),
-    joinedAt: timestamp('joined_at').defaultNow().notNull(),
-    lastActiveAt: timestamp('last_active_at').defaultNow().notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
+    lastActiveAt: timestamp('last_active_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 // Scorer invite tokens — allows inviting by email or shareable link
