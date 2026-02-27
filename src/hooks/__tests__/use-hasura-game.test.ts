@@ -67,8 +67,8 @@ describe("useHasuraGame", () => {
           });
         } else if (query.includes('GetGameEvents')) {
           handlers.next?.({
-            data: {
-              hasura_game_events: [{
+          data: {
+            gameEvents: [{
                 id: 'ev1',
                 gameId: 'game-123',
                 type: 'score',

@@ -3,6 +3,7 @@ import { POST, DELETE, PATCH } from '../route';
 import { db } from '@/db';
 import { games, gameRosters } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
+import { canManageGame } from '@/lib/auth-permissions';
 
 vi.mock('@/db', () => ({
     db: {
@@ -43,6 +44,14 @@ vi.mock('@/lib/auth-server', () => ({
     auth: vi.fn(),
 }));
 
+vi.mock('@/lib/auth-permissions', () => ({
+    canManageGame: vi.fn(),
+}));
+
+vi.mock('@/lib/activity-logger', () => ({
+    logActivity: vi.fn().mockResolvedValue(undefined),
+}));
+
 describe('Games [id] Events API Route', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -58,29 +67,32 @@ describe('Games [id] Events API Route', () => {
             expect(response.status).toBe(401);
         });
 
-        it('should return 404 if game not found', async () => {
+        it('should return 403 if game not found or unauthorized', async () => {
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_123' });
+            (canManageGame as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(false);
             (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
                 body: JSON.stringify({ type: 'score', team: 'home' })
             }), { params: Promise.resolve({ id: 'non-existent' }) });
-            expect(response.status).toBe(404);
+            expect(response.status).toBe(403);
         });
 
-        it('should return 404 if not game owner', async () => {
+        it('should return 403 if not game owner', async () => {
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_other' });
+            (canManageGame as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(false);
             (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(null);
 
             const response = await POST(new Request('http://localhost', {
                 method: 'POST',
                 body: JSON.stringify({ type: 'score', team: 'home' })
             }), { params: Promise.resolve({ id: 'game-1' }) });
-            expect(response.status).toBe(404);
+            expect(response.status).toBe(403);
         });
 
         it('should allow owner to create score event', async () => {
+            (canManageGame as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(true);
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
             (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'game-1',
@@ -116,6 +128,7 @@ describe('Games [id] Events API Route', () => {
         });
 
         it('should use game defaults for clock and period', async () => {
+            (canManageGame as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(true);
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
             (db.query.games.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'game-1',
@@ -163,6 +176,7 @@ describe('Games [id] Events API Route', () => {
 
         it('should return 403 for unauthorized delete', async () => {
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_other' });
+            (canManageGame as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(false);
             (db.query.gameEvents.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'event-1',
                 gameId: 'game-1',
@@ -177,6 +191,7 @@ describe('Games [id] Events API Route', () => {
 
         it('should allow owner to delete event', async () => {
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
+            (canManageGame as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(true);
             (db.query.gameEvents.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'event-1',
                 gameId: 'game-1',
@@ -209,6 +224,7 @@ describe('Games [id] Events API Route', () => {
                 }
             };
             
+            (canManageGame as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(true);
             (db.query.gameEvents.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(mockEvent);
 
             // Mock finding the roster entry
@@ -253,6 +269,7 @@ describe('Games [id] Events API Route', () => {
 
         it('should return 403 for unauthorized update', async () => {
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_other' });
+            (canManageGame as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(false);
             (db.query.gameEvents.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'event-1',
                 gameId: 'game-1',
@@ -268,6 +285,7 @@ describe('Games [id] Events API Route', () => {
 
         it('should allow owner to update event', async () => {
             (auth as unknown as { mockReturnValue: (value: { userId: string | null }) => void }).mockReturnValue({ userId: 'user_owner' });
+            (canManageGame as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue(true);
             (db.query.gameEvents.findFirst as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
                 id: 'event-1',
                 gameId: 'game-1',
