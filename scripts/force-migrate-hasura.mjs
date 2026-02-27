@@ -499,6 +499,39 @@ function buildMetadata() {
     };
 }
 
+async function reloadHasuraMetadata() {
+    console.log('[Hasura] Forcing schema cache reload via reload_metadata...');
+    try {
+        const response = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
+            },
+            body: JSON.stringify({
+                type: 'reload_metadata',
+                args: {
+                    reload_remote_schemas: false,
+                    reload_sources: true
+                }
+            })
+        });
+        const text = await response.text();
+        if (response.ok) {
+            const result = JSON.parse(text);
+            if (result.is_consistent) {
+                console.log('[Hasura] ✓ Schema cache reloaded — metadata is consistent');
+            } else {
+                console.warn('[Hasura] ⚠ Schema cache reloaded but metadata has inconsistencies:', JSON.stringify(result.inconsistent_objects?.slice(0, 3)));
+            }
+        } else {
+            console.warn('[Hasura] ⚠ reload_metadata failed (non-fatal):', text.substring(0, 300));
+        }
+    } catch (err) {
+        console.warn('[Hasura] ⚠ reload_metadata error (non-fatal):', err.message);
+    }
+}
+
 async function applyHasuraMetadata() {
     console.log('[Hasura] Applying Hasura metadata via replace_metadata...');
     
@@ -533,6 +566,10 @@ async function applyHasuraMetadata() {
                 console.log('[Hasura]   hasura_game_events → gameEvents, insertGameEventsOne, deleteGameEventsByPk');
                 console.log('[Hasura]   timer_sync       → timerSync, insertTimerSyncOne, updateTimerSync, updateTimerSyncByPk');
                 console.log('[Hasura]   game_scorers     → game_scorers, update_game_scorers (default snake_case, intentional)');
+                // Force a schema cache rebuild so the in-memory GraphQL schema reflects
+                // the new metadata immediately. replace_metadata writes to hdb_catalog but
+                // the schema-sync processor may skip the rebuild if it sees no notification.
+                await reloadHasuraMetadata();
                 return;
             }
             
