@@ -643,12 +643,13 @@ export function useHasuraGame(gameId: string) {
   }, [versionedUpdate]);
 
   const startTimer = useCallback(async () => {
-    if (!gameState) return;
+    if (!gameState) { console.warn('[Timer] startTimer: gameState is null'); return; }
     const now = new Date().toISOString();
     // Use timerState.currentClockSeconds as the resume point (written by stopTimer).
     // Fall back to gameState.clockSeconds if no timerState yet.
     const clockToResume = timerState?.currentClockSeconds ?? gameState.clockSeconds;
-    await graphqlRequest(CONTROL_TIMER_MUTATION, {
+    console.log('[Timer] startTimer: clockToResume =', clockToResume, 'timerState =', !!timerState);
+    const timerResult = await graphqlRequest(CONTROL_TIMER_MUTATION, {
       gameId,
       isRunning: true,
       startedAt: now,
@@ -657,15 +658,17 @@ export function useHasuraGame(gameId: string) {
       updatedAt: now,
       updatedBy: userId || 'anonymous',
     });
-    await graphqlRequest(INIT_GAME_STATE_MUTATION, {
+    console.log('[Timer] CONTROL_TIMER result:', timerResult);
+    const initResult = await graphqlRequest(INIT_GAME_STATE_MUTATION, {
       gameId, ...gameState, version: undefined, isTimerRunning: true,
       updatedAt: now,
       updatedBy: userId || 'anonymous',
     });
+    console.log('[Timer] INIT_GAME_STATE result:', initResult);
   }, [gameState, timerState, gameId, userId]);
 
   const stopTimer = useCallback(async () => {
-    if (!gameState || !timerState) return;
+    if (!gameState || !timerState) { console.warn('[Timer] stopTimer: gameState =', !!gameState, 'timerState =', !!timerState); return; }
     const now = new Date();
     const nowISO = now.toISOString();
     let currentClock = timerState.initialClockSeconds;
@@ -673,6 +676,7 @@ export function useHasuraGame(gameId: string) {
       const elapsed = Math.floor((now.getTime() - timerState.startedAt) / 1000);
       currentClock = Math.max(0, timerState.initialClockSeconds - elapsed);
     }
+    console.log('[Timer] stopTimer: currentClock =', currentClock);
     await graphqlRequest(CONTROL_TIMER_MUTATION, {
       gameId,
       isRunning: false,

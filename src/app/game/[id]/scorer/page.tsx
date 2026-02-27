@@ -202,16 +202,18 @@ export default function ScorerPage() {
     }, [hasuraEvents]);
 
     const toggleTimer = async () => {
-        if (!game) return;
+        if (!game) { console.warn('[Timer] toggleTimer: game is null'); return; }
         
         try {
+            console.log('[Timer] toggleTimer called, isTimerRunning:', isTimerRunning);
             if (isTimerRunning) {
                 await stopTimer();
             } else {
                 await startTimer();
             }
+            console.log('[Timer] toggleTimer completed successfully');
         } catch (error) {
-            console.error('Failed to toggle timer:', error);
+            console.error('[Timer] Failed to toggle timer:', error);
         }
     };
 
