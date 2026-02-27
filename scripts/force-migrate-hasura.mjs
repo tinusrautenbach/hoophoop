@@ -142,7 +142,18 @@ async function trackTablesInHasura() {
                 updated_by: { custom_name: 'updatedBy' }
             }, ['game_id', 'home_score', 'guest_score', 'home_fouls', 'guest_fouls', 
                 'home_timeouts', 'guest_timeouts', 'clock_seconds', 'is_timer_running',
-                'current_period', 'possession', 'status', 'updated_at', 'updated_by']);
+                'current_period', 'possession', 'status', 'updated_at', 'updated_by', 'version'], {
+                userSelectColumns: ['game_id', 'home_score', 'guest_score', 'home_fouls', 'guest_fouls',
+                    'home_timeouts', 'guest_timeouts', 'clock_seconds', 'is_timer_running',
+                    'current_period', 'possession', 'status', 'updated_at', 'updated_by', 'version'],
+                userInsertColumns: ['game_id', 'home_score', 'guest_score', 'home_fouls', 'guest_fouls',
+                    'home_timeouts', 'guest_timeouts', 'clock_seconds', 'is_timer_running',
+                    'current_period', 'possession', 'status', 'updated_at', 'updated_by'],
+                userUpdateColumns: ['home_score', 'guest_score', 'home_fouls', 'guest_fouls',
+                    'home_timeouts', 'guest_timeouts', 'clock_seconds', 'is_timer_running',
+                    'current_period', 'possession', 'status', 'updated_at', 'updated_by'],
+                userDelete: true
+            });
             
             // Then track hasura_game_events
             await trackSingleTable('hasura_game_events', 'gameEvents', {
@@ -162,7 +173,15 @@ async function trackTablesInHasura() {
                 created_at: { custom_name: 'createdAt' },
                 created_by: { custom_name: 'createdBy' }
             }, ['id', 'game_id', 'event_id', 'type', 'period', 'clock_at', 'team', 
-                'player', 'value', 'metadata', 'description', 'created_at', 'created_by']);
+                'player', 'value', 'metadata', 'description', 'created_at', 'created_by'], {
+                userSelectColumns: ['id', 'game_id', 'event_id', 'type', 'period', 'clock_at', 'team',
+                    'player', 'value', 'metadata', 'description', 'created_at', 'created_by'],
+                userInsertColumns: ['id', 'game_id', 'event_id', 'type', 'period', 'clock_at', 'team',
+                    'player', 'value', 'metadata', 'description', 'created_at', 'created_by'],
+                userUpdateColumns: ['type', 'period', 'clock_at', 'team', 'player', 'value',
+                    'metadata', 'description', 'created_at', 'created_by'],
+                userDelete: true
+            });
             
             // Finally track timer_sync
             await trackSingleTable('timer_sync', 'timerSync', {
@@ -184,7 +203,24 @@ async function trackTablesInHasura() {
                 updated_at: { custom_name: 'updatedAt' },
                 updated_by: { custom_name: 'updatedBy' }
             }, ['game_id', 'is_running', 'started_at', 'initial_clock_seconds', 
-                'current_clock_seconds', 'updated_at', 'updated_by']);
+                'current_clock_seconds', 'updated_at', 'updated_by'], {
+                userSelectColumns: ['game_id', 'is_running', 'started_at', 'initial_clock_seconds',
+                    'current_clock_seconds', 'updated_at', 'updated_by'],
+                userInsertColumns: ['game_id', 'is_running', 'started_at', 'initial_clock_seconds',
+                    'current_clock_seconds', 'updated_at', 'updated_by'],
+                userUpdateColumns: ['is_running', 'started_at', 'initial_clock_seconds',
+                    'current_clock_seconds', 'updated_at', 'updated_by'],
+                userDelete: true
+            });
+
+            // Track game_scorers — user role only (anonymous gets read-only SELECT)
+            await trackSingleTable('game_scorers', null, null, {},
+                ['id', 'game_id', 'user_id', 'role', 'joined_at', 'last_active_at'], {
+                    userSelectColumns: ['id', 'game_id', 'user_id', 'role', 'joined_at', 'last_active_at'],
+                    userInsertColumns: ['id', 'game_id', 'user_id', 'role', 'joined_at', 'last_active_at'],
+                    userUpdateColumns: ['role', 'last_active_at'],
+                    userDelete: true
+                });
             console.log('[Hasura] All tables tracked successfully!');
             
             // Reload metadata so tables appear in GraphQL schema
@@ -207,32 +243,49 @@ async function trackTablesInHasura() {
     console.error('[Hasura] Failed to track tables after all attempts');
 }
 
-async function trackSingleTable(tableName, customName, rootFields, columnConfig, columns) {
+async function setPermission(type, tableName, role, permission) {
+    const response = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
+        },
+        body: JSON.stringify({ type, args: { table: { schema: 'public', name: tableName }, role, permission } })
+    });
+    const text = await response.text();
+    if (!response.ok && !text.includes('already exists') && !text.includes('already-exists')) {
+        console.error(`[Hasura] ✗ ${type} for ${tableName}/${role}:`, text.substring(0, 200));
+    } else {
+        console.log(`[Hasura] ✓ ${type} for ${tableName}/${role}`);
+    }
+}
+
+// options:
+//   anonSelectColumns  - columns for anonymous SELECT (omit to skip)
+//   userSelectColumns  - columns for user SELECT (omit to skip)
+//   userInsertColumns  - columns for user INSERT (omit to skip)
+//   userUpdateColumns  - columns for user UPDATE (omit to skip)
+//   userDelete         - boolean, set user DELETE permission (omit to skip)
+async function trackSingleTable(tableName, customName, rootFields, columnConfig, anonSelectColumns, opts = {}) {
     console.log(`[Hasura] Tracking table: ${tableName}...`);
-    
+
     try {
-        // Track the table with retries
+        // Build track args — omit null/empty config for tables with no remapping
+        const configuration = {};
+        if (customName) configuration.custom_name = customName;
+        if (rootFields) configuration.custom_root_fields = rootFields;
+        if (columnConfig && Object.keys(columnConfig).length > 0) configuration.column_config = columnConfig;
+
         const trackResponse = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
-            },
+            headers: { 'Content-Type': 'application/json', 'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET },
             body: JSON.stringify({
                 type: 'pg_track_table',
-                args: {
-                    table: { schema: 'public', name: tableName },
-                    configuration: {
-                        custom_name: customName,
-                        custom_root_fields: rootFields,
-                        column_config: columnConfig
-                    }
-                }
+                args: { table: { schema: 'public', name: tableName }, configuration }
             })
         });
-        
+
         const trackResult = await trackResponse.text();
-        
         if (trackResponse.ok) {
             console.log(`[Hasura] ✓ Successfully tracked ${tableName}`);
         } else if (trackResult.includes('already tracked') || trackResult.includes('already exists')) {
@@ -241,93 +294,49 @@ async function trackSingleTable(tableName, customName, rootFields, columnConfig,
             console.error(`[Hasura] ✗ Error tracking ${tableName}:`, trackResult.substring(0, 200));
             throw new Error(`Failed to track ${tableName}`);
         }
-        
-        // Small delay between tracking and permissions
+
         await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Set select permissions
-        console.log(`[Hasura] Setting select permissions for ${tableName}...`);
-        const selectResponse = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
-            },
-            body: JSON.stringify({
-                type: 'pg_create_select_permission',
-                args: {
-                    table: { schema: 'public', name: tableName },
-                    role: 'anonymous',
-                    permission: {
-                        columns: columns,
-                        filter: {},
-                        allow_aggregations: true
-                    }
-                }
-            })
-        });
-        
-        if (selectResponse.ok || (await selectResponse.text()).includes('already exists')) {
-            console.log(`[Hasura] ✓ Select permissions for ${tableName}`);
+
+        // anonymous SELECT
+        if (anonSelectColumns && anonSelectColumns.length > 0) {
+            await setPermission('pg_create_select_permission', tableName, 'anonymous', {
+                columns: anonSelectColumns, filter: {}, allow_aggregations: false
+            });
+            await new Promise(resolve => setTimeout(resolve, 300));
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Set insert permissions
-        console.log(`[Hasura] Setting insert permissions for ${tableName}...`);
-        const insertResponse = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
-            },
-            body: JSON.stringify({
-                type: 'pg_create_insert_permission',
-                args: {
-                    table: { schema: 'public', name: tableName },
-                    role: 'anonymous',
-                    permission: {
-                        check: {},
-                        columns: columns
-                    }
-                }
-            })
-        });
-        
-        if (insertResponse.ok || (await insertResponse.text()).includes('already exists')) {
-            console.log(`[Hasura] ✓ Insert permissions for ${tableName}`);
+
+        // user SELECT
+        if (opts.userSelectColumns) {
+            await setPermission('pg_create_select_permission', tableName, 'user', {
+                columns: opts.userSelectColumns, filter: {}, allow_aggregations: true
+            });
+            await new Promise(resolve => setTimeout(resolve, 300));
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Set update permissions
-        console.log(`[Hasura] Setting update permissions for ${tableName}...`);
-        const updateResponse = await fetchWithRetry(`${HASURA_URL}/v1/metadata`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
-            },
-            body: JSON.stringify({
-                type: 'pg_create_update_permission',
-                args: {
-                    table: { schema: 'public', name: tableName },
-                    role: 'anonymous',
-                    permission: {
-                        columns: columns,
-                        filter: {},
-                        check: {}
-                    }
-                }
-            })
-        });
-        
-        if (updateResponse.ok || (await updateResponse.text()).includes('already exists')) {
-            console.log(`[Hasura] ✓ Update permissions for ${tableName}`);
+
+        // user INSERT
+        if (opts.userInsertColumns) {
+            await setPermission('pg_create_insert_permission', tableName, 'user', {
+                check: {}, columns: opts.userInsertColumns
+            });
+            await new Promise(resolve => setTimeout(resolve, 300));
         }
-        
+
+        // user UPDATE
+        if (opts.userUpdateColumns) {
+            await setPermission('pg_create_update_permission', tableName, 'user', {
+                columns: opts.userUpdateColumns, filter: {}, check: {}
+            });
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+
+        // user DELETE
+        if (opts.userDelete) {
+            await setPermission('pg_create_delete_permission', tableName, 'user', { filter: {} });
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+
         console.log(`[Hasura] ✓ ${tableName} setup complete`);
-        
+
     } catch (err) {
         console.error(`[Hasura] ✗ Failed to track ${tableName}:`, err.message);
         throw err;
