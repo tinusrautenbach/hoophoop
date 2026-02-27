@@ -15,8 +15,34 @@ services:
       - .:/app
       - /app/node_modules
     depends_on:
-      - db
-      - hasura
+      db:
+        condition: service_healthy
+      hasura:
+        condition: service_healthy
+      hasura-setup:
+        condition: service_completed_successfully
+
+  # One-shot service: tracks tables and sets permissions in Hasura on every docker compose up
+  hasura-setup:
+    image: node:20-alpine
+    working_dir: /app
+    command: >
+      sh -c "npm install --prefer-offline --silent &&
+             node scripts/migrate.mjs &&
+             node scripts/force-migrate-hasura.mjs"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/bball
+      - NEXT_PUBLIC_HASURA_URL=http://hasura:8080/v1/graphql
+      - HASURA_ADMIN_SECRET=qwer1234
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      hasura:
+        condition: service_healthy
+    restart: "no"
 
   db:
     image: postgres:16-alpine
@@ -50,9 +76,13 @@ services:
       HASURA_GRAPHQL_ADMIN_SECRET: qwer1234
       HASURA_GRAPHQL_UNAUTHORIZED_ROLE: anonymous
       HASURA_GRAPHQL_JWT_SECRET: '{"type":"RS256","jwk_url":"https://kind-vulture-32.clerk.accounts.dev/.well-known/jwks.json"}'
-
       HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "true"
-
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-s", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
 volumes:
   postgres_data:
