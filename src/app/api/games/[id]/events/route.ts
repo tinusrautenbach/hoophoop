@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth-server';
 import { eq, and, sql } from 'drizzle-orm';
 import { graphqlRequest } from '@/lib/hasura/client';
 import { logActivity } from '@/lib/activity-logger';
+import { canManageGame } from '@/lib/auth-permissions';
 
 const UPSERT_GAME_STATE_MUTATION = `
   mutation UpsertGameStateAfterEventDelete(
@@ -48,18 +49,15 @@ export async function POST(
         const body = await request.json();
         const { type, player, team, value, description, clockAt, period, metadata } = body;
 
-        // Verify ownership of the game
-        const game = await db.query.games.findFirst({
-            where: and(
-                eq(games.id, gameId),
-                eq(games.ownerId, userId)
-            )
-        });
+        // Verify permission to score this game
+        const allowed = await canManageGame(userId, gameId);
+        const game = allowed ? await db.query.games.findFirst({
+            where: eq(games.id, gameId)
+        }) : null;
 
-        if (!game) {
-            return NextResponse.json({ error: 'Game not found or unauthorized' }, { status: 404 });
+        if (!allowed || !game) {
+            return NextResponse.json({ error: 'Game not found or unauthorized' }, { status: 403 });
         }
-
         const [newEvent] = await db.insert(gameEvents).values({
             gameId,
             type,
@@ -119,8 +117,12 @@ export async function DELETE(
             }
         });
 
-        if (!event || event.game.ownerId !== userId || event.gameId !== gameId) {
-            return NextResponse.json({ error: 'Unauthorized or event not found' }, { status: 403 });
+        if (!event || event.gameId !== gameId) {
+            return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+        }
+        const allowed = await canManageGame(userId, gameId);
+        if (!allowed) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
         // Recalculate stats if needed
@@ -227,8 +229,12 @@ export async function PATCH(
             }
         });
 
-        if (!event || event.game.ownerId !== userId || event.gameId !== gameId) {
-            return NextResponse.json({ error: 'Unauthorized or event not found' }, { status: 403 });
+        if (!event || event.gameId !== gameId) {
+            return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+        }
+        const allowed = await canManageGame(userId, gameId);
+        if (!allowed) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
         // Only allow updating specific fields

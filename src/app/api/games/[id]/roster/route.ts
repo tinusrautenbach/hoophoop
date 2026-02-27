@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { gameRosters, games, gameEvents } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { eq, and } from 'drizzle-orm';
+import { canManageGame } from '@/lib/auth-permissions';
+import { eq } from 'drizzle-orm';
 
 export async function POST(
     request: Request,
@@ -16,13 +17,14 @@ export async function POST(
     const { id: gameId } = await params;
     
     try {
-        // Verify ownership
-        const game = await db.query.games.findFirst({
-            where: and(eq(games.id, gameId), eq(games.ownerId, userId))
-        });
+        // Verify permission
+        const allowed = await canManageGame(userId, gameId);
+        const game = allowed ? await db.query.games.findFirst({
+            where: eq(games.id, gameId)
+        }) : null;
 
-        if (!game) {
-            return NextResponse.json({ error: 'Game not found or unauthorized' }, { status: 404 });
+        if (!allowed || !game) {
+            return NextResponse.json({ error: 'Game not found or unauthorized' }, { status: 403 });
         }
 
         const body = await request.json();
@@ -73,13 +75,14 @@ export async function PATCH(
     const { id: gameId } = await params;
 
     try {
-        // Verify ownership
-        const game = await db.query.games.findFirst({
-            where: and(eq(games.id, gameId), eq(games.ownerId, userId))
-        });
+        // Verify permission
+        const allowed = await canManageGame(userId, gameId);
+        const game = allowed ? await db.query.games.findFirst({
+            where: eq(games.id, gameId)
+        }) : null;
 
-        if (!game) {
-            return NextResponse.json({ error: 'Game not found or unauthorized' }, { status: 404 });
+        if (!allowed || !game) {
+            return NextResponse.json({ error: 'Game not found or unauthorized' }, { status: 403 });
         }
 
         const body = await request.json();
@@ -144,13 +147,14 @@ export async function DELETE(
     }
 
     try {
-        // Verify ownership
-        const game = await db.query.games.findFirst({
-            where: and(eq(games.id, gameId), eq(games.ownerId, userId))
-        });
+        // Verify permission
+        const allowed = await canManageGame(userId, gameId);
+        const game = allowed ? await db.query.games.findFirst({
+            where: eq(games.id, gameId)
+        }) : null;
 
-        if (!game) {
-            return NextResponse.json({ error: 'Game not found or unauthorized' }, { status: 404 });
+        if (!allowed || !game) {
+            return NextResponse.json({ error: 'Game not found or unauthorized' }, { status: 403 });
         }
 
         const existing = await db.query.gameRosters.findFirst({

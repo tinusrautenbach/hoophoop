@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { games, gameRosters } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
-import { isWorldAdmin } from '@/lib/auth-admin';
+
+import { canManageGame } from '@/lib/auth-permissions';
 import { eq, and, isNull } from 'drizzle-orm';
 
 export async function GET(
@@ -57,28 +58,14 @@ export async function PATCH(
         // Verify ownership or admin permissions
         const game = await db.query.games.findFirst({
             where: eq(games.id, gameId),
-            with: {
-                community: {
-                    with: {
-                        members: true
-                    }
-                }
-            }
         });
 
         if (!game) {
             return NextResponse.json({ error: 'Game not found' }, { status: 404 });
         }
 
-        // Check permissions: game owner, community owner, community admin, or world admin
-        const isGameOwner = game.ownerId === userId;
-        const isCommunityOwner = game.community?.ownerId === userId;
-        const isCommunityAdmin = game.community?.members?.some(
-            (m: { userId: string; role: string }) => m.userId === userId && m.role === 'admin'
-        );
-        const isAdmin = await isWorldAdmin();
-
-        if (!isGameOwner && !isCommunityOwner && !isCommunityAdmin && !isAdmin) {
+        const allowed = await canManageGame(userId, gameId);
+        if (!allowed) {
             return NextResponse.json({ error: 'Only the game owner, community owner, community admin, or world admin can edit game settings' }, { status: 403 });
         }
 
@@ -145,27 +132,14 @@ export async function DELETE(
         // Fetch game with community info
         const game = await db.query.games.findFirst({
             where: eq(games.id, gameId),
-            with: {
-                community: {
-                    with: {
-                        members: true,
-                    }
-                }
-            }
         });
 
         if (!game) {
             return NextResponse.json({ error: 'Game not found' }, { status: 404 });
         }
 
-        // Check if user can delete this game
-        const isOwner = game.ownerId === userId;
-        const isCommunityOwner = game.community?.ownerId === userId;
-        const isCommunityAdmin = game.community?.members?.some(
-            m => m.userId === userId && m.role === 'admin'
-        );
-
-        if (!isOwner && !isCommunityOwner && !isCommunityAdmin) {
+        const allowed = await canManageGame(userId, gameId);
+        if (!allowed) {
             return NextResponse.json({ error: 'Forbidden - Only game owner or community admin can delete' }, { status: 403 });
         }
 

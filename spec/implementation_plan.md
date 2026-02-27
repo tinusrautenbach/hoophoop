@@ -85,9 +85,9 @@
   - [x] CRUD routes for Communities.
   - [x] Invite system (Generate token, Send email - *mock for MVP*, Accept invite).
   - [x] Member management (Promote/Demote/Remove).
-- [ ] **7.3 Permission Middleware**:
-  - [ ] Update `auth()` checks to respect Community Roles.
-  - [ ] Implement `canManageGame(userId, gameId)` logic.
+[x] **7.3 Permission Middleware**:
+  - [x] Update `auth()` checks to respect Community Roles.
+  - [x] Implement `canManageGame(userId, gameId)` logic.
 - [x] **7.4 Frontend - Community Hub**:
   - [x] "Create Community" flow.
   - [x] Community Dashboard (Games, Members lists).
