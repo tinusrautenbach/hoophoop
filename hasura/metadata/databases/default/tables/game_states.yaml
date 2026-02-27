@@ -27,6 +27,8 @@ configuration:
       custom_name: updatedAt
     updated_by:
       custom_name: updatedBy
+    version:
+      custom_name: version
   custom_column_names:
     clock_seconds: clockSeconds
     current_period: currentPeriod
@@ -40,6 +42,7 @@ configuration:
     is_timer_running: isTimerRunning
     updated_at: updatedAt
     updated_by: updatedBy
+    version: version
   custom_name: gameStates
   identifier: gameStates
   custom_root_fields:
@@ -74,6 +77,7 @@ select_permissions:
         - status
         - updated_at
         - updated_by
+        - version
       filter: {}
       allow_aggregations: false
   - role: user
@@ -93,6 +97,7 @@ select_permissions:
         - status
         - updated_at
         - updated_by
+        - version
       filter: {}
       allow_aggregations: true
 insert_permissions:
@@ -114,6 +119,7 @@ insert_permissions:
         - status
         - updated_at
         - updated_by
+        - version
 update_permissions:
   - role: user
     permission:
@@ -131,6 +137,7 @@ update_permissions:
         - status
         - updated_at
         - updated_by
+        - version
       filter: {}
       check: {}
 delete_permissions:

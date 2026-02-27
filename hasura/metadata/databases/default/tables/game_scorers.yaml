@@ -1,0 +1,54 @@
+table:
+  name: game_scorers
+  schema: public
+object_relationships:
+  - name: game
+    using:
+      foreign_key_constraint_on: game_id
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - game_id
+        - user_id
+        - role
+        - joined_at
+        - last_active_at
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - game_id
+        - user_id
+        - role
+        - joined_at
+        - last_active_at
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - game_id
+        - user_id
+        - role
+        - joined_at
+        - last_active_at
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - role
+        - last_active_at
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []
