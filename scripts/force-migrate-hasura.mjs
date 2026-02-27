@@ -480,7 +480,7 @@ async function applyHasuraMetadata() {
                 body: JSON.stringify({
                     type: 'replace_metadata',
                     args: {
-                        allow_inconsistent_metadata: false,
+                        allow_inconsistent_metadata: true,
                         metadata: buildMetadata()
                     }
                 })
