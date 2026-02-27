@@ -8,6 +8,7 @@ services:
         NEXT_PUBLIC_USE_MOCK_AUTH: ${NEXT_PUBLIC_USE_MOCK_AUTH}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
         NEXT_PUBLIC_CLERK_JS_URL: ${NEXT_PUBLIC_CLERK_JS_URL}
+        NEXT_PUBLIC_HASURA_URL: ${NEXT_PUBLIC_HASURA_URL}
     ports:
       - "3000:3000"
     environment:
@@ -31,6 +32,7 @@ services:
       - BACKUP_PREFIX=${BACKUP_PREFIX:-backups}
       # Hasura GraphQL Configuration
       - NEXT_PUBLIC_HASURA_URL=${NEXT_PUBLIC_HASURA_URL:-http://localhost:8081/v1/graphql}
+      - HASURA_INTERNAL_URL=http://hasura:8080
       - HASURA_ADMIN_SECRET=${HASURA_ADMIN_SECRET:-myadminsecretkey}
 
     depends_on:
@@ -103,7 +105,7 @@ services:
       HASURA_GRAPHQL_JWT_SECRET: '{"type":"RS256","jwk_url":"https://clerk.hoophoop.net/.well-known/jwks.json"}'
       HASURA_GRAPHQL_ENABLE_REMOTE_SCHEMA_PERMISSIONS: "true"
       # CORS: Allow your main domain to make requests
-      HASURA_GRAPHQL_CORS_DOMAIN: "${NEXT_PUBLIC_APP_URL}"
+      HASURA_GRAPHQL_CORS_DOMAIN: ${NEXT_PUBLIC_APP_URL}
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]

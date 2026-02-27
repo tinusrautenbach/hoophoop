@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const HASURA_URL = process.env.NEXT_PUBLIC_HASURA_URL?.replace('/v1/graphql', '') || 'http://hasura:8080';
+const HASURA_URL = process.env.HASURA_INTERNAL_URL || process.env.NEXT_PUBLIC_HASURA_URL?.replace('/v1/graphql', '') || 'http://hasura:8080';
 const HASURA_ADMIN_SECRET = process.env.HASURA_ADMIN_SECRET || 'myadminsecretkey';
 
 // Helper function for fetch with retries
