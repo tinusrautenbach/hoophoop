@@ -212,7 +212,7 @@ function buildMetadata() {
                                         'home_fouls', 'guest_fouls', 'home_timeouts',
                                         'guest_timeouts', 'clock_seconds', 'is_timer_running',
                                         'current_period', 'possession', 'status',
-                                        'updated_at', 'updated_by'
+                                        'updated_at', 'updated_by', 'version'
                                     ],
                                     filter: {},
                                     allow_aggregations: true
@@ -242,7 +242,8 @@ function buildMetadata() {
                                         'home_score', 'guest_score', 'home_fouls',
                                         'guest_fouls', 'home_timeouts', 'guest_timeouts',
                                         'clock_seconds', 'is_timer_running', 'current_period',
-                                        'possession', 'status', 'updated_at', 'updated_by'
+                                        'possession', 'status', 'updated_at', 'updated_by',
+                                        'version'
                                     ],
                                     filter: {},
                                     check: {}
