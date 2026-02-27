@@ -77,9 +77,15 @@ const runForceMigrate = async () => {
     console.log('[ForceMigrate] Ensuring version column exists on game_states...');
     try {
         await sql.unsafe(`ALTER TABLE "game_states" ADD COLUMN IF NOT EXISTS "version" integer DEFAULT 1 NOT NULL`);
-        console.log('[ForceMigrate] ✓ version column ensured on game_states');
+        // Verify the column actually exists
+        const cols = await sql`SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'game_states' AND column_name = 'version'`;
+        if (cols.length > 0) {
+            console.log('[ForceMigrate] \u2713 version column VERIFIED on game_states');
+        } else {
+            console.error('[ForceMigrate] \u2717 version column MISSING after ALTER TABLE -- this will cause subscription failures!');
+        }
     } catch (err) {
-        console.error('[ForceMigrate] ⚠ Failed to ensure version column:', err.message);
+        console.error('[ForceMigrate] Failed to ensure version column:', err.message);
     }
     
     await sql.end();
