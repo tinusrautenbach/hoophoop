@@ -81,21 +81,21 @@
   - [x] Create `communities`, `community_members`, `community_invites` tables.
   - [x] Create `user_activity_logs` table.
   - [x] Add `communityId` to `teams` and `games`.
-- [ ] **7.2 Community Management API**:
+- [x] **7.2 Community Management API**:
   - [x] CRUD routes for Communities.
   - [x] Invite system (Generate token, Send email - *mock for MVP*, Accept invite).
-  - [ ] Member management (Promote/Demote/Remove).
+  - [x] Member management (Promote/Demote/Remove).
 - [ ] **7.3 Permission Middleware**:
   - [ ] Update `auth()` checks to respect Community Roles.
   - [ ] Implement `canManageGame(userId, gameId)` logic.
-- [ ] **7.4 Frontend - Community Hub**:
+- [x] **7.4 Frontend - Community Hub**:
   - [x] "Create Community" flow.
   - [x] Community Dashboard (Games, Members lists).
-  - [ ] Community Dashboard (Teams list).
+  - [x] Community Dashboard (Teams list).
   - [x] **User Profile Page**:
     - [x] Display personal details and activity.
     - [x] List joined communities.
-    - [ ] Manage pending invitations.
+    - [x] Manage pending invitations.
     - [x] **Logout functionality**.
     - [x] **Light/Dark Mode Toggle**: Allow users to toggle between light and dark themes with preference persisted to user settings.
 - [x] **7.5 Activity Logging**:

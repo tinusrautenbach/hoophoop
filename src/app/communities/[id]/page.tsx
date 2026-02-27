@@ -317,6 +317,51 @@ export default function CommunityDashboard() {
         }
     };
 
+    const handleRemoveMember = async (targetUserId: string, displayName: string) => {
+        if (!confirm(`Remove ${displayName} from this community?`)) return;
+        try {
+            const res = await fetch(`/api/communities/${id}/members/${targetUserId}`, {
+                method: 'DELETE',
+            });
+            if (res.ok) {
+                const communityRes = await fetch(`/api/communities/${id}`);
+                if (communityRes.ok) {
+                    const data = await communityRes.json();
+                    setCommunity(data);
+                }
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to remove member');
+            }
+        } catch (error) {
+            console.error('Failed to remove member:', error);
+            alert('Failed to remove member');
+        }
+    };
+
+    const handleChangeRole = async (targetUserId: string, newRole: 'admin' | 'scorer' | 'viewer') => {
+        try {
+            const res = await fetch(`/api/communities/${id}/members/${targetUserId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: newRole }),
+            });
+            if (res.ok) {
+                const communityRes = await fetch(`/api/communities/${id}`);
+                if (communityRes.ok) {
+                    const data = await communityRes.json();
+                    setCommunity(data);
+                }
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to update member role');
+            }
+        } catch (error) {
+            console.error('Failed to update member role:', error);
+            alert('Failed to update member role');
+        }
+    };
+
     if (loading) return <div className="p-8 text-center text-slate-500">Loading community...</div>;
     if (!community) return null;
 
@@ -970,10 +1015,39 @@ export default function CommunityDashboard() {
                                                     <div className="text-[10px] uppercase font-bold text-slate-500 mt-0.5">{member.role}</div>
                                                 </div>
                                             </div>
-                                            {isAdmin && member.userId !== userId && (
-                                                <button className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs font-bold uppercase">
-                                                    Remove
-                                                </button>
+{isAdmin && member.userId !== userId && (
+                                                <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                    {member.role !== 'admin' && (
+                                                        <button
+                                                            onClick={() => handleChangeRole(member.userId, 'admin')}
+                                                            className="text-orange-500 hover:text-orange-400 text-[10px] font-bold uppercase"
+                                                        >
+                                                            Make Admin
+                                                        </button>
+                                                    )}
+                                                    {member.role !== 'scorer' && (
+                                                        <button
+                                                            onClick={() => handleChangeRole(member.userId, 'scorer')}
+                                                            className="text-blue-500 hover:text-blue-400 text-[10px] font-bold uppercase"
+                                                        >
+                                                            Make Scorer
+                                                        </button>
+                                                    )}
+                                                    {member.role !== 'viewer' && (
+                                                        <button
+                                                            onClick={() => handleChangeRole(member.userId, 'viewer')}
+                                                            className="text-slate-400 hover:text-slate-300 text-[10px] font-bold uppercase"
+                                                        >
+                                                            Make Viewer
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleRemoveMember(member.userId, member.displayName)}
+                                                        className="text-slate-600 hover:text-red-500 text-[10px] font-bold uppercase"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     ))}
