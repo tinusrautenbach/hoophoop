@@ -61,10 +61,10 @@
   - [x] Add activity attribution (track which scorer performed each action)
   - [x] Build "Join as Scorer" flow UI (with forced sign-up for new users)
 
-- [ ] **5.3 Conflict Resolution**:
-  - [ ] Implement optimistic concurrency control for game state updates
-  - [ ] Add version/timestamp fields to detect stale updates
-  - [ ] Create conflict notification UI (when two scorers edit simultaneously)
+- [x] **5.3 Conflict Resolution**:
+  - [x] Implement optimistic concurrency control for game state updates
+  - [x] Add version/timestamp fields to detect stale updates
+  - [x] Create conflict notification UI (when two scorers edit simultaneously)
   - [x] Add atomic operations for critical actions (end game, period transitions via API)
 
 ## Phase 6: Stats & Finalization

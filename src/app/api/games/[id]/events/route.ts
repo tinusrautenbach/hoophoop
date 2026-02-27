@@ -16,21 +16,18 @@ const UPSERT_GAME_STATE_MUTATION = `
     $guestFouls: Int!
     $updatedAt: timestamptz!
   ) {
-    insertGameStatesOne(
-      object: {
-        gameId: $gameId
+    update_game_states(
+      where: { gameId: { _eq: $gameId } }
+      _set: {
         homeScore: $homeScore
         guestScore: $guestScore
         homeFouls: $homeFouls
         guestFouls: $guestFouls
         updatedAt: $updatedAt
       }
-      on_conflict: {
-        constraint: game_states_pkey
-        update_columns: [homeScore, guestScore, homeFouls, guestFouls, updatedAt]
-      }
+      _inc: { version: 1 }
     ) {
-      gameId
+      affected_rows
     }
   }
 `;

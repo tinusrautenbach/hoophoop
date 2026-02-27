@@ -15,6 +15,7 @@ interface GameState {
   currentPeriod: number;
   possession?: 'home' | 'guest';
   status: 'scheduled' | 'live' | 'final';
+  version: number;
 }
 
 interface GameEvent {
@@ -123,8 +124,55 @@ const UPDATE_STATUS_MUTATION = `
   }
 `;
 
-const UPDATE_GAME_STATE_MUTATION = `
-  mutation UpdateGameState(
+// Version-checked update — returns affected_rows (0 = conflict, stale version)
+const UPDATE_GAME_STATE_VERSIONED_MUTATION = `
+  mutation UpdateGameStateVersioned(
+    $gameId: uuid!
+    $homeScore: Int
+    $guestScore: Int
+    $homeFouls: Int
+    $guestFouls: Int
+    $homeTimeouts: Int
+    $guestTimeouts: Int
+    $clockSeconds: Int
+    $currentPeriod: Int
+    $possession: String
+    $status: String
+    $isTimerRunning: Boolean
+    $expectedVersion: Int!
+    $updatedAt: timestamptz!
+    $updatedBy: String!
+  ) {
+    update_game_states(
+      where: {
+        gameId: { _eq: $gameId }
+        version: { _eq: $expectedVersion }
+      }
+      _set: {
+        homeScore: $homeScore
+        guestScore: $guestScore
+        homeFouls: $homeFouls
+        guestFouls: $guestFouls
+        homeTimeouts: $homeTimeouts
+        guestTimeouts: $guestTimeouts
+        clockSeconds: $clockSeconds
+        currentPeriod: $currentPeriod
+        possession: $possession
+        status: $status
+        isTimerRunning: $isTimerRunning
+        updatedAt: $updatedAt
+        updatedBy: $updatedBy
+      }
+      _inc: { version: 1 }
+    ) {
+      affected_rows
+    }
+  }
+`;
+
+// Blind upsert — used only for initGameState (first-time insert, no conflict possible)
+const INIT_GAME_STATE_MUTATION = `
+  mutation InitGameState(
     $gameId: uuid!
     $homeScore: Int
     $guestScore: Int
@@ -262,6 +310,8 @@ export function useHasuraGame(gameId: string) {
   const [timerState, setTimerState] = useState<TimerState | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [activeScorers, setActiveScorers] = useState<ScorerPresence[]>([]);
+  const [conflictDetected, setConflictDetected] = useState(false);
+  const conflictTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!gameId) return;
@@ -286,6 +336,7 @@ export function useHasuraGame(gameId: string) {
         possession: string;
         status: string;
         updatedAt: string;
+        version: number;
       }> }
     >(
       {
@@ -305,6 +356,7 @@ export function useHasuraGame(gameId: string) {
               possession
               status
               updatedAt
+              version
             }
           }
         `,
@@ -328,6 +380,7 @@ export function useHasuraGame(gameId: string) {
               currentPeriod: (state.currentPeriod as number) ?? 1,
               possession: state.possession as 'home' | 'guest' | undefined,
               status: (state.status as 'scheduled' | 'live' | 'final') || 'scheduled',
+              version: (state.version as number) ?? 1,
             });
           }
         },
@@ -522,40 +575,72 @@ export function useHasuraGame(gameId: string) {
       Object.values(unsubscribeRef.current).forEach((unsubscribe) => {
         if (unsubscribe) unsubscribe();
       });
+      if (conflictTimerRef.current) clearTimeout(conflictTimerRef.current);
     };
   }, [gameId]);
 
+  // Helper: signal a conflict and auto-clear after 5s
+  const signalConflict = useCallback(() => {
+    setConflictDetected(true);
+    if (conflictTimerRef.current) clearTimeout(conflictTimerRef.current);
+    conflictTimerRef.current = setTimeout(() => setConflictDetected(false), 5000);
+  }, []);
+
+  // Version-aware update helper: attempts once with the current version, retries once on conflict.
+  // Returns true if the update succeeded, false if it ultimately failed (conflict persists).
+  const versionedUpdate = useCallback(async (
+    buildUpdates: (state: GameState) => Partial<GameState>,
+    maxRetries = 1,
+  ): Promise<boolean> => {
+    let attempt = 0;
+    let currentState = gameState;
+    while (attempt <= maxRetries) {
+      if (!currentState) return false;
+      const updates = buildUpdates(currentState);
+      const now = new Date().toISOString();
+      const result = await graphqlRequest<{ update_game_states: { affected_rows: number } }>(
+        UPDATE_GAME_STATE_VERSIONED_MUTATION,
+        {
+          gameId,
+          ...currentState,
+          ...updates,
+          expectedVersion: currentState.version,
+          updatedAt: now,
+          updatedBy: userId || 'anonymous',
+        },
+      );
+      const affected = result?.update_game_states?.affected_rows ?? 0;
+      if (affected > 0) return true;
+      // Conflict: wait briefly for subscription to deliver fresh state, then retry
+      attempt++;
+      if (attempt <= maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        currentState = gameState; // re-read latest from subscription
+      }
+    }
+    signalConflict();
+    return false;
+  }, [gameState, gameId, userId, signalConflict]);
+
   const updateScore = useCallback(async (team: 'home' | 'guest', points: number) => {
-    if (!gameState) return;
-    const updates = team === 'home'
-      ? { homeScore: gameState.homeScore + points }
-      : { guestScore: gameState.guestScore + points };
-    await graphqlRequest(UPDATE_GAME_STATE_MUTATION, {
-      gameId, ...gameState, ...updates,
-      updatedAt: new Date().toISOString(),
-      updatedBy: userId || 'anonymous',
-    });
-  }, [gameState, gameId, userId]);
+    await versionedUpdate((state) =>
+      team === 'home'
+        ? { homeScore: state.homeScore + points }
+        : { guestScore: state.guestScore + points },
+    );
+  }, [versionedUpdate]);
 
   const updateFouls = useCallback(async (team: 'home' | 'guest', fouls: number) => {
-    if (!gameState) return;
-    const updates = team === 'home' ? { homeFouls: fouls } : { guestFouls: fouls };
-    await graphqlRequest(UPDATE_GAME_STATE_MUTATION, {
-      gameId, ...gameState, ...updates,
-      updatedAt: new Date().toISOString(),
-      updatedBy: userId || 'anonymous',
-    });
-  }, [gameState, gameId, userId]);
+    await versionedUpdate((state) =>
+      team === 'home' ? { homeFouls: fouls } : { guestFouls: fouls },
+    );
+  }, [versionedUpdate]);
 
   const updateTimeouts = useCallback(async (team: 'home' | 'guest', timeouts: number) => {
-    if (!gameState) return;
-    const updates = team === 'home' ? { homeTimeouts: timeouts } : { guestTimeouts: timeouts };
-    await graphqlRequest(UPDATE_GAME_STATE_MUTATION, {
-      gameId, ...gameState, ...updates,
-      updatedAt: new Date().toISOString(),
-      updatedBy: userId || 'anonymous',
-    });
-  }, [gameState, gameId, userId]);
+    await versionedUpdate((state) =>
+      team === 'home' ? { homeTimeouts: timeouts } : { guestTimeouts: timeouts },
+    );
+  }, [versionedUpdate]);
 
   const startTimer = useCallback(async () => {
     if (!gameState) return;
@@ -572,7 +657,7 @@ export function useHasuraGame(gameId: string) {
       updatedAt: now,
       updatedBy: userId || 'anonymous',
     });
-    await graphqlRequest(UPDATE_GAME_STATE_MUTATION, {
+    await graphqlRequest(INIT_GAME_STATE_MUTATION, {
       gameId, ...gameState, isTimerRunning: true,
       updatedAt: now,
       updatedBy: userId || 'anonymous',
@@ -597,7 +682,7 @@ export function useHasuraGame(gameId: string) {
       updatedAt: nowISO,
       updatedBy: userId || 'anonymous',
     });
-    await graphqlRequest(UPDATE_GAME_STATE_MUTATION, {
+    await graphqlRequest(INIT_GAME_STATE_MUTATION, {
       gameId, ...gameState, clockSeconds: currentClock, isTimerRunning: false,
       updatedAt: nowISO,
       updatedBy: userId || 'anonymous',
@@ -665,7 +750,7 @@ export function useHasuraGame(gameId: string) {
   }, [gameId, userId, gameState]);
 
   const initGameState = useCallback(async (initialClockSeconds: number = 600) => {
-    await graphqlRequest(UPDATE_GAME_STATE_MUTATION, {
+    await graphqlRequest(INIT_GAME_STATE_MUTATION, {
       gameId,
       homeScore: 0,
       guestScore: 0,
@@ -686,7 +771,7 @@ export function useHasuraGame(gameId: string) {
   const updateGameStatus = useCallback(async (status: 'scheduled' | 'live' | 'final') => {
     if (!gameState) {
       // Initialize game state with the requested status
-      await graphqlRequest(UPDATE_GAME_STATE_MUTATION, {
+      await graphqlRequest(INIT_GAME_STATE_MUTATION, {
         gameId,
         homeScore: 0,
         guestScore: 0,
@@ -746,6 +831,7 @@ export function useHasuraGame(gameId: string) {
     isTimerRunning: timerState?.isRunning ?? gameState?.isTimerRunning ?? false,
     isConnected,
     activeScorers,
+    conflictDetected,
     updateScore,
     updateFouls,
     updateTimeouts,

@@ -112,6 +112,7 @@ export default function ScorerPage() {
         removeEvent,
         activeScorers,
         updatePresence,
+        conflictDetected,
     } = useHasuraGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
@@ -681,6 +682,12 @@ export default function ScorerPage() {
 
     return (
         <div className="fixed inset-0 z-[100] bg-background flex flex-col font-sans select-none touch-none overflow-hidden">
+            {/* Conflict Detection Banner */}
+            {conflictDetected && (
+                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg text-sm font-semibold animate-pulse">
+                    ⚠️ Scoring conflict detected — state refreshed
+                </div>
+            )}
             {/* Top Header - THE DISPLAY */}
             <div className="bg-black/40 border-b border-border p-2 landscape:p-1 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-1">

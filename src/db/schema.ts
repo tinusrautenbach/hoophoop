@@ -563,6 +563,7 @@ export const gameStates = pgTable('game_states', {
     status: text('status').default('scheduled').notNull(), // 'scheduled', 'live', 'final'
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
     updatedBy: text('updated_by'),
+    version: integer('version').default(1).notNull(),
 });
 
 export const hasuraGameEvents = pgTable('hasura_game_events', {
