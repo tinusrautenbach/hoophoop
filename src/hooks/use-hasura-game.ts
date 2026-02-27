@@ -143,7 +143,7 @@ const UPDATE_GAME_STATE_VERSIONED_MUTATION = `
     $updatedAt: timestamptz!
     $updatedBy: String!
   ) {
-    update_game_states(
+    updateGameStates(
       where: {
         gameId: { _eq: $gameId }
         version: { _eq: $expectedVersion }
@@ -230,20 +230,20 @@ const ADD_GAME_EVENT_MUTATION = `
     $createdAt: timestamptz
     $createdBy: String
   ) {
-    insert_hasura_game_events_one(
+    insertGameEventsOne(
       object: {
-        game_id: $gameId
-        event_id: $eventId
+        gameId: $gameId
+        eventId: $eventId
         type: $type
         period: $period
-        clock_at: $clockAt
+        clockAt: $clockAt
         team: $team
         player: $player
         value: $value
         metadata: $metadata
         description: $description
-        created_at: $createdAt
-        created_by: $createdBy
+        createdAt: $createdAt
+        createdBy: $createdBy
       }
     ) {
       id
@@ -253,7 +253,7 @@ const ADD_GAME_EVENT_MUTATION = `
 
 const DELETE_GAME_EVENT_MUTATION = `
   mutation DeleteGameEvent($eventId: uuid!) {
-    delete_hasura_game_events_by_pk(id: $eventId) {
+    deleteGameEventsByPk(id: $eventId) {
       id
     }
   }
@@ -306,7 +306,7 @@ export function useHasuraGame(gameId: string) {
   const unsubscribeRef = useRef<{ gameState?: () => void; events?: () => void; timer?: () => void; scorers?: () => void }>({});
 
   const [gameState, setGameState] = useState<GameState | null>(null);
-  const [hasura_game_events, setGameEvents] = useState<GameEvent[]>([]);
+  const [gameEvents, setGameEvents] = useState<GameEvent[]>([]);
   const [timerState, setTimerState] = useState<TimerState | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [activeScorers, setActiveScorers] = useState<ScorerPresence[]>([]);
@@ -398,37 +398,37 @@ export function useHasuraGame(gameId: string) {
 
     // Subscribe to game events
     const eventsUnsubscribe = client.subscribe<
-      { hasura_game_events: Array<{
+      { gameEvents: Array<{
         id: string;
-        game_id: string;
+        gameId: string;
         type: string;
         period: number;
-        clock_at: number;
+        clockAt: number;
         team: string;
         player: string;
         value: number;
         metadata: Record<string, unknown>;
         description: string;
-        created_at: string;
-        created_by: string;
+        createdAt: string;
+        createdBy: string;
       }> }
     >(
       {
         query: `
           subscription GetGameEvents($gameId: uuid!) {
-            hasura_game_events(where: { game_id: { _eq: $gameId } }, order_by: { created_at: desc }, limit: 100) {
+            gameEvents(where: { gameId: { _eq: $gameId } }, order_by: { createdAt: desc }, limit: 100) {
               id
-              game_id
+              gameId
               type
               period
-              clock_at
+              clockAt
               team
               player
               value
               metadata
               description
-              created_by
-              created_at
+              createdBy
+              createdAt
             }
           }
         `,
@@ -436,28 +436,28 @@ export function useHasuraGame(gameId: string) {
       },
       {
         next: (result) => {
-          const events = result.data?.hasura_game_events;
+          const events = result.data?.gameEvents;
           if (events) {
             const mappedEvents = events.map((e) => ({
               _id: e.id as string,
-              gameId: e.game_id as string,
+              gameId: e.gameId as string,
               type: e.type as string,
               period: e.period as number,
-              clockAt: e.clock_at as number,
+              clockAt: e.clockAt as number,
               team: e.team as 'home' | 'guest' | undefined,
               player: e.player as string,
               value: e.value as number,
               metadata: e.metadata as Record<string, unknown>,
               description: e.description as string,
-              createdAt: new Date(e.created_at as string).getTime(),
-              createdBy: e.created_by as string | undefined,
+              createdAt: new Date(e.createdAt as string).getTime(),
+              createdBy: e.createdBy as string | undefined,
             }));
             setGameEvents(mappedEvents.reverse());
           }
         },
         error: (err: Error | unknown) => {
           console.error('[Hasura] Game events subscription error:', err);
-          console.error('Query:', 'subscription GetGameEvents($gameId: uuid!) { hasura_game_events(...) }');
+          console.error('Query:', 'subscription GetGameEvents($gameId: uuid!) { gameEvents(...) }');
           if (Array.isArray(err)) {
             err.forEach((e, i) => {
               console.error(`  Error ${i}:`, e);
@@ -598,18 +598,18 @@ export function useHasuraGame(gameId: string) {
       if (!currentState) return false;
       const updates = buildUpdates(currentState);
       const now = new Date().toISOString();
-      const result = await graphqlRequest<{ update_game_states: { affected_rows: number } }>(
+      const result = await graphqlRequest<{ updateGameStates: { affected_rows: number } }>(
         UPDATE_GAME_STATE_VERSIONED_MUTATION,
-        {
+{
           gameId,
-          ...currentState,
+          ...(() => { const { version: _v, ...rest } = currentState!; return rest; })(),
           ...updates,
           expectedVersion: currentState.version,
           updatedAt: now,
           updatedBy: userId || 'anonymous',
         },
       );
-      const affected = result?.update_game_states?.affected_rows ?? 0;
+      const affected = result?.updateGameStates?.affected_rows ?? 0;
       if (affected > 0) return true;
       // Conflict: wait briefly for subscription to deliver fresh state, then retry
       attempt++;
@@ -658,7 +658,7 @@ export function useHasuraGame(gameId: string) {
       updatedBy: userId || 'anonymous',
     });
     await graphqlRequest(INIT_GAME_STATE_MUTATION, {
-      gameId, ...gameState, isTimerRunning: true,
+      gameId, ...gameState, version: undefined, isTimerRunning: true,
       updatedAt: now,
       updatedBy: userId || 'anonymous',
     });
@@ -683,7 +683,7 @@ export function useHasuraGame(gameId: string) {
       updatedBy: userId || 'anonymous',
     });
     await graphqlRequest(INIT_GAME_STATE_MUTATION, {
-      gameId, ...gameState, clockSeconds: currentClock, isTimerRunning: false,
+      gameId, ...gameState, version: undefined, clockSeconds: currentClock, isTimerRunning: false,
       updatedAt: nowISO,
       updatedBy: userId || 'anonymous',
     });
@@ -826,7 +826,7 @@ export function useHasuraGame(gameId: string) {
 
   return {
     gameState,
-    gameEvents: hasura_game_events,
+    gameEvents,
     currentClock: displayClock,
     isTimerRunning: timerState?.isRunning ?? gameState?.isTimerRunning ?? false,
     isConnected,
