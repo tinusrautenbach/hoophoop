@@ -4,6 +4,7 @@ import { gameEvents, games, gameRosters } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { eq, and, sql } from 'drizzle-orm';
 import { graphqlRequest } from '@/lib/hasura/client';
+import { logActivity } from '@/lib/activity-logger';
 
 const UPSERT_GAME_STATE_MUTATION = `
   mutation UpsertGameStateAfterEventDelete(
@@ -71,6 +72,19 @@ export async function POST(
             metadata: metadata || {},
             createdAt: new Date(),
         }).returning();
+
+        // Log activity (non-fatal — don't block the response if logging fails)
+        try {
+            await logActivity({
+                userId,
+                action: 'GAME_SCORED',
+                resourceType: 'game',
+                resourceId: gameId,
+                details: { eventType: type, team, player, value },
+            });
+        } catch (logError) {
+            console.error('Failed to log GAME_SCORED activity:', logError);
+        }
 
         return NextResponse.json(newEvent);
     } catch (error) {

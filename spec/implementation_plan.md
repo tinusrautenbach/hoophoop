@@ -98,9 +98,9 @@
     - [ ] Manage pending invitations.
     - [x] **Logout functionality**.
     - [x] **Light/Dark Mode Toggle**: Allow users to toggle between light and dark themes with preference persisted to user settings.
-- [ ] **7.5 Activity Logging**:
+- [x] **7.5 Activity Logging**:
   - [x] Create utility function `logActivity()`.
-  - [ ] Integrate logging into key API routes (Game Create, Score Update).
+  - [x] Integrate logging into key API routes (Game Create — already done; Score Update — done).
 
 ## Phase 8: Public Game Portals (NEW)
 - [x] **8.1 Database & API Updates**:
