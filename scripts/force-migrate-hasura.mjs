@@ -82,14 +82,50 @@ const runForceMigrate = async () => {
 async function waitForHasura(maxAttempts = 30) {
     console.log('[Hasura] Waiting for Hasura to be ready...');
     
+    // Phase 1: wait for healthz
     for (let i = 0; i < maxAttempts; i++) {
         try {
             const response = await fetch(`${HASURA_URL}/healthz`, { method: 'GET' });
             if (response.ok) {
-                console.log('[Hasura] Hasura is ready!');
-                // Add a small delay after healthz passes to ensure Hasura is fully initialized
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                return true;
+                console.log('[Hasura] Hasura healthz OK');
+                break;
+            }
+        } catch (err) {}
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        process.stdout.write('.');
+        if (i === maxAttempts - 1) throw new Error('Hasura failed to become ready');
+    }
+    
+    // Phase 2: wait until the postgres source is initialized.
+    // healthz passes before Hasura finishes introspecting the DB schema.
+    // If we call replace_metadata before the schema cache is populated,
+    // Hasura marks permissions as inconsistent ("column does not exist")
+    // even though the column is present in the DB.
+    // We poll a simple introspection query until 'game_states' appears in the schema.
+    console.log('[Hasura] Waiting for postgres source to initialize...');
+    for (let i = 0; i < maxAttempts; i++) {
+        try {
+            const response = await fetch(`${HASURA_URL}/v1/graphql`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Hasura-Admin-Secret': HASURA_ADMIN_SECRET
+                },
+                body: JSON.stringify({
+                    query: `{ __type(name: "query_root") { fields { name } } }`
+                })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                const fields = data?.data?.__type?.fields ?? [];
+                // Once the source is loaded, built-in tables like 'game_states'
+                // (or at minimum any table) will appear. We check for the schema
+                // root itself being non-empty as the signal.
+                if (fields.length > 0) {
+                    console.log('[Hasura] Postgres source initialized — schema has', fields.length, 'root fields');
+                    return true;
+                }
             }
         } catch (err) {}
         
@@ -97,7 +133,9 @@ async function waitForHasura(maxAttempts = 30) {
         process.stdout.write('.');
     }
     
-    throw new Error('Hasura failed to become ready');
+    // If we timed out waiting for source, proceed anyway — better to try than not
+    console.log('[Hasura] Source init wait timed out, proceeding anyway...');
+    return true;
 }
 
 // Build the complete Hasura metadata object.
