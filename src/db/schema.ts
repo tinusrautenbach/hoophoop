@@ -373,6 +373,22 @@ export const gameScorers = pgTable('game_scorers', {
     lastActiveAt: timestamp('last_active_at').defaultNow().notNull(),
 });
 
+// Scorer invite tokens — allows inviting by email or shareable link
+export const scorerInviteStatusEnum = pgEnum('scorer_invite_status', ['pending', 'accepted', 'expired']);
+
+export const gameScorerInvites = pgTable('game_scorer_invites', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).notNull(),
+    email: text('email'), // null = link-only invite (no specific recipient)
+    token: text('token').notNull().unique(),
+    status: scorerInviteStatusEnum('status').default('pending').notNull(),
+    role: scorerRoleEnum('role').default('co_scorer').notNull(),
+    createdBy: text('created_by').notNull(), // Clerk userId of inviter
+    acceptedBy: text('accepted_by'),          // Clerk userId of accepter
+    expiresAt: timestamp('expires_at').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // --- RELATIONS ---
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -437,11 +453,16 @@ export const gamesRelations = relations(games, ({ one, many }) => ({
     rosters: many(gameRosters),
     events: many(gameEvents),
     scorers: many(gameScorers),
+    invites: many(gameScorerInvites),
     tournamentGame: one(tournamentGames),
 }));
 
 export const gameScorersRelations = relations(gameScorers, ({ one }) => ({
     game: one(games, { fields: [gameScorers.gameId], references: [games.id] }),
+}));
+
+export const gameScorerInvitesRelations = relations(gameScorerInvites, ({ one }) => ({
+    game: one(games, { fields: [gameScorerInvites.gameId], references: [games.id] }),
 }));
 
 export const gameRostersRelations = relations(gameRosters, ({ one, many }) => ({

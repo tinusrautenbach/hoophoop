@@ -197,6 +197,75 @@ ${inviteLink}
 }
 
 /**
+ * Send scorer invite email
+ */
+export async function sendScorerInviteEmail(
+  to: string,
+  gameName: string,
+  inviteLink: string,
+  invitedByName?: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const subject = `You've been invited to score a game on Hoophoop Basketball`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scorer Invitation</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #f97316; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .header h1 { color: white; margin: 0; font-size: 24px; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+    .button { display: inline-block; background: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+    .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }
+    .link-box { background: #e5e7eb; padding: 15px; border-radius: 6px; word-break: break-all; font-family: monospace; font-size: 12px; margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🏀 Hoophoop Basketball</h1>
+    </div>
+    <div class="content">
+      <h2>Hello!</h2>
+      <p>You've been invited to score the game <strong>${gameName}</strong>${invitedByName ? ` by ${invitedByName}` : ''}.</p>
+      <p>Click the button below to accept the invitation and start scoring:</p>
+      <a href="${inviteLink}" class="button">Accept Scorer Invite</a>
+      <p>Or copy and paste this link into your browser:</p>
+      <div class="link-box">${inviteLink}</div>
+      <p><small>This link expires in 7 days. If you don't have an account yet, you'll be asked to sign up first.</small></p>
+    </div>
+    <div class="footer">
+      <p>© ${new Date().getFullYear()} Hoophoop Basketball. All rights reserved.</p>
+      <p>If you didn't expect this invitation, you can safely ignore this email.</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+
+  const text = `
+Hello!
+
+You've been invited to score the game ${gameName}${invitedByName ? ` by ${invitedByName}` : ''}.
+
+Click the link below to accept the invitation:
+
+${inviteLink}
+
+This link expires in 7 days.
+
+© ${new Date().getFullYear()} Hoophoop Basketball
+  `;
+
+  return sendEmail({ to, subject, html, text });
+}
+
+/**
  * Send player claim request notification to community admin
  */
 export async function sendPlayerClaimRequestEmail(

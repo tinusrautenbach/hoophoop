@@ -12,7 +12,7 @@
 - [x] 2.5.1 New Tables (Migration)
 - [x] 2.5.2 API - Team Management (CRUD verified)
 - [x] 2.5.3 UI - Team Manager (Add/Remove members)
-- [ ] 2.5.4 Advanced Team UI (Bulk Paste, Color Picker)
+- [x] 2.5.4 Advanced Team UI (Bulk Paste, Color Picker)
 
 ## Phase 3: Frontend Core (Scorer Views)
 - [x] **3.1 Layout & Mobile Design**:
@@ -52,14 +52,14 @@
   - [x] Remove client-side timer ticking (all timing computed from `timerSync.startedAt` + elapsed)
   - [x] Add server-side timer recovery on restart (via `timerSync` subscription reconnect)
   
-- [ ] **5.2 Multi-Scorer Support**:
+- [x] **5.2 Multi-Scorer Support**:
   - [x] Create `game_scorers` table
-  - [ ] Add "Invite Scorer" UI functionality
+  - [x] Add "Invite Scorer" UI functionality (email invite + shareable link with QR code)
   - [x] Update API permissions to allow multiple scorers per game
   - [ ] Add scorer presence indicators (show active scorers in UI)
   - [x] Implement role-based permissions (API level)
   - [ ] Add activity attribution (track which scorer performed each action)
-  - [ ] Build "Join as Scorer" flow UI
+  - [x] Build "Join as Scorer" flow UI (with forced sign-up for new users)
 
 - [ ] **5.3 Conflict Resolution**:
   - [ ] Implement optimistic concurrency control for game state updates
