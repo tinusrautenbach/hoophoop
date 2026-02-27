@@ -105,6 +105,18 @@ export default function SpectatorPage() {
         setLastSyncTime(new Date());
     }, [hasuraState, currentClock, isTimerRunning]);
 
+    // Sync timer clock into local game state even when hasuraState (gameStates subscription) is unavailable.
+    // The timer runs via timer_sync which has its own subscription, independent of game_states.
+    useEffect(() => {
+        if (hasuraState) return; // already handled above
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: syncs timer subscription to local state
+        setGame(prev => {
+            if (!prev) return prev;
+            if (prev.clockSeconds === currentClock && prev.isTimerRunning === isTimerRunning) return prev;
+            return { ...prev, clockSeconds: currentClock, isTimerRunning };
+        });
+    }, [hasuraState, currentClock, isTimerRunning]);
+
     useEffect(() => {
         if (!hasuraEvents) return;
         
