@@ -142,10 +142,10 @@ async function trackTablesInHasura() {
                 updated_by: { custom_name: 'updatedBy' }
             }, ['game_id', 'home_score', 'guest_score', 'home_fouls', 'guest_fouls', 
                 'home_timeouts', 'guest_timeouts', 'clock_seconds', 'is_timer_running',
-                'current_period', 'possession', 'status', 'updated_at', 'updated_by', 'version'], {
+                'current_period', 'possession', 'status', 'updated_at', 'updated_by'], {
                 userSelectColumns: ['game_id', 'home_score', 'guest_score', 'home_fouls', 'guest_fouls',
                     'home_timeouts', 'guest_timeouts', 'clock_seconds', 'is_timer_running',
-                    'current_period', 'possession', 'status', 'updated_at', 'updated_by', 'version'],
+                    'current_period', 'possession', 'status', 'updated_at', 'updated_by'],
                 userInsertColumns: ['game_id', 'home_score', 'guest_score', 'home_fouls', 'guest_fouls',
                     'home_timeouts', 'guest_timeouts', 'clock_seconds', 'is_timer_running',
                     'current_period', 'possession', 'status', 'updated_at', 'updated_by'],
