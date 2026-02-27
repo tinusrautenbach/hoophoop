@@ -127,4 +127,22 @@
       "when": 1771095117661,
       "tag": "0017_game_scorer_invites",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1771095117662,
+      "tag": "0018_add_created_by_to_game_events",
+      "breakpoints": true
+    }
+,
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1771095117663,
+      "tag": "0019_game_scorers_timestamps_with_timezone",
+      "breakpoints": true
+    }
+  ],
+  "breakpoints": true
 }
