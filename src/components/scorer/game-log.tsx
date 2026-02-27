@@ -21,6 +21,7 @@ export type GameEvent = {
     clockAt?: number;
     period?: number;
     metadata?: Record<string, unknown>;
+    createdBy?: string;
 };
 
 interface GameLogProps {
@@ -156,6 +157,11 @@ export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick, hideHe
                                             })()}
                                         </span>
                                     </div>
+                                    {event.createdBy && event.createdBy !== 'anonymous' && (
+                                        <div className="text-[8px] text-slate-600 font-mono mt-0.5 truncate">
+                                            ✎ {event.createdBy.slice(0, 12)}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="text-[8px] font-mono text-slate-700">
                                     {event.period ? `P${event.period} ` : ''}

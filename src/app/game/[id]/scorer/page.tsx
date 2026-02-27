@@ -110,6 +110,8 @@ export default function ScorerPage() {
         stopTimer,
         addEvent: addHasuraEvent,
         removeEvent,
+        activeScorers,
+        updatePresence,
     } = useHasuraGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
@@ -151,6 +153,13 @@ export default function ScorerPage() {
             });
     }, [id]);
 
+    // Heartbeat: update presence on mount and every 30s
+    useEffect(() => {
+        updatePresence();
+        const interval = setInterval(updatePresence, 30_000);
+        return () => clearInterval(interval);
+    }, [updatePresence]);
+
     useEffect(() => {
         if (!hasuraState) return;
         
@@ -187,6 +196,7 @@ export default function ScorerPage() {
             metadata: e.metadata as { points?: number; shotType?: '2pt' | '3pt' | 'ft' },
             description: e.description,
             timestamp: new Date(e.createdAt),
+            createdBy: e.createdBy,
         })) as GameEvent[]);
     }, [hasuraEvents]);
 
@@ -750,8 +760,8 @@ export default function ScorerPage() {
                         className="p-2 text-slate-500 hover:text-white landscape:p-1 relative"
                         title="Manage Scorers"
                     >
-                        <Users size={18} className={cn(scorers.length > 0 && "text-blue-500")} />
-                        {scorers.length > 0 && (
+                        <Users size={18} className={cn(activeScorers.length > 1 && "text-blue-500")} />
+                        {activeScorers.length > 1 && (
                             <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full border border-black" />
                         )}
                     </button>
@@ -1565,6 +1575,7 @@ export default function ScorerPage() {
                     ownerId={game.ownerId}
                     currentUserId={userId}
                     scorers={scorers}
+                    activeScorers={activeScorers}
                     isOpen={isScorersOpen}
                     onClose={() => setIsScorersOpen(false)}
                     onAddScorer={handleAddScorer}

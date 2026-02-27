@@ -29,6 +29,7 @@ interface GameEvent {
   metadata?: Record<string, unknown>;
   description: string;
   createdAt: number;
+  createdBy?: string;
 }
 
 interface TimerState {
@@ -38,6 +39,13 @@ interface TimerState {
   currentClockSeconds: number;
 }
 
+interface ScorerPresence {
+  id: string;
+  userId: string;
+  role: string;
+  joinedAt: string;
+  lastActiveAt: string;
+}
 
 const UPDATE_CLOCK_MUTATION = `
   mutation UpdateClock($gameId: uuid!, $clockSeconds: Int!, $updatedAt: timestamptz!, $updatedBy: String!) {
@@ -203,6 +211,17 @@ const DELETE_GAME_EVENT_MUTATION = `
   }
 `;
 
+const UPSERT_SCORER_PRESENCE = `
+  mutation UpsertScorerPresence($gameId: uuid!, $userId: String!, $lastActiveAt: timestamptz!) {
+    update_game_scorers(
+      where: { game_id: { _eq: $gameId }, user_id: { _eq: $userId } }
+      _set: { last_active_at: $lastActiveAt }
+    ) {
+      affected_rows
+    }
+  }
+`;
+
 const CONTROL_TIMER_MUTATION = `
   mutation ControlTimer(
     $gameId: uuid!
@@ -236,12 +255,13 @@ const CONTROL_TIMER_MUTATION = `
 export function useHasuraGame(gameId: string) {
   const { userId } = useAuth();
   const clientRef = useRef<Client | null>(null);
-  const unsubscribeRef = useRef<{ gameState?: () => void; events?: () => void; timer?: () => void }>({});
+  const unsubscribeRef = useRef<{ gameState?: () => void; events?: () => void; timer?: () => void; scorers?: () => void }>({});
 
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [hasura_game_events, setGameEvents] = useState<GameEvent[]>([]);
   const [timerState, setTimerState] = useState<TimerState | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [activeScorers, setActiveScorers] = useState<ScorerPresence[]>([]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -337,6 +357,7 @@ export function useHasuraGame(gameId: string) {
         metadata: Record<string, unknown>;
         description: string;
         created_at: string;
+        created_by: string;
       }> }
     >(
       {
@@ -353,6 +374,7 @@ export function useHasuraGame(gameId: string) {
               value
               metadata
               description
+              created_by
               created_at
             }
           }
@@ -375,6 +397,7 @@ export function useHasuraGame(gameId: string) {
               metadata: e.metadata as Record<string, unknown>,
               description: e.description as string,
               createdAt: new Date(e.created_at as string).getTime(),
+              createdBy: e.created_by as string | undefined,
             }));
             setGameEvents(mappedEvents.reverse());
           }
@@ -446,6 +469,53 @@ export function useHasuraGame(gameId: string) {
       }
     );
     unsubscribeRef.current.timer = timerUnsubscribe;
+
+    // Subscribe to scorer presence
+    const scorersUnsubscribe = client.subscribe<
+      { game_scorers: Array<{
+        id: string;
+        user_id: string;
+        role: string;
+        joined_at: string;
+        last_active_at: string;
+      }> }
+    >(
+      {
+        query: `
+          subscription GetGameScorers($gameId: uuid!) {
+            game_scorers(where: { game_id: { _eq: $gameId } }) {
+              id
+              user_id
+              role
+              joined_at
+              last_active_at
+            }
+          }
+        `,
+        variables: { gameId },
+      },
+      {
+        next: (result) => {
+          const scorerRows = result.data?.game_scorers;
+          if (scorerRows) {
+            setActiveScorers(scorerRows.map((s) => ({
+              id: s.id as string,
+              userId: s.user_id as string,
+              role: s.role as string,
+              joinedAt: s.joined_at as string,
+              lastActiveAt: s.last_active_at as string,
+            })));
+          }
+        },
+        error: (err: Error) => {
+          console.error('[Hasura] Scorers subscription error:', err);
+        },
+        complete: () => {
+          console.log('[Hasura] Scorers subscription completed');
+        },
+      }
+    );
+    unsubscribeRef.current.scorers = scorersUnsubscribe;
 
     return () => {
       // Unsubscribe from all subscriptions
@@ -554,6 +624,15 @@ export function useHasuraGame(gameId: string) {
   const removeEvent = useCallback(async (eventId: string) => {
     await graphqlRequest(DELETE_GAME_EVENT_MUTATION, { eventId });
   }, []);
+
+  const updatePresence = useCallback(async () => {
+    if (!userId || userId === 'anonymous') return;
+    await graphqlRequest(UPSERT_SCORER_PRESENCE, {
+      gameId,
+      userId,
+      lastActiveAt: new Date().toISOString(),
+    });
+  }, [gameId, userId]);
 
   const updateClock = useCallback(async (clockSeconds: number) => {
     if (!gameState) return;
@@ -666,6 +745,7 @@ export function useHasuraGame(gameId: string) {
     currentClock: displayClock,
     isTimerRunning: timerState?.isRunning ?? gameState?.isTimerRunning ?? false,
     isConnected,
+    activeScorers,
     updateScore,
     updateFouls,
     updateTimeouts,
@@ -677,5 +757,6 @@ export function useHasuraGame(gameId: string) {
     stopTimer,
     addEvent,
     removeEvent,
+    updatePresence,
   };
 }

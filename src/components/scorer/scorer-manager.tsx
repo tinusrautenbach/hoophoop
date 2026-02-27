@@ -18,6 +18,14 @@ type Scorer = {
     joinedAt: string;
 };
 
+type ActiveScorer = {
+    id: string;
+    userId: string;
+    role: string;
+    joinedAt: string;
+    lastActiveAt: string;
+};
+
 interface ScorerManagerProps {
     gameId: string;
     ownerId: string;
@@ -28,11 +36,12 @@ interface ScorerManagerProps {
     // Kept for backward compat — no longer called (invite flow replaces direct add)
     onAddScorer?: (userId: string) => void;
     onRemoveScorer: (scorerId: string) => void;
-}
+    activeScorers?: ActiveScorer[];
+    }
 
 type InviteTab = 'email' | 'link';
 
-export function ScorerManager({
+    export function ScorerManager({
     gameId,
     ownerId,
     currentUserId,
@@ -40,6 +49,7 @@ export function ScorerManager({
     isOpen,
     onClose,
     onRemoveScorer,
+    activeScorers = [],
 }: ScorerManagerProps) {
     const [activeTab, setActiveTab] = useState<InviteTab>('email');
     const [email, setEmail] = useState('');
@@ -284,7 +294,13 @@ export function ScorerManager({
                             </div>
 
                             {/* Co-Scorers */}
-                            {scorers.map((scorer) => (
+                            {scorers.map((scorer) => {
+                                const ACTIVE_THRESHOLD_MS = 35_000;
+                                const presence = activeScorers.find((a) => a.userId === scorer.userId);
+                                const isActive = presence
+                                    ? Date.now() - new Date(presence.lastActiveAt).getTime() < ACTIVE_THRESHOLD_MS
+                                    : false;
+                                return (
                                 <div key={scorer.id} className="bg-background/50 border border-border rounded-xl p-4 flex items-center justify-between group">
                                     <div className="flex items-center gap-3">
                                         {scorer.role === 'viewer' ? (
@@ -293,7 +309,16 @@ export function ScorerManager({
                                             <ShieldAlert size={16} className="text-blue-500" />
                                         )}
                                         <div>
-                                            <div className="font-bold text-sm capitalize">{scorer.role.replace('_', ' ')}</div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="font-bold text-sm capitalize">{scorer.role.replace('_', ' ')}</div>
+                                                <span
+                                                    className={cn(
+                                                        'w-2 h-2 rounded-full shrink-0',
+                                                        isActive ? 'bg-green-500' : 'bg-slate-600'
+                                                    )}
+                                                    title={isActive ? 'Active now' : presence ? 'Inactive' : 'Not seen'}
+                                                />
+                                            </div>
                                             <div className="text-[10px] text-slate-500 font-mono">{scorer.userId}</div>
                                         </div>
                                     </div>
@@ -312,7 +337,8 @@ export function ScorerManager({
                                         )}
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
 
                             {scorers.length === 0 && (
                                 <div className="text-center py-4 text-slate-500 text-xs italic">

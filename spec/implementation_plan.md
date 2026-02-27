@@ -56,9 +56,9 @@
   - [x] Create `game_scorers` table
   - [x] Add "Invite Scorer" UI functionality (email invite + shareable link with QR code)
   - [x] Update API permissions to allow multiple scorers per game
-  - [ ] Add scorer presence indicators (show active scorers in UI)
+  - [x] Add scorer presence indicators (show active scorers in UI)
   - [x] Implement role-based permissions (API level)
-  - [ ] Add activity attribution (track which scorer performed each action)
+  - [x] Add activity attribution (track which scorer performed each action)
   - [x] Build "Join as Scorer" flow UI (with forced sign-up for new users)
 
 - [ ] **5.3 Conflict Resolution**:
