@@ -696,6 +696,45 @@ export function useHasuraGame(gameId: string) {
     }
   }, [gameState, timerState, gameId, userId]);
 
+  /**
+   * Atomically advances to the next period.
+   * - Increments currentPeriod by 1
+   * - Resets clockSeconds to periodSeconds (or 600 default)
+   * - Resets homeFouls and guestFouls to 0
+   * All via a single versioned CAS mutation — no false conflicts.
+   * After CAS succeeds, resets timer_sync to stopped + periodSeconds.
+   */
+  const advancePeriod = useCallback(async (): Promise<boolean> => {
+    if (!gameState) return false;
+    // periodSeconds is stored in game_states but not in this hook's GameState type;
+    // fall back to 600 (10 min) if not present
+    const periodSeconds = (gameState as GameState & { periodSeconds?: number }).periodSeconds ?? 600;
+
+    // 1. Single versioned CAS: bump period, reset clock + fouls atomically
+    const success = await versionedUpdate((state) => ({
+      currentPeriod: state.currentPeriod + 1,
+      clockSeconds: periodSeconds,
+      homeFouls: 0,
+      guestFouls: 0,
+    }));
+
+    if (!success) return false;
+
+    // 2. Reset timer_sync (only runs after CAS succeeds)
+    const now = new Date().toISOString();
+    await graphqlRequest(CONTROL_TIMER_MUTATION, {
+      gameId,
+      isRunning: false,
+      startedAt: null,
+      initialClockSeconds: periodSeconds,
+      currentClockSeconds: periodSeconds,
+      updatedAt: now,
+      updatedBy: userId || 'anonymous',
+    });
+
+    return true;
+  }, [gameState, gameId, userId, versionedUpdate]);
+
   const addEvent = useCallback(async (event: Omit<GameEvent, '_id' | 'gameId' | 'createdAt'>) => {
     await graphqlRequest(ADD_GAME_EVENT_MUTATION, {
       gameId,
@@ -851,5 +890,6 @@ export function useHasuraGame(gameId: string) {
     addEvent,
     removeEvent,
     updatePresence,
+    advancePeriod,
   };
 }
