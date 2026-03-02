@@ -113,6 +113,7 @@ export default function ScorerPage() {
         activeScorers,
         updatePresence,
         conflictDetected,
+        advancePeriod,
     } = useHasuraGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
@@ -468,32 +469,19 @@ export default function ScorerPage() {
         setIsSubsOpen(true);
     };
 
-    const nextPeriod = () => {
+    const nextPeriod = async () => {
         if (!game) return;
-        // Allow unlimited periods for OT
-
-        updateGame({
-            currentPeriod: game.currentPeriod + 1,
-            homeFouls: 0,
-            guestFouls: 0,
-            clockSeconds: game.periodSeconds || 600,
-        });
-
-        // Log period start event
+        const ok = await advancePeriod();
+        if (!ok) return;
         addEvent({
             type: 'period_start',
-            team: 'home', // defaulting to home for system event owner
+            team: 'home',
             player: 'System',
             value: 0,
             description: `Start of Period ${game.currentPeriod + 1}`,
             period: game.currentPeriod + 1,
-            clockAt: game.periodSeconds || 600
+            clockAt: game.periodSeconds || 600,
         });
-
-        // Ensure timer is stopped on server
-        if (isTimerRunning) {
-            stopTimer();
-        }
     };
 
     const handleEndGame = async () => {
@@ -727,6 +715,7 @@ export default function ScorerPage() {
                     <div className="flex flex-col items-center">
                         <div className="flex items-center gap-1 mb-0.5">
                             <button
+                                data-testid="period-display"
                                 onClick={nextPeriod}
                                 className="text-[10px] landscape:text-[8px] uppercase tracking-widest text-slate-500 font-bold flex items-center gap-1 hover:text-white transition-colors"
                             >
@@ -854,6 +843,7 @@ export default function ScorerPage() {
                             Timeouts
                         </button>
                         <button
+                            data-testid="timer-toggle"
                             onClick={toggleTimer}
                             className={cn(
                                 "rounded-xl font-black text-xl flex flex-col items-center justify-center transition-all",
