@@ -20,12 +20,12 @@
 
 ### Implementation
 
-- [ ] T001 [US1] Rename src/middleware.ts → src/proxy.ts using `git mv src/middleware.ts src/proxy.ts` (no content changes)
+- [x] T001 [US1] Rename src/middleware.ts → src/proxy.ts using `git mv src/middleware.ts src/proxy.ts` (no content changes)
 
 ### Verification
 
-- [ ] T002 [US1] Run `npx tsc --noEmit` and confirm no new TypeScript errors are introduced (2 pre-existing errors in recalculate/route.ts and recalc-toast.tsx are expected and acceptable)
-- [ ] T003 [US1] Start dev server with `bun run dev` and confirm startup output contains no "middleware file convention is deprecated" warning
+- [x] T002 [US1] Run `npx tsc --noEmit` and confirm no new TypeScript errors are introduced (2 pre-existing errors in recalculate/route.ts and recalc-toast.tsx are expected and acceptable)
+- [x] T003 [US1] Start dev server with `bun run dev` and confirm startup output contains no "middleware file convention is deprecated" warning
 
 ---
 

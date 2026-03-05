@@ -96,7 +96,7 @@ description: "Task list for Multi-Scorer Concurrent Testing & Fixes"
 
 ### Tests for User Story 2 (OPTIONAL) ⚠️
 
-- [ ] T020 [P] [US2] Add test T102 for reconnection triggering full recalculation in `src/hooks/__tests__/use-hasura-game.concurrent.test.ts`
+- [x] T020 [P] [US2] Add test T102 for reconnection triggering full recalculation in `src/hooks/__tests__/use-hasura-game.concurrent.test.ts`
 - [x] T021 [P] [US2] Add test T107 for rapid-fire updates (10+/sec) processed without drops in `src/hooks/__tests__/use-hasura-game.concurrent.test.ts`
 
 ### Implementation for User Story 2
@@ -157,7 +157,7 @@ description: "Task list for Multi-Scorer Concurrent Testing & Fixes"
 
 ### Implementation for User Story 5
 
-- [ ] T030 [US5] Verify `canManageGame` checks in `src/app/api/games/[id]/recalculate/route.ts` and event routes properly reject viewers and restrict co_scorers according to `gameScorers` roles.
+- [x] T030 [US5] Verify `canManageGame` checks in `src/app/api/games/[id]/recalculate/route.ts` and event routes properly reject viewers and restrict co_scorers according to `gameScorers` roles.
 
 **Checkpoint**: All user stories should now be independently functional.
 
@@ -167,9 +167,9 @@ description: "Task list for Multi-Scorer Concurrent Testing & Fixes"
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T031 [P] Run linter and formatter over all modified `src/` and `tests/` files
-- [ ] T032 Verify test suite completes in under 60 seconds (SC-006)
-- [ ] T033 Code cleanup and refactoring in `src/services/game.ts` and `src/app/api/games/[id]/events/route.ts`
+- [x] T031 [P] Run linter and formatter over all modified `src/` and `tests/` files
+- [x] T032 Verify test suite completes in under 60 seconds (SC-006)
+- [x] T033 Code cleanup and refactoring in `src/services/game.ts` and `src/app/api/games/[id]/events/route.ts`
 
 ---
 
