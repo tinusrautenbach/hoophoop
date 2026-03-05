@@ -20,35 +20,39 @@
 
 ---
 
-## Phase 2: Foundational — Hasura Metadata Completeness (Phase 18 Remainder)
+## Phase 2: Foundational — Hasura Metadata Completeness (Phase 18 Remainder) ✅
 
 **Purpose**: Complete Hasura metadata tracking so all tables are queryable/subscribable. This unblocks real-time features across all user stories.
 
+**Status**: ✅ **COMPLETED** in branch `021-hasura-metadata-multiscorer-ui`
+
 **⚠️ CRITICAL**: Until remaining tables are tracked in Hasura, any feature relying on GraphQL subscriptions beyond `gameStates`, `hasura_game_events`, and `timer_sync` will be blocked.
 
-- [ ] T001 Track all remaining DB tables in Hasura metadata — `games`, `gameEvents`, `athletes`, `teams`, `communities`, `seasons`, `tournaments`, `tournamentTeams`, `tournamentPools`, `tournamentStandings` in `hasura/metadata/`
-- [ ] T002 [P] Set up Hasura relationships: `games → gameEvents`, `games → gameStates`, `games → timerSync`, `teams → athletes` via `teamMemberships` in `hasura/metadata/`
-- [ ] T003 [P] Create public games listing view in Hasura metadata for unauthenticated access to `public_general` games
-- [ ] T004 [P] Configure `gamePresence` table subscriptions for active user/scorer presence tracking in `hasura/metadata/`
-- [ ] T005 Export updated Hasura metadata to `hasura/metadata/` and verify `replace_metadata` returns `"is_consistent": true`
+- [x] T001 Track all remaining DB tables in Hasura metadata — `games`, `gameEvents`, `athletes`, `teams`, `communities`, `seasons`, `tournaments`, `tournamentTeams`, `tournamentPools`, `tournamentStandings` in `hasura/metadata/`
+- [x] T002 [P] Set up Hasura relationships: `games → gameEvents`, `games → gameStates`, `games → timerSync`, `teams → athletes` via `teamMemberships` in `hasura/metadata/`
+- [x] T003 [P] Create public games listing view in Hasura metadata for unauthenticated access to `public_general` games
+- [x] T004 [P] Configure `gamePresence` table subscriptions for active user/scorer presence tracking in `hasura/metadata/`
+- [x] T005 Export updated Hasura metadata to `hasura/metadata/` and verify `replace_metadata` returns `"is_consistent": true`
 
-**Checkpoint**: All tables accessible via GraphQL — run `GET /api/health` and verify Hasura metadata consistency.
+**Checkpoint**: ✅ All tables accessible via GraphQL — run `GET /api/health` and verify Hasura metadata consistency.
 
 ---
 
-## Phase 3: User Story 1 — Live Game Scoring — Multi-Scorer UI Gaps (Priority: P1) 🎯
+## Phase 3: User Story 1 — Live Game Scoring — Multi-Scorer UI Gaps (Priority: P1) 🎯 PARTIALLY COMPLETE
 
 **Goal**: Complete the multi-scorer experience — presence indicators, activity attribution, and conflict notification UI (API-level work is done; UI is missing).
+
+**Status**: Partially completed across branches `021-hasura-metadata-multiscorer-ui` and `078-configurable-player-stats`
 
 **Independent Test**: Open the same game in two browser tabs as two different scorers. Verify both scorers see each other's presence badge, see the scorer name on each game log event, and see a conflict toast when they both act simultaneously.
 
 ### Implementation for User Story 1
 
 - [ ] T006 [P] [US1] Add scorer presence indicator badges to scorer UI — read from `gamePresence` Hasura subscription in `src/app/game/[id]/scorer/page.tsx`
-- [ ] T007 [P] [US1] Add scorer name attribution to game log event rows — display `scorerName` from `hasura_game_events` in `src/app/game/[id]/log/page.tsx` and scorer game log component
+- [x] T007 [P] [US1] Add scorer name attribution to game log event rows — display `scorerName` from `hasura_game_events` in `src/app/game/[id]/log/page.tsx` and scorer game log component ✅ Already implemented in existing code
 - [ ] T008 [US1] Implement conflict notification toast UI — show when two scorers perform conflicting state updates; use version field from `gameStates` to detect stale writes in `src/app/game/[id]/scorer/page.tsx`
-- [ ] T009 [US1] Add "bulk paste roster" input to bench selection and team edit — parse "23 Jordan, 33 Pippen" format in `src/app/game/[id]/scorer/` bench setup and `src/app/teams/[id]/` team edit page
-- [ ] T010 [P] [US1] Add color picker to team creation and edit form — replace text color input with visual color swatch picker in `src/app/teams/` team creation/edit pages
+- [x] T009 [US1] Add "bulk paste roster" input to bench selection and team edit — parse "23 Jordan, 33 Pippen" format in `src/app/game/[id]/scorer/` bench setup and `src/app/teams/[id]/` team edit page ✅ COMPLETED in branch `021-hasura-metadata-multiscorer-ui`
+- [x] T010 [P] [US1] Add color picker to team creation and edit form — replace text color input with visual color swatch picker in `src/app/teams/` team creation/edit pages ✅ Already implemented in existing code
 
 **Checkpoint**: Two-scorer workflow is fully visible and conflict-safe. Roster paste and color picker functional.
 
