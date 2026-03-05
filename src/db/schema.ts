@@ -6,7 +6,7 @@ export const teamEnum = pgEnum('team_side', ['home', 'guest']);
 export const eventTypeEnum = pgEnum('event_type', [
     'score', 'foul', 'timeout', 'sub', 'turnover',
     'block', 'steal', 'rebound_off', 'rebound_def',
-    'period_start', 'period_end', 'clock_start', 'clock_stop', 'undo', 'miss'
+    'period_start', 'period_end', 'clock_start', 'clock_stop', 'undo', 'miss', 'stat'
 ]);
 export const gameStatusEnum = pgEnum('game_status', ['scheduled', 'live', 'final']);
 export const gameModeEnum = pgEnum('game_mode', ['simple', 'advanced']);
