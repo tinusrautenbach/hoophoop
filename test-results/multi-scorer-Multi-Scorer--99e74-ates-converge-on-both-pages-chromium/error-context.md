@@ -1,0 +1,129 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "HoopHoop Logo HOOPHOOP" [ref=e3] [cursor=pointer]:
+      - /url: /
+      - img "HoopHoop Logo" [ref=e5]
+      - generic [ref=e6]: HOOPHOOP
+    - navigation [ref=e7]:
+      - link "Teams" [ref=e8] [cursor=pointer]:
+        - /url: /teams
+      - link "Games" [ref=e9] [cursor=pointer]:
+        - /url: /games
+      - link "Communities" [ref=e10] [cursor=pointer]:
+        - /url: /communities
+      - link "Profile" [ref=e11] [cursor=pointer]:
+        - /url: /profile
+      - button "Switch to light mode" [ref=e12]:
+        - img [ref=e13]
+      - button "Open user menu" [ref=e16] [cursor=pointer]:
+        - img "E2E Test's logo" [ref=e19]
+  - main [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - button [ref=e25]:
+            - img [ref=e26]
+          - button "Back to Main Menu" [ref=e28]:
+            - img [ref=e29]
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - button "P1" [ref=e35]: P1
+            - img [ref=e38]
+          - button "10:00" [ref=e41]
+        - generic [ref=e42]:
+          - button "Game Settings" [ref=e43]:
+            - img [ref=e44]
+          - button "Force recalculate scores" [ref=e47]:
+            - img [ref=e48]
+          - button "Manage Scorers" [ref=e50]:
+            - img [ref=e51]
+          - button "Share Scoreboard" [ref=e56]:
+            - img [ref=e57]
+          - button "Delete Game" [ref=e63]:
+            - img [ref=e64]
+      - generic [ref=e68]:
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - generic [ref=e72]:
+              - heading "Home" [level=2] [ref=e73]
+              - generic [ref=e74]: "2"
+              - generic [ref=e75]:
+                - generic [ref=e76]: Bonus
+                - generic [ref=e77]: "0"
+            - generic [ref=e79]:
+              - heading "Guest" [level=2] [ref=e80]
+              - generic [ref=e81]: "0"
+              - generic [ref=e82]:
+                - generic [ref=e83]: Bonus
+                - generic [ref=e84]: "0"
+          - generic [ref=e85]:
+            - generic [ref=e86]:
+              - button "+2 Points" [ref=e87]:
+                - generic [ref=e88]: "+2"
+                - generic [ref=e89]: Points
+              - button "+3 Points" [ref=e90]:
+                - generic [ref=e91]: "+3"
+                - generic [ref=e92]: Points
+              - button "-2 Miss" [ref=e93]:
+                - generic [ref=e94]: "-2"
+                - generic [ref=e95]: Miss
+              - button "-3 Miss" [ref=e96]:
+                - generic [ref=e97]: "-3"
+                - generic [ref=e98]: Miss
+              - button "+1 Free Throw" [ref=e99]:
+                - generic [ref=e100]: "+1"
+                - generic [ref=e101]: Free Throw
+              - button "-1 Miss" [ref=e102]:
+                - generic [ref=e103]: "-1"
+                - generic [ref=e104]: Miss
+            - generic [ref=e105]:
+              - button "Foul" [ref=e106]:
+                - generic [ref=e107]: Foul
+                - img [ref=e108]
+              - button "Foul" [ref=e110]:
+                - generic [ref=e111]: Foul
+                - img [ref=e112]
+        - generic [ref=e115]:
+          - button "Game Log (2) View Full Log" [ref=e116]:
+            - heading "Game Log (2)" [level=4] [ref=e118]
+            - generic [ref=e119]: View Full Log
+          - generic [ref=e120]:
+            - generic [ref=e122] [cursor=pointer]:
+              - img [ref=e124]
+              - generic [ref=e128]:
+                - generic [ref=e129]:
+                  - text: Home•
+                  - generic [ref=e130]: HOME (TEAM) +3(1/1)
+                - generic [ref=e131]: ✎ user_3ARzFN2
+              - generic [ref=e132]: P1 10:00
+              - button "Delete event" [ref=e133]:
+                - img [ref=e134]
+            - generic [ref=e138] [cursor=pointer]:
+              - img [ref=e140]
+              - generic [ref=e144]:
+                - generic [ref=e145]:
+                  - text: Home•
+                  - generic [ref=e146]: HOME (TEAM) +2(1/1)
+                - generic [ref=e147]: ✎ user_3ARzFSK
+              - generic [ref=e148]: P1 10:00
+              - button "Delete event" [ref=e149]:
+                - img [ref=e150]
+        - generic [ref=e153]:
+          - button "Timeouts" [ref=e154]: Timeouts
+          - button "START" [ref=e159]:
+            - generic [ref=e160]:
+              - img [ref=e161]
+              - generic [ref=e164]: START
+          - button "Subs" [ref=e165]:
+            - img [ref=e166]
+            - text: Subs
+          - button "Box Score" [ref=e171]:
+            - img [ref=e172]
+            - text: Box Score
+  - button "Open Next.js Dev Tools" [ref=e179] [cursor=pointer]:
+    - img [ref=e180]
+  - alert [ref=e183]
+```

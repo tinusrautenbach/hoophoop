@@ -6,7 +6,7 @@ export const teamEnum = pgEnum('team_side', ['home', 'guest']);
 export const eventTypeEnum = pgEnum('event_type', [
     'score', 'foul', 'timeout', 'sub', 'turnover',
     'block', 'steal', 'rebound_off', 'rebound_def',
-    'period_start', 'period_end', 'clock_start', 'clock_stop', 'undo', 'miss'
+    'period_start', 'period_end', 'clock_start', 'clock_stop', 'undo', 'miss', 'stat'
 ]);
 export const gameStatusEnum = pgEnum('game_status', ['scheduled', 'live', 'final']);
 export const gameModeEnum = pgEnum('game_mode', ['simple', 'advanced']);
@@ -360,6 +360,29 @@ export const gameEvents = pgTable('game_events', {
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
     createdBy: text('created_by'), // Clerk userId of scorer who recorded this event
+
+    // Audit fields for stat tracking (078-configurable-player-stats)
+    statType: text('stat_type'),
+    modifiedBy: text('modified_by').references(() => users.id),
+    modifiedAt: timestamp('modified_at'),
+    version: integer('version').default(1).notNull(),
+    previousVersion: jsonb('previous_version'),
+});
+
+// Game stat configuration for configurable player statistics (078-configurable-player-stats)
+export const gameStatConfigs = pgTable('game_stat_configs', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).notNull().unique(),
+    seasonId: uuid('season_id').references(() => seasons.id),
+    communityId: uuid('community_id').references(() => communities.id),
+    enabledStats: jsonb('enabled_stats').notNull().default(['points_2pt', 'points_3pt', 'rebound_off', 'rebound_def', 'assist']),
+    displayConfig: jsonb('display_config').default({}),
+    allowCustomization: boolean('allow_customization').default(true).notNull(),
+    trackFullHistory: boolean('track_full_history').default(false),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    createdBy: text('created_by').references(() => users.id),
+    updatedBy: text('updated_by').references(() => users.id),
 });
 
 // Multi-scorer support - tracks authorized scorers for a game
@@ -368,10 +391,15 @@ export const scorerRoleEnum = pgEnum('scorer_role', ['owner', 'co_scorer', 'view
 export const gameScorers = pgTable('game_scorers', {
     id: uuid('id').defaultRandom().primaryKey(),
     gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).notNull(),
-    userId: text('user_id').notNull(), // Clerk user ID
+    userId: text('user_id').notNull(),
     role: scorerRoleEnum('role').default('co_scorer').notNull(),
     joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
     lastActiveAt: timestamp('last_active_at', { withTimezone: true }).defaultNow().notNull(),
+
+    // Stat focus preferences (078-configurable-player-stats)
+    statFocus: jsonb('stat_focus'),
+    showAllStats: boolean('show_all_stats').default(false),
+    focusUpdatedAt: timestamp('focus_updated_at'),
 });
 
 // Scorer invite tokens — allows inviting by email or shareable link
@@ -456,6 +484,15 @@ export const gamesRelations = relations(games, ({ one, many }) => ({
     scorers: many(gameScorers),
     invites: many(gameScorerInvites),
     tournamentGame: one(tournamentGames),
+    statConfig: one(gameStatConfigs, { fields: [games.id], references: [gameStatConfigs.gameId] }),
+}));
+
+export const gameStatConfigsRelations = relations(gameStatConfigs, ({ one }) => ({
+    game: one(games, { fields: [gameStatConfigs.gameId], references: [games.id] }),
+    season: one(seasons, { fields: [gameStatConfigs.seasonId], references: [seasons.id] }),
+    community: one(communities, { fields: [gameStatConfigs.communityId], references: [communities.id] }),
+    createdByUser: one(users, { fields: [gameStatConfigs.createdBy], references: [users.id] }),
+    updatedByUser: one(users, { fields: [gameStatConfigs.updatedBy], references: [users.id] }),
 }));
 
 export const gameScorersRelations = relations(gameScorers, ({ one }) => ({

@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Move, ShieldAlert, Timer, RotateCcw, Users, ChevronDown, ChevronUp, Edit2, Trash2, Clock } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
@@ -91,13 +90,14 @@ function getShotRatio(
 
 export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick, hideHeader = false }: GameLogProps) {
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     // Reverse events so latest are at the top
     const reversedEvents = [...events].reverse();
     const displayedEvents = limit ? reversedEvents.slice(0, limit) : reversedEvents;
 
     return (
-        <div className="flex flex-col gap-1 p-2 bg-black/20 rounded-2xl border border-white/5">
+        <div className="flex flex-col gap-1 p-2 bg-black/20 rounded-2xl border border-white/5" data-testid="game-log">
             {!hideHeader && (
                 <button
                     disabled={!onHeaderClick}
@@ -167,6 +167,20 @@ export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick, hideHe
                                     {event.period ? `P${event.period} ` : ''}
                                     {event.clockAt ? `${Math.floor(event.clockAt / 60)}:${(event.clockAt % 60).toString().padStart(2, '0')}` : event.timestamp.toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' })}
                                 </div>
+                                {onDelete && pendingDeleteId !== event.id && (
+                                    <button
+                                        type="button"
+                                        aria-label="Delete event"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPendingDeleteId(event.id);
+                                            setExpandedId(event.id);
+                                        }}
+                                        className="ml-1 p-1 text-slate-700 hover:text-red-500 transition-colors rounded flex-shrink-0"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                )}
                             </div>
 
                             <AnimatePresence>
@@ -187,19 +201,43 @@ export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick, hideHe
                                             </button>
                                         )}
                                         {onDelete && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (confirm('Delete this action?')) {
-                                                        onDelete(event.id);
-                                                        setExpandedId(null);
-                                                    }
-                                                }}
-                                                className="flex-1 py-6 flex flex-col items-center gap-2 bg-red-950/40 hover:bg-red-900/60 rounded-2xl text-red-500 border border-red-500/20 font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl"
-                                            >
-                                                <Trash2 size={24} className="mb-1" />
-                                                Delete
-                                            </button>
+                                            pendingDeleteId === event.id ? (
+                                                <div className="flex-1 flex flex-col items-center gap-2">
+                                                    <span className="text-xs font-bold text-red-400 uppercase tracking-widest">Confirm delete?</span>
+                                                    <div className="flex gap-2 w-full">
+                                                        <button
+                                                            aria-label="Confirm delete"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                onDelete(event.id);
+                                                                setPendingDeleteId(null);
+                                                                setExpandedId(null);
+                                                            }}
+                                                            className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-widest transition-all active:scale-95"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setPendingDeleteId(null); }}
+                                                            className="flex-1 py-3 rounded-xl bg-card hover:bg-muted text-slate-400 font-black text-xs uppercase tracking-widest transition-all active:scale-95"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    aria-label="Delete event"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setPendingDeleteId(event.id);
+                                                    }}
+                                                    className="flex-1 py-6 flex flex-col items-center gap-2 bg-red-950/40 hover:bg-red-900/60 rounded-2xl text-red-500 border border-red-500/20 font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl"
+                                                >
+                                                    <Trash2 size={24} className="mb-1" />
+                                                    Delete
+                                                </button>
+                                            )
                                         )}
                                     </motion.div>
                                 )}

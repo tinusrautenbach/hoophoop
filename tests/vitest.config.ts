@@ -17,5 +17,13 @@ export default defineConfig({
         alias: {
             '@': path.resolve(__dirname, '../src'),
         },
+        pool: 'forks',
+        poolOptions: {
+            forks: {
+                maxForks: 4,
+                minForks: 1,
+                memoryLimit: '500mb',
+            },
+        },
     },
 });

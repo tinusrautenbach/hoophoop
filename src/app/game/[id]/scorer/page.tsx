@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import { useHasuraGame } from '@/hooks/use-hasura-game';
 import { useAuth } from '@/components/auth-provider';
@@ -21,6 +22,7 @@ import { AmendRosterModal } from '@/components/scorer/amend-roster-modal';
 import { GameLog, type GameEvent } from '@/components/scorer/game-log';
 import { ScorerManager } from '@/components/scorer/scorer-manager';
 import { GameSettingsModal } from '@/components/scorer/game-settings-modal';
+import { RecalcToast } from '@/components/scorer/recalc-toast';
 import QRCode from 'react-qr-code';
 
 function cn(...inputs: ClassValue[]) {
@@ -114,6 +116,10 @@ export default function ScorerPage() {
         updatePresence,
         conflictDetected,
         advancePeriod,
+        recalcToast,
+        forceRecalculate,
+        dismissRecalcToast,
+        initGameState,
     } = useHasuraGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
@@ -214,6 +220,9 @@ export default function ScorerPage() {
         })) as GameEvent[]);
     }, [hasuraEvents]);
 
+    // game_states row is initialized server-side when game goes live (see /api/games/[id]/route.ts)
+    // Do NOT call initGameState client-side — it would reset scores to 0 for late-joining viewers.
+
     const toggleTimer = async () => {
         if (!game) { console.warn('[Timer] toggleTimer: game is null'); return; }
         
@@ -266,7 +275,7 @@ export default function ScorerPage() {
     };
 
     const handleScore = (points: number, side?: 'home' | 'guest', isMiss = false) => {
-        setScoringFor({ points, side, isMiss });
+        flushSync(() => setScoringFor({ points, side, isMiss }));
     };
 
     const addEvent = async (event: Omit<GameEvent, 'id' | 'timestamp'>) => {
@@ -290,6 +299,9 @@ export default function ScorerPage() {
         try {
             await removeEvent(eventId);
             setEvents(prev => prev.filter(e => e.id !== eventId));
+            
+            // Recalculate scores so game_states reflects the deletion
+            await forceRecalculate();
             
             fetch(`/api/games/${id}/events?eventId=${eventId}`, {
                 method: 'DELETE'
@@ -406,7 +418,23 @@ export default function ScorerPage() {
     };
 
     const handleFoul = (side: 'home' | 'guest') => {
-        setFoulingFor(side);
+        if (!game) return;
+        const activePlayers = game.rosters.filter(r => r.team === side && r.isActive);
+        if (activePlayers.length === 0) {
+            // No active players — auto-increment team foul without opening overlay
+            const updates = side === 'home'
+                ? { homeFouls: game.homeFouls + 1 }
+                : { guestFouls: game.guestFouls + 1 };
+            updateGame(updates);
+            addEvent({
+                type: 'foul',
+                team: side,
+                player: game[side === 'home' ? 'homeTeamName' : 'guestTeamName'],
+                description: `${game[side === 'home' ? 'homeTeamName' : 'guestTeamName']} (Team)`
+            });
+        } else {
+            setFoulingFor(side);
+        }
     };
 
     const handlePlayerFoul = (rosterEntryId: string) => {
@@ -690,6 +718,8 @@ export default function ScorerPage() {
                     ⚠️ Scoring conflict detected — state refreshed
                 </div>
             )}
+            {/* Recalculation Toast */}
+            <RecalcToast result={recalcToast} onDismiss={dismissRecalcToast} />
             {/* Top Header - THE DISPLAY */}
             <div className="bg-black/40 border-b border-border p-2 landscape:p-1 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-1">
@@ -764,6 +794,15 @@ export default function ScorerPage() {
                             <Settings size={18} />
                         </button>
                     )}
+                    {/* Force Recalculate Button */}
+                    <button
+                        onClick={() => { forceRecalculate().catch(() => {}); }}
+                        className="p-2 text-slate-500 hover:text-orange-500 transition-colors landscape:p-1 min-w-[48px] min-h-[48px] flex items-center justify-center"
+                        title="Force Recalculate Scores"
+                        aria-label="Force recalculate scores"
+                    >
+                        <ShieldAlert size={18} />
+                    </button>
                     {/* Multi-Scorer Presence Indicator */}
                     <button
                         onClick={() => setIsScorersOpen(true)}
@@ -802,7 +841,7 @@ export default function ScorerPage() {
                 <div className="flex flex-col flex-1 landscape:hidden overflow-hidden">
                     {/* Main Scoring Area */}
                     <div className="flex-1 overflow-y-auto">
-                        {game.mode === 'advanced' ? (
+                        {!scoringFor && (game.mode === 'advanced' ? (
                             <AdvancedScorer
                                 game={game}
                                 updateGame={updateGame}
@@ -815,7 +854,7 @@ export default function ScorerPage() {
                                 handleScore={handleScore}
                                 handleFoul={handleFoul}
                             />
-                        )}
+                        ))}
                     </div>
 
                     {/* Game Log - Scrollable at Bottom */}
@@ -949,14 +988,14 @@ export default function ScorerPage() {
                                 onClick={() => handleFoul('home')}
                                 className="bg-red-950/20 border border-red-500/20 rounded-xl flex flex-col items-center justify-center hover:bg-red-900/40 active:scale-95 transition-all"
                             >
-                                <span className="text-[9px] font-black uppercase text-red-500">Home Foul</span>
+                                <span className="text-[9px] font-black uppercase text-red-500">Foul</span>
                                 <div className="text-xs font-mono font-black text-red-400">{game.homeFouls}</div>
                             </button>
                             <button
                                 onClick={() => handleFoul('guest')}
                                 className="bg-input border border-border rounded-xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all"
                             >
-                                <span className="text-[9px] font-black uppercase text-slate-500 text-center leading-tight px-1">Guest Foul</span>
+                                <span className="text-[9px] font-black uppercase text-slate-500 text-center leading-tight px-1">Foul</span>
                                 <div className="text-xs font-mono font-black text-slate-300">{game.guestFouls}</div>
                             </button>
                         </div>

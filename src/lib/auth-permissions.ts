@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { games, communities, communityMembers } from '@/db/schema';
+import { games, communities, communityMembers, gameScorers } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { isWorldAdmin } from '@/lib/auth-admin';
 
@@ -29,7 +29,17 @@ export async function canManageGame(userId: string, gameId: string): Promise<boo
     // Game owner
     if (game.ownerId === userId) return true;
 
-    // No community attached — only owner (or world admin) can manage
+    // No community attached — check if user is a co_scorer for this game
+    const scorerEntry = await db.query.gameScorers.findFirst({
+        where: and(
+            eq(gameScorers.gameId, gameId),
+            eq(gameScorers.userId, userId),
+            eq(gameScorers.role, 'co_scorer')
+        ),
+        columns: { id: true },
+    });
+    if (scorerEntry) return true;
+
     if (!game.communityId) return false;
 
     // Community-level checks

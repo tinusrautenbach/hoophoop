@@ -1,0 +1,39 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+build/
+
+# Environment variables
+.env*
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# Testing
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Misc
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+README.md
