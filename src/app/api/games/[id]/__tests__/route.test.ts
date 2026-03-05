@@ -9,6 +9,12 @@ vi.mock('@/db', () => ({
             games: {
                 findFirst: vi.fn(),
             },
+            users: {
+                findFirst: vi.fn().mockResolvedValue(null),
+            },
+            gameScorers: {
+                findFirst: vi.fn().mockResolvedValue(null),
+            },
         },
         update: vi.fn(() => ({
             set: vi.fn(() => ({
