@@ -86,6 +86,9 @@ After the game, coaches and players view the complete statistics in the box scor
 - How does the system handle a scorer who wants to see all stats, not just their focus?
   → The "More Stats" button or an expand option always provides access to all enabled stats.
 
+- What happens when a stat event is edited multiple times by different scorers?
+  → Full version history is maintained showing each change with scorer attribution, timestamp, and what was modified. Previous versions remain viewable in an audit log.
+
 ---
 
 ## Requirements
@@ -94,7 +97,7 @@ After the game, coaches and players view the complete statistics in the box scor
 
 **Game-Level Configuration**
 - **FR-001**: System MUST allow game creators to configure which player statistics are tracked for each game independently.
-- **FR-002**: System MUST support the following stat types: Points (1PT, 2PT, 3PT), Rebounds (Total, Offensive, Defensive), Assists, Steals, Blocks, Turnovers, Personal Fouls.
+- **FR-002**: System MUST support the following stat types: Points (1PT, 2PT, 3PT), Rebounds (Offensive, Defensive - with Total derived automatically), Assists, Steals, Blocks, Turnovers, Personal Fouls.
 - **FR-003**: System MUST persist the stat configuration with the game and apply it to all scoring sessions for that game.
 - **FR-004**: System MUST allow stat configuration changes before the game starts without restrictions.
 - **FR-005**: System MUST warn users when attempting to disable a stat that has existing recorded data for that game.
@@ -109,6 +112,8 @@ After the game, coaches and players view the complete statistics in the box scor
 - **FR-010**: System MUST record each stat event with: player, stat type, value, timestamp, period, clock time, and scorer attribution.
 - **FR-011**: System MUST support stat recording via the existing event system (game_events table) with appropriate metadata.
 - **FR-012**: System MUST aggregate stats per player in real-time for display in the box score.
+- **FR-016**: System MUST allow any scorer to edit or delete any stat event at any time without time restrictions (trust-based model).
+- **FR-017**: System MUST track full edit history with scorer attribution for all changes, including original creation, edits, and deletions.
 
 **Display and Reporting**
 - **FR-013**: System MUST display only enabled stats in the game box score, hiding or marking disabled stats appropriately.
@@ -117,11 +122,11 @@ After the game, coaches and players view the complete statistics in the box scor
 
 ### Key Entities
 
-- **GameStatConfig**: Configuration of which stats are enabled for a specific game. Tied to the games table, editable by game owner before/during game.
-- **PlayerStatEvent**: Individual stat recording event (e.g., "Player 23 got 1 rebound at 4:32 in Q2"). Stored in game_events with metadata.
-- **StatType**: Enumeration of supported statistics (points_1pt, points_2pt, points_3pt, rebound, rebound_off, rebound_def, assist, steal, block, turnover, foul).
-- **ScorerStatFocus**: Per-scorer preference for which stats they want as quick-access buttons. Stored per game_scorer entry.
-- **PlayerGameStats**: Aggregated stats for a player in a specific game. Derived from PlayerStatEvents.
+- **GameStatConfig**: Configuration of which stats are enabled for a specific game. Tied to the games table, editable by game owner before/during game. Can inherit from season/community defaults.
+- **PlayerStatEvent**: Individual stat recording event (e.g., "Player 23 got 1 rebound at 4:32 in Q2"). Stored in game_events with metadata. Includes full audit trail: createdBy, createdAt, modifiedBy, modifiedAt, version history for accountability.
+- **StatType**: Enumeration of supported statistics. Primary stats (recorded by scorers): points_1pt, points_2pt, points_3pt, rebound_off, rebound_def, assist, steal, block, turnover, foul. Derived stats (calculated automatically): points_total (sum of all point types), rebound_total (rebound_off + rebound_def).
+- **ScorerStatFocus**: Per-scorer preference for which stats they want as quick-access buttons. Two-level persistence: (1) Global user preference as default for new games, (2) Per-game override remembered for returning to the same game.
+- **PlayerGameStats**: Aggregated stats for a player in a specific game. Derived from PlayerStatEvents. Automatically calculates derived stats (e.g., total rebounds = offensive + defensive).
 
 ---
 
@@ -138,9 +143,21 @@ After the game, coaches and players view the complete statistics in the box scor
 
 ---
 
+## Clarifications
+
+### Session 2026-03-05
+
+- **Q: Should stat configuration be per-game only, or should there be community/season-level defaults?** → **A: Add community/season-level defaults with per-game override - leagues set standard stats, individual games can customize**
+- **Q: How should rebound stats (Total, Offensive, Defensive) relate to each other?** → **A: Track offensive and defensive separately, automatically derive total (offensive + defensive = total)**
+- **Q: Should scorer stat focus persist for future games or reset per game?** → **A: Persist per-game with optional global default - remember focus per game, use global default for new games**
+- **Q: How should stat event corrections/undo work?** → **A: No restrictions - any scorer can edit/delete any stat event at any time**
+- **Q: Should the system track who made each edit for accountability?** → **A: Yes, track full edit history with scorer attribution for all changes**
+
+---
+
 ## Assumptions
 
-- Stat configuration is stored per-game, not globally - each game can have different stats enabled.
+- Stat configuration has a hierarchy: Community/Season-level defaults → Per-game override. Games inherit from their season/community but can customize.
 - Points (1PT, 2PT, 3PT) are considered separate stat types but grouped visually in the interface.
 - The existing game_events table structure can accommodate stat events with appropriate metadata.
 - Stat aggregation is calculated on-demand from events (not pre-computed) to ensure accuracy.
