@@ -1,0 +1,114 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link "HoopHoop Logo HOOPHOOP" [ref=e3] [cursor=pointer]:
+      - /url: /
+      - img "HoopHoop Logo" [ref=e5]
+      - generic [ref=e6]: HOOPHOOP
+    - navigation [ref=e7]:
+      - link "Teams" [ref=e8] [cursor=pointer]:
+        - /url: /teams
+      - link "Games" [ref=e9] [cursor=pointer]:
+        - /url: /games
+      - link "Communities" [ref=e10] [cursor=pointer]:
+        - /url: /communities
+      - link "Profile" [ref=e11] [cursor=pointer]:
+        - /url: /profile
+      - button "Switch to light mode" [ref=e12]:
+        - img [ref=e13]
+      - button "Open user menu" [ref=e16] [cursor=pointer]:
+        - img "E2E Test's logo" [ref=e19]
+  - main [ref=e21]:
+    - generic [ref=e22]:
+      - alert [ref=e23]:
+        - generic [ref=e24]: ⚠️
+        - generic [ref=e25]:
+          - generic [ref=e26]: Score corrected
+          - generic [ref=e27]: "Score: 2-0 → 0-0"
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - button [ref=e30]:
+            - img [ref=e31]
+          - button "Back to Main Menu" [ref=e33]:
+            - img [ref=e34]
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - button "P1" [ref=e40]: P1
+            - img [ref=e43]
+          - button "10:00" [ref=e46]
+        - generic [ref=e47]:
+          - button "Game Settings" [ref=e48]:
+            - img [ref=e49]
+          - button "Force recalculate scores" [ref=e52]:
+            - img [ref=e53]
+          - button "Manage Scorers" [ref=e55]:
+            - img [ref=e56]
+          - button "Share Scoreboard" [ref=e61]:
+            - img [ref=e62]
+          - button "Delete Game" [ref=e68]:
+            - img [ref=e69]
+      - generic [ref=e73]:
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - generic [ref=e77]:
+              - heading "Home" [level=2] [ref=e78]
+              - generic [ref=e79]: "2"
+              - generic [ref=e80]:
+                - generic [ref=e81]: Bonus
+                - generic [ref=e82]: "0"
+            - generic [ref=e84]:
+              - heading "Guest" [level=2] [ref=e85]
+              - generic [ref=e86]: "0"
+              - generic [ref=e87]:
+                - generic [ref=e88]: Bonus
+                - generic [ref=e89]: "0"
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - button "+2 Points" [ref=e92]:
+                - generic [ref=e93]: "+2"
+                - generic [ref=e94]: Points
+              - button "+3 Points" [ref=e95]:
+                - generic [ref=e96]: "+3"
+                - generic [ref=e97]: Points
+              - button "-2 Miss" [ref=e98]:
+                - generic [ref=e99]: "-2"
+                - generic [ref=e100]: Miss
+              - button "-3 Miss" [ref=e101]:
+                - generic [ref=e102]: "-3"
+                - generic [ref=e103]: Miss
+              - button "+1 Free Throw" [ref=e104]:
+                - generic [ref=e105]: "+1"
+                - generic [ref=e106]: Free Throw
+              - button "-1 Miss" [ref=e107]:
+                - generic [ref=e108]: "-1"
+                - generic [ref=e109]: Miss
+            - generic [ref=e110]:
+              - button "Foul" [ref=e111]:
+                - generic [ref=e112]: Foul
+                - img [ref=e113]
+              - button "Foul" [ref=e115]:
+                - generic [ref=e116]: Foul
+                - img [ref=e117]
+        - generic [ref=e120]:
+          - button "Game Log View Full Log" [ref=e121]:
+            - heading "Game Log" [level=4] [ref=e123]
+            - generic [ref=e124]: View Full Log
+          - generic [ref=e126]: No actions yet
+        - generic [ref=e127]:
+          - button "Timeouts" [ref=e128]: Timeouts
+          - button "START" [ref=e133]:
+            - generic [ref=e134]:
+              - img [ref=e135]
+              - generic [ref=e138]: START
+          - button "Subs" [ref=e139]:
+            - img [ref=e140]
+            - text: Subs
+          - button "Box Score" [ref=e145]:
+            - img [ref=e146]
+            - text: Box Score
+  - button "Open Next.js Dev Tools" [ref=e153] [cursor=pointer]:
+    - img [ref=e154]
+  - alert [ref=e157]
+```

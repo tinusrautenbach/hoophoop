@@ -1,11 +1,11 @@
 # Test Suite Results
 
-**Last Run**: 2026-02-27 18:29:28
-**Overall Status**: ✅ PASSED
+**Last Run**: 2026-03-05 17:15:23
+**Overall Status**: ❌ FAILED
 
 ### Summary
-- **Test Files**: 31 (31 passed, 0 failed)
-- **Total Tests**: 258 (258 passed, 0 failed)
+- **Test Files**: 34 (33 passed, 1 failed)
+- **Total Tests**: 304 (303 passed, 1 failed)
 
 ### Detailed Results by File
 
@@ -18,7 +18,8 @@
 | src/app/api/communities/[id]/members/[userId]/__tests__/route.test.ts | ✅ | 7 | 0 | 7 |
 | src/app/api/communities/[id]/teams/__tests__/route.test.ts | ✅ | 10 | 0 | 10 |
 | src/app/api/communities/join/__tests__/route.test.ts | ✅ | 7 | 0 | 7 |
-| src/app/api/games/[id]/__tests__/route.test.ts | ✅ | 8 | 0 | 8 |
+| src/app/api/games/[id]/__tests__/route.test.ts | ❌ | 7 | 1 | 8 |
+| src/app/api/games/[id]/events/__tests__/regression.test.ts | ✅ | 1 | 0 | 1 |
 | src/app/api/games/[id]/events/__tests__/route.test.ts | ✅ | 14 | 0 | 14 |
 | src/app/api/games/[id]/scorers/__tests__/route.test.ts | ✅ | 11 | 0 | 11 |
 | src/app/api/games/route.test.ts | ✅ | 1 | 0 | 1 |
@@ -37,6 +38,8 @@
 | src/app/api/tournaments/[id]/games/[gameId]/__tests__/route.test.ts | ✅ | 8 | 0 | 8 |
 | src/app/api/tournaments/[id]/teams/__tests__/route.test.ts | ✅ | 7 | 0 | 7 |
 | src/app/api/tournaments/[id]/teams/[teamId]/__tests__/route.test.ts | ✅ | 7 | 0 | 7 |
+| src/hooks/__tests__/regression.test.ts | ✅ | 4 | 0 | 4 |
+| src/hooks/__tests__/use-hasura-game.concurrent.test.ts | ✅ | 41 | 0 | 41 |
 | src/hooks/__tests__/use-hasura-game.test.ts | ✅ | 7 | 0 | 7 |
 | src/lib/hasura/__tests__/client.test.ts | ✅ | 4 | 0 | 4 |
 | src/services/__tests__/game.test.ts | ✅ | 2 | 0 | 2 |

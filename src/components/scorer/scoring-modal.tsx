@@ -43,18 +43,21 @@ export function ScoringModal({ game, scoringFor, onClose, onScore }: ScoringModa
     const slots = [...activePlayers];
 
     // When guest team is selected, skip player selection and score for team only
+    // When home team has no active players, also skip player selection
     const handleTeamSelect = (team: 'home' | 'guest') => {
-        if (team === 'guest') {
-            // For opponent/guest team, skip player selection and score for team
+        const activeHome = game.rosters.filter(r => r.team === 'home' && r.isActive);
+        if (team === 'guest' || (team === 'home' && activeHome.length === 0)) {
+            // No players to pick — score directly for the team
             onScore(null, team);
         } else {
-            // For home team, show player selection
+            // For home team with active players, show player selection
             setSelectedTeam(team);
         }
     };
     
     return (
         <motion.div
+            data-testid="scoring-modal"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}

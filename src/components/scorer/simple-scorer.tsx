@@ -46,7 +46,7 @@ export function SimpleScorer({ game, handleScore, handleFoul }: SimpleScorerProp
                     <h2 className="text-xl font-black italic tracking-tighter uppercase text-orange-500 truncate">
                         {game.homeTeamName}
                     </h2>
-                    <div className="text-6xl font-black mt-1 font-mono tracking-tighter">{game.homeScore}</div>
+                    <div className="text-6xl font-black mt-1 font-mono tracking-tighter" data-testid="home-score">{game.homeScore}</div>
                     <div className="mt-2 flex items-center justify-center gap-2">
                         <div className={cn(
                             "px-2 py-0.1 rounded text-[10px] font-bold uppercase tracking-widest border transition-all",
@@ -54,7 +54,7 @@ export function SimpleScorer({ game, handleScore, handleFoul }: SimpleScorerProp
                         )}>
                             Bonus
                         </div>
-                        <div className="text-lg font-black font-mono text-slate-400">
+                        <div className="text-lg font-black font-mono text-slate-400" data-testid="home-fouls">
                             {game.homeFouls}
                         </div>
                     </div>
@@ -66,7 +66,7 @@ export function SimpleScorer({ game, handleScore, handleFoul }: SimpleScorerProp
                     <h2 className="text-xl font-black italic tracking-tighter uppercase text-slate-400 truncate">
                         {game.guestTeamName}
                     </h2>
-                    <div className="text-6xl font-black mt-1 font-mono tracking-tighter text-slate-300">{game.guestScore}</div>
+                    <div className="text-6xl font-black mt-1 font-mono tracking-tighter text-slate-300" data-testid="guest-score">{game.guestScore}</div>
                     <div className="mt-2 flex items-center justify-center gap-2">
                         <div className={cn(
                             "px-2 py-0.1 rounded text-[10px] font-bold uppercase tracking-widest border transition-all",
@@ -74,7 +74,7 @@ export function SimpleScorer({ game, handleScore, handleFoul }: SimpleScorerProp
                         )}>
                             Bonus
                         </div>
-                        <div className="text-lg font-black font-mono text-slate-400">
+                        <div className="text-lg font-black font-mono text-slate-400" data-testid="guest-fouls">
                             {game.guestFouls}
                         </div>
                     </div>
@@ -87,6 +87,7 @@ export function SimpleScorer({ game, handleScore, handleFoul }: SimpleScorerProp
                     <button
                         onClick={() => handleScore(2)}
                         className="bg-card hover:bg-muted active:scale-95 transition-all rounded-3xl flex flex-col items-center justify-center p-6 gap-2 border-2 border-border/50 group"
+                        data-testid="score-btn-2pt"
                     >
                         <span className="text-5xl font-black group-hover:scale-110 transition-transform">+2</span>
                         <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Points</span>
@@ -94,6 +95,7 @@ export function SimpleScorer({ game, handleScore, handleFoul }: SimpleScorerProp
                     <button
                         onClick={() => handleScore(3)}
                         className="bg-card hover:bg-muted active:scale-95 transition-all rounded-3xl flex flex-col items-center justify-center p-6 gap-2 border-2 border-orange-500/30 group"
+                        data-testid="score-btn-3pt"
                     >
                         <span className="text-5xl font-black text-orange-500 group-hover:scale-110 transition-transform">+3</span>
                         <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Points</span>
@@ -135,15 +137,17 @@ export function SimpleScorer({ game, handleScore, handleFoul }: SimpleScorerProp
                     <button
                         onClick={() => handleFoul('home')}
                         className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 active:scale-95 transition-all rounded-2xl p-4 font-black flex justify-between items-center text-red-500"
+                        data-testid="foul-btn-home"
                     >
-                        <span className="text-[10px] uppercase tracking-widest">Home Foul</span>
+                        <span className="text-[10px] uppercase tracking-widest">Foul</span>
                         <ShieldAlert size={18} />
                     </button>
                     <button
                         onClick={() => handleFoul('guest')}
                         className="bg-input border border-border hover:bg-card active:scale-95 transition-all rounded-2xl p-4 font-black flex justify-between items-center"
+                        data-testid="foul-btn-guest"
                     >
-                        <span className="text-[10px] uppercase tracking-widest text-slate-500">Guest Foul</span>
+                        <span className="text-[10px] uppercase tracking-widest text-slate-500">Foul</span>
                         <ShieldAlert size={18} className="text-slate-700" />
                     </button>
                 </div>

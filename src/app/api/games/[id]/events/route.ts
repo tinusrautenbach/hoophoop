@@ -69,6 +69,45 @@ export async function POST(
             createdBy: userId,
         }).returning();
 
+        // Update game totals (score or fouls) in the games table
+        if (type === 'score' && value && team) {
+            const scoreField = team === 'home' ? games.homeScore : games.guestScore;
+            await db.update(games)
+                .set({
+                    [team === 'home' ? 'homeScore' : 'guestScore']: sql`${scoreField} + ${value}`,
+                    updatedAt: new Date(),
+                })
+                .where(eq(games.id, gameId));
+        } else if (type === 'foul' && team) {
+            const foulField = team === 'home' ? games.homeFouls : games.guestFouls;
+            await db.update(games)
+                .set({
+                    [team === 'home' ? 'homeFouls' : 'guestFouls']: sql`${foulField} + 1`,
+                    updatedAt: new Date(),
+                })
+                .where(eq(games.id, gameId));
+        }
+
+        // Sync updated totals to Hasura game_states (non-fatal)
+        try {
+            const updatedGame = await db.query.games.findFirst({
+                where: eq(games.id, gameId),
+                columns: { homeScore: true, guestScore: true, homeFouls: true, guestFouls: true },
+            });
+            if (updatedGame) {
+                await graphqlRequest(UPSERT_GAME_STATE_MUTATION, {
+                    gameId,
+                    homeScore: updatedGame.homeScore,
+                    guestScore: updatedGame.guestScore,
+                    homeFouls: updatedGame.homeFouls,
+                    guestFouls: updatedGame.guestFouls,
+                    updatedAt: new Date().toISOString(),
+                });
+            }
+        } catch (hasuraError) {
+            console.error('[POST event] Hasura sync failed (non-fatal):', hasuraError);
+        }
+
         // Log activity (non-fatal — don't block the response if logging fails)
         try {
             await logActivity({
@@ -249,6 +288,67 @@ export async function PATCH(
             .set(updates)
             .where(eq(gameEvents.id, eventId))
             .returning();
+
+        // Recalculate game totals: reverse old event, apply new event
+        // This handles score amendments and event type changes (score <-> foul)
+        const oldType = event.type;
+        const oldValue = event.value ?? 0;
+        const oldTeam = event.team;
+        const newType = (type as string | undefined) ?? oldType;
+        const newValue = (value as number | undefined) ?? oldValue;
+        const newTeam = (player !== undefined ? oldTeam : oldTeam) ?? oldTeam; // team not changeable via PATCH
+
+        const needsRecalc =
+            (type !== undefined && type !== oldType) ||
+            (value !== undefined && value !== oldValue);
+
+        if (needsRecalc && oldTeam) {
+            // Reverse old event contribution
+            if (oldType === 'score' && oldValue) {
+                const oldScoreField = oldTeam === 'home' ? games.homeScore : games.guestScore;
+                await db.update(games)
+                    .set({ [oldTeam === 'home' ? 'homeScore' : 'guestScore']: sql`GREATEST(${oldScoreField} - ${oldValue}, 0)` })
+                    .where(eq(games.id, gameId));
+            } else if (oldType === 'foul') {
+                const oldFoulField = oldTeam === 'home' ? games.homeFouls : games.guestFouls;
+                await db.update(games)
+                    .set({ [oldTeam === 'home' ? 'homeFouls' : 'guestFouls']: sql`GREATEST(${oldFoulField} - 1, 0)` })
+                    .where(eq(games.id, gameId));
+            }
+
+            // Apply new event contribution
+            if (newType === 'score' && newValue) {
+                const newScoreField = newTeam === 'home' ? games.homeScore : games.guestScore;
+                await db.update(games)
+                    .set({ [newTeam === 'home' ? 'homeScore' : 'guestScore']: sql`${newScoreField} + ${newValue}` })
+                    .where(eq(games.id, gameId));
+            } else if (newType === 'foul') {
+                const newFoulField = newTeam === 'home' ? games.homeFouls : games.guestFouls;
+                await db.update(games)
+                    .set({ [newTeam === 'home' ? 'homeFouls' : 'guestFouls']: sql`${newFoulField} + 1` })
+                    .where(eq(games.id, gameId));
+            }
+
+            // Sync updated totals to Hasura game_states (non-fatal)
+            try {
+                const updatedGame = await db.query.games.findFirst({
+                    where: eq(games.id, gameId),
+                    columns: { homeScore: true, guestScore: true, homeFouls: true, guestFouls: true },
+                });
+                if (updatedGame) {
+                    await graphqlRequest(UPSERT_GAME_STATE_MUTATION, {
+                        gameId,
+                        homeScore: updatedGame.homeScore,
+                        guestScore: updatedGame.guestScore,
+                        homeFouls: updatedGame.homeFouls,
+                        guestFouls: updatedGame.guestFouls,
+                        updatedAt: new Date().toISOString(),
+                    });
+                }
+            } catch (hasuraError) {
+                console.error('[PATCH event] Hasura sync failed (non-fatal):', hasuraError);
+            }
+        }
 
         return NextResponse.json(updatedEvent);
     } catch (error) {

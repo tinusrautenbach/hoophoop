@@ -1,3 +1,4 @@
+import { graphqlRequest } from '@/lib/hasura/client';
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { games, gameRosters } from '@/db/schema';
@@ -107,6 +108,74 @@ export async function PATCH(
                 }
             }
         });
+
+        // When game goes live, initialize the Hasura game_states row so
+        // all scorer/viewer pages have a row to subscribe to immediately.
+        if (gameUpdates.status === 'live') {
+            const INIT_GAME_STATE_MUTATION = `
+              mutation InitGameState(
+                $gameId: uuid!
+                $homeScore: Int
+                $guestScore: Int
+                $homeFouls: Int
+                $guestFouls: Int
+                $homeTimeouts: Int
+                $guestTimeouts: Int
+                $clockSeconds: Int
+                $currentPeriod: Int
+                $possession: String
+                $status: String
+                $isTimerRunning: Boolean
+                $updatedAt: timestamptz
+                $updatedBy: String
+              ) {
+                insertGameStatesOne(
+                  object: {
+                    gameId: $gameId
+                    homeScore: $homeScore
+                    guestScore: $guestScore
+                    homeFouls: $homeFouls
+                    guestFouls: $guestFouls
+                    homeTimeouts: $homeTimeouts
+                    guestTimeouts: $guestTimeouts
+                    clockSeconds: $clockSeconds
+                    currentPeriod: $currentPeriod
+                    possession: $possession
+                    status: $status
+                    isTimerRunning: $isTimerRunning
+                    updatedAt: $updatedAt
+                    updatedBy: $updatedBy
+                  }
+                  on_conflict: {
+                    constraint: game_states_pkey
+                    update_columns: [homeScore, guestScore, homeFouls, guestFouls, homeTimeouts, guestTimeouts, clockSeconds, currentPeriod, possession, status, isTimerRunning, updatedAt, updatedBy]
+                  }
+                ) {
+                  gameId
+                }
+              }
+            `;
+            try {
+                await graphqlRequest(INIT_GAME_STATE_MUTATION, {
+                    gameId,
+                    homeScore: 0,
+                    guestScore: 0,
+                    homeFouls: 0,
+                    guestFouls: 0,
+                    homeTimeouts: 3,
+                    guestTimeouts: 3,
+                    clockSeconds: game.clockSeconds ?? 600,
+                    currentPeriod: 1,
+                    possession: null,
+                    status: 'live',
+                    isTimerRunning: false,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: userId,
+                });
+            } catch (err) {
+                console.error('[PATCH /api/games/:id] Failed to init Hasura game_states (non-fatal):', err);
+            }
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

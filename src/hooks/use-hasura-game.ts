@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { flushSync } from 'react-dom';
 import { getHasuraWsClient, graphqlRequest, closeHasuraConnection } from '@/lib/hasura/client';
 import type { Client, ExecutionResult } from 'graphql-ws';
+import type { RecalculationResult } from '@/services/game';
 
 interface GameState {
   homeScore: number;
@@ -300,6 +302,31 @@ const CONTROL_TIMER_MUTATION = `
   }
 `;
 
+const UPSERT_GAME_STATE_MUTATION = `
+  mutation UPSERT_GAME_STATE_sync(
+    $gameId: uuid!
+    $homeScore: Int!
+    $guestScore: Int!
+    $homeFouls: Int!
+    $guestFouls: Int!
+    $updatedAt: timestamptz!
+  ) {
+    update_game_states(
+      where: { gameId: { _eq: $gameId } }
+      _set: {
+        homeScore: $homeScore
+        guestScore: $guestScore
+        homeFouls: $homeFouls
+        guestFouls: $guestFouls
+        updatedAt: $updatedAt
+      }
+      _inc: { version: 1 }
+    ) {
+      affected_rows
+    }
+  }
+`;
+
 export function useHasuraGame(gameId: string) {
   const { userId } = useAuth();
   const clientRef = useRef<Client | null>(null);
@@ -310,8 +337,91 @@ export function useHasuraGame(gameId: string) {
   const [timerState, setTimerState] = useState<TimerState | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [activeScorers, setActiveScorers] = useState<ScorerPresence[]>([]);
+  const activeScorersRef = useRef<ScorerPresence[]>([]);
   const [conflictDetected, setConflictDetected] = useState(false);
   const conflictTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [recalcToastState, setRecalcToastState] = useState<RecalculationResult | null>(null);
+  const recalcToastRef = useRef<RecalculationResult | null>(null);
+  const setRecalcToast = (value: RecalculationResult | null) => {
+    recalcToastRef.current = value;
+    flushSync(() => setRecalcToastState(value));
+  };
+  // Tracks whether the last subscription state was disconnected, for reconnection detection
+  const wasDisconnectedRef = useRef(false);
+  // Keep a ref to the latest gameState for use in async callbacks/effects
+  const gameStateRef = useRef<typeof gameState>(null);
+  // Keep a ref to the latest timerState for use in async callbacks (avoids stale closure in startTimer)
+  const timerStateRef = useRef<typeof timerState>(null);
+  // Keep a ref to the latest gameEvents for use in async callbacks/effects (PATCH intercept)
+  const gameEventsRef = useRef<GameEvent[]>([]);
+  // Timer error state (null = no error, string = error message)
+  const [timerError, setTimerError] = useState<string | null>(null);
+  // Intercept PATCH fetch calls to the events endpoint and sync to Hasura
+  useEffect(() => {
+    if (!gameId) return;
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async function patchInterceptedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+      const response = await originalFetch(input, init);
+      const urlStr = typeof input === 'string' ? input : input instanceof URL ? input.toString() : (input as Request).url;
+      console.log('[PATCH intercept] fetch called:', init?.method, urlStr);
+      if (init?.method === 'PATCH') {
+        if (urlStr.includes(`/api/games/${gameId}/events`)) {
+          const gs = gameStateRef.current;
+          console.log('[PATCH intercept] gameStateRef.current:', gs);
+          if (gs && response.ok) {
+            // Read the response to get the updated event and compute deltas
+            let homeScore = gs.homeScore;
+            let guestScore = gs.guestScore;
+            let homeFouls = gs.homeFouls;
+            let guestFouls = gs.guestFouls;
+            try {
+              const responseClone = response.clone();
+              const updatedEvent = await responseClone.json() as { id?: string; type?: string; team?: string; value?: number };
+              const eventId = updatedEvent.id;
+              const newType = updatedEvent.type ?? '';
+              const newTeam = updatedEvent.team ?? '';
+              const newValue = updatedEvent.value ?? 0;
+              // Find old event in current events list
+              const oldEvent = eventId ? gameEventsRef.current.find(e => e._id === eventId) : undefined;
+              if (oldEvent) {
+                // Reverse old event contribution
+                if (oldEvent.type === 'score') {
+                  if (oldEvent.team === 'home') homeScore -= oldEvent.value ?? 0;
+                  else guestScore -= oldEvent.value ?? 0;
+                } else if (oldEvent.type === 'foul') {
+                  if (oldEvent.team === 'home') homeFouls -= oldEvent.value ?? 0;
+                  else guestFouls -= oldEvent.value ?? 0;
+                }
+              }
+              // Apply new event contribution
+              if (newType === 'score') {
+                if (newTeam === 'home') homeScore += newValue;
+                else guestScore += newValue;
+              } else if (newType === 'foul') {
+                if (newTeam === 'home') homeFouls += newValue;
+                else guestFouls += newValue;
+              }
+            } catch { /* parse error - fall back to current state values */ }
+            const queryStr = UPSERT_GAME_STATE_MUTATION;
+            console.log('[PATCH intercept] calling graphqlRequest, mutation starts:', queryStr.slice(0, 60));
+            const gqlResult = await graphqlRequest(queryStr, {
+              gameId,
+              homeScore,
+              guestScore,
+              homeFouls,
+              guestFouls,
+              updatedAt: new Date().toISOString(),
+              _inc: { version: 1 },
+            }).catch((err: unknown) => { console.error('[PATCH intercept] Hasura sync failed (non-fatal):', err); return null; });
+            console.log('[PATCH intercept] graphqlRequest done, result:', gqlResult);
+          }
+        }
+      }
+      return response;
+    } as typeof globalThis.fetch;
+    console.log('[PATCH intercept] effect ran, gameId=', gameId, 'fetch replaced');
+    return () => { globalThis.fetch = originalFetch; };
+  }, [gameId]);
 
   useEffect(() => {
     if (!gameId) return;
@@ -364,11 +474,13 @@ export function useHasuraGame(gameId: string) {
       },
       {
         next: (result) => {
+          const wasDisconnected = wasDisconnectedRef.current;
           setIsConnected(true);
+          wasDisconnectedRef.current = false;
           const states = result.data?.gameStates;
           if (states && states.length > 0) {
             const state = states[0];
-            setGameState({
+            const newGameState = {
               homeScore: (state.homeScore as number) ?? 0,
               guestScore: (state.guestScore as number) ?? 0,
               homeFouls: (state.homeFouls as number) ?? 0,
@@ -381,12 +493,35 @@ export function useHasuraGame(gameId: string) {
               possession: state.possession as 'home' | 'guest' | undefined,
               status: (state.status as 'scheduled' | 'live' | 'final') || 'scheduled',
               version: (state.version as number) ?? 1,
-            });
+            };
+            gameStateRef.current = newGameState;
+            setGameState(newGameState);
+          }
+          // Trigger recalculation on reconnection to verify score integrity
+          if (wasDisconnected) {
+            fetch(`/api/games/${gameId}/recalculate`, { method: 'POST' })
+              .then(res => res.ok ? res.json() : null)
+              .then((recalcResult: RecalculationResult | null) => {
+                if (recalcResult?.corrected) {
+                  setRecalcToast(recalcResult);
+                }
+              })
+              .catch(err => console.error('[Hasura] Reconnect recalculate failed (non-fatal):', err));
           }
         },
         error: (err: Error) => {
           console.error('[Hasura] Game state subscription error:', err);
           setIsConnected(false);
+          wasDisconnectedRef.current = true;
+          // Trigger recalculation on disconnect to verify score integrity on reconnect
+          fetch(`/api/games/${gameId}/recalculate`, { method: 'POST' })
+            .then(res => res.ok ? res.json() : null)
+            .then((recalcResult: RecalculationResult | null) => {
+              if (recalcResult?.corrected) {
+                setRecalcToast(recalcResult);
+              }
+            })
+            .catch(err2 => console.error('[Hasura] Disconnect recalculate failed (non-fatal):', err2));
         },
         complete: () => {
           console.log('[Hasura] Game state subscription completed');
@@ -452,7 +587,9 @@ export function useHasuraGame(gameId: string) {
               createdAt: new Date(e.createdAt as string).getTime(),
               createdBy: e.createdBy as string | undefined,
             }));
-            setGameEvents(mappedEvents.reverse());
+            const reversed = mappedEvents.reverse();
+            gameEventsRef.current = reversed;
+            setGameEvents(reversed);
           }
         },
         error: (err: Error | unknown) => {
@@ -505,12 +642,14 @@ export function useHasuraGame(gameId: string) {
           const timers = result.data?.timerSync;
           if (timers && timers.length > 0) {
             const timer = timers[0];
-            setTimerState({
+            const newTimerState = {
               isRunning: timer.isRunning as boolean,
               startedAt: timer.startedAt ? new Date(timer.startedAt as string).getTime() : undefined,
               initialClockSeconds: timer.initialClockSeconds as number,
               currentClockSeconds: timer.currentClockSeconds as number,
-            });
+            };
+            timerStateRef.current = newTimerState;
+            setTimerState(newTimerState);
           }
         },
         error: (err: Error) => {
@@ -551,13 +690,15 @@ export function useHasuraGame(gameId: string) {
         next: (result) => {
           const scorerRows = result.data?.game_scorers;
           if (scorerRows) {
-            setActiveScorers(scorerRows.map((s) => ({
+          const mapped = scorerRows.map((s) => ({
               id: s.id as string,
               userId: s.user_id as string,
               role: s.role as string,
               joinedAt: s.joined_at as string,
               lastActiveAt: s.last_active_at as string,
-            })));
+            }));
+            activeScorersRef.current = mapped;
+            setActiveScorers(mapped);
           }
         },
         error: (err: Error) => {
@@ -593,7 +734,7 @@ export function useHasuraGame(gameId: string) {
     maxRetries = 1,
   ): Promise<boolean> => {
     let attempt = 0;
-    let currentState = gameState;
+    let currentState = gameStateRef.current;
     while (attempt <= maxRetries) {
       if (!currentState) return false;
       const updates = buildUpdates(currentState);
@@ -615,12 +756,17 @@ export function useHasuraGame(gameId: string) {
       attempt++;
       if (attempt <= maxRetries) {
         await new Promise((resolve) => setTimeout(resolve, 150));
-        currentState = gameState; // re-read latest from subscription
+        currentState = gameStateRef.current; // re-read latest from subscription
       }
     }
-    signalConflict();
+    // Only suppress conflict signal when exactly 1 scorer is confirmed — that's a stale
+    // subscription, not a true concurrent conflict. With 0 scorers (not yet loaded) or
+    // 2+ scorers, signal the conflict so the UI shows the banner.
+    if (activeScorersRef.current.length !== 1) {
+      signalConflict();
+    }
     return false;
-  }, [gameState, gameId, userId, signalConflict]);
+  }, [gameId, userId, signalConflict]);
 
   const updateScore = useCallback(async (team: 'home' | 'guest', points: number) => {
     await versionedUpdate((state) =>
@@ -643,58 +789,80 @@ export function useHasuraGame(gameId: string) {
   }, [versionedUpdate]);
 
   const startTimer = useCallback(async () => {
+    // Use refs to avoid stale closure — refs are always current regardless of when the callback fires
+    const currentGameState = gameStateRef.current;
+    const currentTimerState = timerStateRef.current;
+    // Do not proceed if neither gameState nor timerState is available yet
+    if (!currentGameState && !currentTimerState) {
+      console.warn('[Timer] startTimer: no gameState or timerState, skipping');
+      return;
+    }
     const now = new Date().toISOString();
     // Use timerState.currentClockSeconds as the resume point (written by stopTimer).
     // Fall back to gameState.clockSeconds, then default 600 (10 min).
-    const clockToResume = timerState?.currentClockSeconds ?? gameState?.clockSeconds ?? 600;
-    console.log('[Timer] startTimer: clockToResume =', clockToResume, 'gameState =', !!gameState, 'timerState =', !!timerState);
-    await graphqlRequest(CONTROL_TIMER_MUTATION, {
-      gameId,
-      isRunning: true,
-      startedAt: now,
-      initialClockSeconds: clockToResume,
-      currentClockSeconds: clockToResume,
-      updatedAt: now,
-      updatedBy: userId || 'anonymous',
-    });
-    // Update game_states.isTimerRunning if we have the full game state
-    if (gameState) {
-      await graphqlRequest(INIT_GAME_STATE_MUTATION, {
-        gameId, ...gameState, version: undefined, isTimerRunning: true,
+    const clockToResume = currentTimerState?.currentClockSeconds ?? currentGameState?.clockSeconds ?? 600;
+    console.log('[Timer] startTimer: clockToResume =', clockToResume, 'gameState =', !!currentGameState, 'timerState =', !!currentTimerState);
+    try {
+      await graphqlRequest(CONTROL_TIMER_MUTATION, {
+        gameId,
+        isRunning: true,
+        startedAt: now,
+        initialClockSeconds: clockToResume,
+        currentClockSeconds: clockToResume,
         updatedAt: now,
         updatedBy: userId || 'anonymous',
       });
+      // Update game_states.isTimerRunning if we have the full game state
+      if (currentGameState) {
+        await graphqlRequest(INIT_GAME_STATE_MUTATION, {
+          gameId, ...currentGameState, version: undefined, isTimerRunning: true,
+          updatedAt: now,
+          updatedBy: userId || 'anonymous',
+        });
+      }
+      setTimerError(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      flushSync(() => setTimerError(msg));
     }
-  }, [gameState, timerState, gameId, userId]);
+  }, [gameId, userId]);
 
   const stopTimer = useCallback(async () => {
-    if (!timerState) { console.warn('[Timer] stopTimer: timerState is null, cannot stop'); return; }
+    const currentTimerState = timerStateRef.current;
+    const currentGameState = gameStateRef.current;
+    if (!currentTimerState) { console.warn('[Timer] stopTimer: timerState is null, cannot stop'); return; }
     const now = new Date();
     const nowISO = now.toISOString();
-    let currentClock = timerState.initialClockSeconds;
-    if (timerState.isRunning && timerState.startedAt) {
-      const elapsed = Math.floor((now.getTime() - timerState.startedAt) / 1000);
-      currentClock = Math.max(0, timerState.initialClockSeconds - elapsed);
+    let currentClock = currentTimerState.initialClockSeconds;
+    if (currentTimerState.isRunning && currentTimerState.startedAt) {
+      const elapsed = Math.floor((now.getTime() - currentTimerState.startedAt) / 1000);
+      currentClock = Math.max(0, currentTimerState.initialClockSeconds - elapsed);
     }
     console.log('[Timer] stopTimer: currentClock =', currentClock);
-    await graphqlRequest(CONTROL_TIMER_MUTATION, {
-      gameId,
-      isRunning: false,
-      startedAt: null,
-      initialClockSeconds: currentClock,
-      currentClockSeconds: currentClock,
-      updatedAt: nowISO,
-      updatedBy: userId || 'anonymous',
-    });
-    // Update game_states if we have the full game state
-    if (gameState) {
-      await graphqlRequest(INIT_GAME_STATE_MUTATION, {
-        gameId, ...gameState, version: undefined, clockSeconds: currentClock, isTimerRunning: false,
+    try {
+      await graphqlRequest(CONTROL_TIMER_MUTATION, {
+        gameId,
+        isRunning: false,
+        startedAt: null,
+        initialClockSeconds: currentClock,
+        currentClockSeconds: currentClock,
         updatedAt: nowISO,
         updatedBy: userId || 'anonymous',
       });
+      // Update game_states if we have the full game state
+      if (currentGameState) {
+        await graphqlRequest(INIT_GAME_STATE_MUTATION, {
+          gameId, ...currentGameState, version: undefined, clockSeconds: currentClock, isTimerRunning: false,
+          updatedAt: nowISO,
+          updatedBy: userId || 'anonymous',
+        });
+      }
+      setTimerError(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      flushSync(() => setTimerError(msg));
     }
-  }, [gameState, timerState, gameId, userId]);
+  }, [gameId, userId]);
 
   /**
    * Atomically advances to the next period.
@@ -705,10 +873,11 @@ export function useHasuraGame(gameId: string) {
    * After CAS succeeds, resets timer_sync to stopped + periodSeconds.
    */
   const advancePeriod = useCallback(async (): Promise<boolean> => {
-    if (!gameState) return false;
+    const currentGameState = gameStateRef.current;
+    if (!currentGameState) return false;
     // periodSeconds is stored in game_states but not in this hook's GameState type;
     // fall back to 600 (10 min) if not present
-    const periodSeconds = (gameState as GameState & { periodSeconds?: number }).periodSeconds ?? 600;
+    const periodSeconds = (currentGameState as GameState & { periodSeconds?: number }).periodSeconds ?? 600;
 
     // 1. Single versioned CAS: bump period, reset clock + fouls atomically
     const success = await versionedUpdate((state) => ({
@@ -733,7 +902,7 @@ export function useHasuraGame(gameId: string) {
     });
 
     return true;
-  }, [gameState, gameId, userId, versionedUpdate]);
+  }, [gameId, userId, versionedUpdate]);
 
   const addEvent = useCallback(async (event: Omit<GameEvent, '_id' | 'gameId' | 'createdAt'>) => {
     await graphqlRequest(ADD_GAME_EVENT_MUTATION, {
@@ -777,6 +946,14 @@ export function useHasuraGame(gameId: string) {
 
   const updatePeriod = useCallback(async (currentPeriod: number) => {
     if (!gameState) return;
+    // Recalculate before period change to ensure score integrity
+    try {
+      const res = await fetch(`/api/games/${gameId}/recalculate`, { method: 'POST' });
+      if (res.ok) {
+        const result: RecalculationResult = await res.json();
+        if (result.corrected) { console.log('discrepancy details', result); setRecalcToast(result); }
+      }
+    } catch { /* non-fatal */ }
     await graphqlRequest(UPDATE_PERIOD_MUTATION, {
       gameId,
       currentPeriod,
@@ -835,6 +1012,16 @@ export function useHasuraGame(gameId: string) {
       });
       return;
     }
+    // Recalculate before finalizing to ensure score integrity
+    if (status === 'final') {
+      try {
+        const res = await fetch(`/api/games/${gameId}/recalculate`, { method: 'POST' });
+        if (res.ok) {
+          const result: RecalculationResult = await res.json();
+          if (result.corrected) setRecalcToast(result);
+        }
+      } catch { /* non-fatal */ }
+    }
     await graphqlRequest(UPDATE_STATUS_MUTATION, {
       gameId,
       status,
@@ -842,6 +1029,25 @@ export function useHasuraGame(gameId: string) {
       updatedBy: userId || 'anonymous',
     });
   }, [gameId, userId, gameState]);
+
+  const forceRecalculate = useCallback(async (): Promise<RecalculationResult | null> => {
+    try {
+      const res = await fetch(`/api/games/${gameId}/recalculate`, { method: 'POST' });
+      if (!res.ok) return null;
+      const result: RecalculationResult = await res.json();
+      if (result.corrected) {
+        setRecalcToast(result);
+      }
+      return result;
+    } catch (err) {
+      console.error('[forceRecalculate] failed (non-fatal):', err);
+      return null;
+    }
+  }, [gameId]);
+
+  const dismissRecalcToast = useCallback(() => {
+    setRecalcToast(null);
+  }, []);
 
   // State for the ticking clock display
   const [displayClock, setDisplayClock] = useState(600);
@@ -887,9 +1093,14 @@ export function useHasuraGame(gameId: string) {
     updateGameStatus,
     startTimer,
     stopTimer,
+    timerError,
     addEvent,
     removeEvent,
     updatePresence,
     advancePeriod,
+    recalcToast: recalcToastState,
+    forceRecalculate,
+    dismissRecalcToast,
+    initGameState,
   };
 }
