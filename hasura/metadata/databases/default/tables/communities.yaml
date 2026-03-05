@@ -1,0 +1,107 @@
+table:
+  name: communities
+  schema: public
+configuration:
+  column_config:
+    created_at:
+      custom_name: createdAt
+    owner_id:
+      custom_name: ownerId
+  custom_column_names:
+    created_at: createdAt
+    owner_id: ownerId
+  custom_name: communities
+  identifier: communities
+  custom_root_fields:
+    delete: deleteCommunities
+    delete_by_pk: deleteCommunitiesByPk
+    insert: insertCommunities
+    insert_one: insertCommunitiesOne
+    select: communities
+    select_aggregate: communitiesAggregate
+    select_by_pk: communitiesByPk
+    update: updateCommunities
+    update_by_pk: updateCommunitiesByPk
+array_relationships:
+  - name: members
+    using:
+      foreign_key_constraint_on:
+        column: community_id
+        table:
+          name: community_members
+          schema: public
+  - name: invites
+    using:
+      foreign_key_constraint_on:
+        column: community_id
+        table:
+          name: community_invites
+          schema: public
+  - name: seasons
+    using:
+      foreign_key_constraint_on:
+        column: community_id
+        table:
+          name: seasons
+          schema: public
+  - name: teams
+    using:
+      foreign_key_constraint_on:
+        column: community_id
+        table:
+          name: teams
+          schema: public
+  - name: games
+    using:
+      foreign_key_constraint_on:
+        column: community_id
+        table:
+          name: games
+          schema: public
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - name
+        - slug
+        - type
+        - owner_id
+        - created_at
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - name
+        - slug
+        - type
+        - owner_id
+        - created_at
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - name
+        - slug
+        - type
+        - owner_id
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - name
+        - slug
+        - type
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

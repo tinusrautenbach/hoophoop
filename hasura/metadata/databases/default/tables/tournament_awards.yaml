@@ -1,0 +1,98 @@
+table:
+  name: tournament_awards
+  schema: public
+configuration:
+  column_config:
+    athlete_id:
+      custom_name: athleteId
+    award_type:
+      custom_name: awardType
+    created_at:
+      custom_name: createdAt
+    team_id:
+      custom_name: teamId
+    tournament_id:
+      custom_name: tournamentId
+  custom_column_names:
+    athlete_id: athleteId
+    award_type: awardType
+    created_at: createdAt
+    team_id: teamId
+    tournament_id: tournamentId
+  custom_name: tournamentAwards
+  identifier: tournamentAwards
+  custom_root_fields:
+    delete: deleteTournamentAwards
+    delete_by_pk: deleteTournamentAwardsByPk
+    insert: insertTournamentAwards
+    insert_one: insertTournamentAwardsOne
+    select: tournamentAwards
+    select_aggregate: tournamentAwardsAggregate
+    select_by_pk: tournamentAwardsByPk
+    update: updateTournamentAwards
+    update_by_pk: updateTournamentAwardsByPk
+object_relationships:
+  - name: tournament
+    using:
+      foreign_key_constraint_on: tournament_id
+  - name: athlete
+    using:
+      foreign_key_constraint_on: athlete_id
+  - name: team
+    using:
+      foreign_key_constraint_on: team_id
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - tournament_id
+        - award_type
+        - athlete_id
+        - team_id
+        - value
+        - notes
+        - created_at
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - tournament_id
+        - award_type
+        - athlete_id
+        - team_id
+        - value
+        - notes
+        - created_at
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - tournament_id
+        - award_type
+        - athlete_id
+        - team_id
+        - value
+        - notes
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - award_type
+        - athlete_id
+        - team_id
+        - value
+        - notes
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

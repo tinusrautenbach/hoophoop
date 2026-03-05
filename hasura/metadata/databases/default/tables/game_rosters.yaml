@@ -1,0 +1,103 @@
+table:
+  name: game_rosters
+  schema: public
+configuration:
+  column_config:
+    athlete_id:
+      custom_name: athleteId
+    game_id:
+      custom_name: gameId
+    is_active:
+      custom_name: isActive
+  custom_column_names:
+    athlete_id: athleteId
+    game_id: gameId
+    is_active: isActive
+  custom_name: gameRosters
+  identifier: gameRosters
+  custom_root_fields:
+    delete: deleteGameRosters
+    delete_by_pk: deleteGameRostersByPk
+    insert: insertGameRosters
+    insert_one: insertGameRostersOne
+    select: gameRosters
+    select_aggregate: gameRostersAggregate
+    select_by_pk: gameRostersByPk
+    update: updateGameRosters
+    update_by_pk: updateGameRostersByPk
+object_relationships:
+  - name: game
+    using:
+      foreign_key_constraint_on: game_id
+  - name: athlete
+    using:
+      foreign_key_constraint_on: athlete_id
+array_relationships:
+  - name: gameEvents
+    using:
+      foreign_key_constraint_on:
+        column: game_roster_id
+        table:
+          name: game_events
+          schema: public
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - game_id
+        - team
+        - athlete_id
+        - name
+        - number
+        - is_active
+        - points
+        - fouls
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - game_id
+        - team
+        - athlete_id
+        - name
+        - number
+        - is_active
+        - points
+        - fouls
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - game_id
+        - team
+        - athlete_id
+        - name
+        - number
+        - is_active
+        - points
+        - fouls
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - team
+        - athlete_id
+        - name
+        - number
+        - is_active
+        - points
+        - fouls
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

@@ -1,0 +1,116 @@
+table:
+  name: game_events
+  schema: public
+configuration:
+  column_config:
+    clock_at:
+      custom_name: clockAt
+    created_at:
+      custom_name: createdAt
+    created_by:
+      custom_name: createdBy
+    game_id:
+      custom_name: gameId
+    game_roster_id:
+      custom_name: gameRosterId
+  custom_column_names:
+    clock_at: clockAt
+    created_at: createdAt
+    created_by: createdBy
+    game_id: gameId
+    game_roster_id: gameRosterId
+  custom_name: gameEventsFull
+  identifier: gameEventsFull
+  custom_root_fields:
+    delete: deleteGameEventsFull
+    delete_by_pk: deleteGameEventsFullByPk
+    insert: insertGameEventsFull
+    insert_one: insertGameEventsFullOne
+    select: gameEventsFull
+    select_aggregate: gameEventsFullAggregate
+    select_by_pk: gameEventsFullByPk
+    update: updateGameEventsFull
+    update_by_pk: updateGameEventsFullByPk
+object_relationships:
+  - name: game
+    using:
+      foreign_key_constraint_on: game_id
+  - name: gameRoster
+    using:
+      foreign_key_constraint_on: game_roster_id
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - game_id
+        - type
+        - period
+        - clock_at
+        - team
+        - player
+        - game_roster_id
+        - value
+        - metadata
+        - description
+        - created_at
+        - created_by
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - game_id
+        - type
+        - period
+        - clock_at
+        - team
+        - player
+        - game_roster_id
+        - value
+        - metadata
+        - description
+        - created_at
+        - created_by
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - game_id
+        - type
+        - period
+        - clock_at
+        - team
+        - player
+        - game_roster_id
+        - value
+        - metadata
+        - description
+        - created_at
+        - created_by
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - type
+        - period
+        - clock_at
+        - team
+        - player
+        - game_roster_id
+        - value
+        - metadata
+        - description
+        - created_by
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

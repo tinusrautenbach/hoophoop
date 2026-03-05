@@ -1,0 +1,69 @@
+table:
+  name: community_members
+  schema: public
+configuration:
+  column_config:
+    can_manage_games:
+      custom_name: canManageGames
+    community_id:
+      custom_name: communityId
+    joined_at:
+      custom_name: joinedAt
+    user_id:
+      custom_name: userId
+  custom_column_names:
+    can_manage_games: canManageGames
+    community_id: communityId
+    joined_at: joinedAt
+    user_id: userId
+  custom_name: communityMembers
+  identifier: communityMembers
+  custom_root_fields:
+    delete: deleteCommunityMembers
+    delete_by_pk: deleteCommunityMembersByPk
+    insert: insertCommunityMembers
+    insert_one: insertCommunityMembersOne
+    select: communityMembers
+    select_aggregate: communityMembersAggregate
+    select_by_pk: communityMembersByPk
+    update: updateCommunityMembers
+    update_by_pk: updateCommunityMembersByPk
+object_relationships:
+  - name: community
+    using:
+      foreign_key_constraint_on: community_id
+select_permissions:
+  - role: user
+    permission:
+      columns:
+        - id
+        - community_id
+        - user_id
+        - role
+        - can_manage_games
+        - joined_at
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - community_id
+        - user_id
+        - role
+        - can_manage_games
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - role
+        - can_manage_games
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

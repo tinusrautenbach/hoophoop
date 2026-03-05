@@ -1,0 +1,75 @@
+table:
+  name: users
+  schema: public
+configuration:
+  column_config:
+    created_at:
+      custom_name: createdAt
+    first_name:
+      custom_name: firstName
+    image_url:
+      custom_name: imageUrl
+    is_world_admin:
+      custom_name: isWorldAdmin
+    last_name:
+      custom_name: lastName
+    updated_at:
+      custom_name: updatedAt
+  custom_column_names:
+    created_at: createdAt
+    first_name: firstName
+    image_url: imageUrl
+    is_world_admin: isWorldAdmin
+    last_name: lastName
+    updated_at: updatedAt
+  custom_name: users
+  identifier: users
+  custom_root_fields:
+    delete: deleteUsers
+    delete_by_pk: deleteUsersByPk
+    insert: insertUsers
+    insert_one: insertUsersOne
+    select: users
+    select_aggregate: usersAggregate
+    select_by_pk: usersByPk
+    update: updateUsers
+    update_by_pk: updateUsersByPk
+select_permissions:
+  - role: user
+    permission:
+      columns:
+        - id
+        - email
+        - first_name
+        - last_name
+        - image_url
+        - is_world_admin
+        - theme
+        - created_at
+        - updated_at
+      filter: {}
+      allow_aggregations: false
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - email
+        - first_name
+        - last_name
+        - image_url
+        - theme
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - email
+        - first_name
+        - last_name
+        - image_url
+        - theme
+        - updated_at
+      filter: {}
+      check: {}
+event_triggers: []

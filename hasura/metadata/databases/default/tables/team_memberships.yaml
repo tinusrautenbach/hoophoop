@@ -1,0 +1,106 @@
+table:
+  name: team_memberships
+  schema: public
+configuration:
+  column_config:
+    athlete_id:
+      custom_name: athleteId
+    community_id:
+      custom_name: communityId
+    created_by:
+      custom_name: createdBy
+    end_date:
+      custom_name: endDate
+    is_active:
+      custom_name: isActive
+    start_date:
+      custom_name: startDate
+    team_id:
+      custom_name: teamId
+  custom_column_names:
+    athlete_id: athleteId
+    community_id: communityId
+    created_by: createdBy
+    end_date: endDate
+    is_active: isActive
+    start_date: startDate
+    team_id: teamId
+  custom_name: teamMemberships
+  identifier: teamMemberships
+  custom_root_fields:
+    delete: deleteTeamMemberships
+    delete_by_pk: deleteTeamMembershipsByPk
+    insert: insertTeamMemberships
+    insert_one: insertTeamMembershipsOne
+    select: teamMemberships
+    select_aggregate: teamMembershipsAggregate
+    select_by_pk: teamMembershipsByPk
+    update: updateTeamMemberships
+    update_by_pk: updateTeamMembershipsByPk
+object_relationships:
+  - name: team
+    using:
+      foreign_key_constraint_on: team_id
+  - name: athlete
+    using:
+      foreign_key_constraint_on: athlete_id
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - team_id
+        - athlete_id
+        - number
+        - start_date
+        - end_date
+        - is_active
+        - community_id
+        - notes
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - team_id
+        - athlete_id
+        - number
+        - start_date
+        - end_date
+        - is_active
+        - community_id
+        - created_by
+        - notes
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - team_id
+        - athlete_id
+        - number
+        - start_date
+        - end_date
+        - is_active
+        - community_id
+        - created_by
+        - notes
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - number
+        - end_date
+        - is_active
+        - notes
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []
