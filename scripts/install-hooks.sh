@@ -3,7 +3,6 @@
 # Install git hooks for Basketball Scoring App
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOOK_SOURCE="$SCRIPT_DIR/pre-commit-hook"
 GIT_HOOKS_DIR="$(git rev-parse --git-dir)/hooks"
 
 echo "🔧 Installing git hooks..."
@@ -12,21 +11,54 @@ echo "==========================="
 # Create hooks directory if it doesn't exist
 mkdir -p "$GIT_HOOKS_DIR"
 
-# Install pre-commit hook
-if [ -f "$HOOK_SOURCE" ]; then
-    cp "$HOOK_SOURCE" "$GIT_HOOKS_DIR/pre-commit"
-    chmod +x "$GIT_HOOKS_DIR/pre-commit"
-    echo "✓ Installed pre-commit hook"
-else
-    echo "✗ Pre-commit hook not found at: $HOOK_SOURCE"
-fi
+# Create pre-push hook that runs CI checks before pushing to main
+cat > "$GIT_HOOKS_DIR/pre-push" << 'HOOKEOF'
+#!/bin/sh
+# Pre-push hook to run CI checks before pushing to main
+# Only runs when the target branch is 'main'
 
-# Make this script executable
-chmod +x "$SCRIPT_DIR/pre-commit-hook" 2>/dev/null || true
+# Get the target branch name
+remote="$1"
+url="$2"
+
+# Read local and remote refs
+while read local_ref local_sha remote_ref remote_sha
+do
+    # Check if pushing to main branch
+    if [ "$remote_ref" = "refs/heads/main" ]; then
+        echo "🔍 Pushing to main branch - running CI checks..."
+        echo ""
+        
+        # Run the full CI check
+        npm run ci:check
+        
+        # Check the exit code
+        if [ $? -ne 0 ]; then
+            echo ""
+            echo "❌ CI checks failed!"
+            echo "Please fix the errors above before pushing to main."
+            echo ""
+            echo "Tip: You can run 'npm run ci:check' locally to verify fixes."
+            exit 1
+        fi
+        
+        echo ""
+        echo "✅ All CI checks passed! Proceeding with push to main."
+        echo ""
+    fi
+done
+
+exit 0
+HOOKEOF
+
+chmod +x "$GIT_HOOKS_DIR/pre-push"
+echo "✓ Installed pre-push hook"
 
 echo ""
 echo "✅ Git hooks installed successfully!"
 echo ""
-echo "To use:"
-echo "  - Run './scripts/pre-commit-check.sh' manually for interactive mode"
-echo "  - Hooks run automatically on 'git commit'"
+echo "The pre-push hook will:"
+echo "  - Run CI checks only when pushing to 'main' branch"
+echo "  - Allow pushes to other branches without checks"
+echo ""
+echo "To bypass the hook in emergencies: git push --no-verify"
