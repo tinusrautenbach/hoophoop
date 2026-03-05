@@ -5,7 +5,6 @@
 
 import {
   PrimaryStatType,
-  DerivedStatType,
   type PlayerStatEvent,
   type PlayerGameStats,
 } from '@/types/stats';

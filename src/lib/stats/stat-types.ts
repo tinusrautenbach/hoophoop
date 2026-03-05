@@ -6,7 +6,6 @@
 import {
   PrimaryStatType,
   DerivedStatType,
-  ALL_PRIMARY_STATS,
   type GameStatConfig,
   type ScorerStatFocus,
 } from '@/types/stats';

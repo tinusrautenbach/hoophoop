@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { type PlayerStatEvent, type PlayerGameStats, type PrimaryStatType } from '@/types/stats';
+import { type PlayerStatEvent, type PlayerGameStats } from '@/types/stats';
 import { aggregateAllPlayerStats } from '@/lib/stats/stat-aggregator';
 
 interface UsePlayerStatsReturn {

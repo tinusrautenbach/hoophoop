@@ -9,7 +9,6 @@ import {
   gameStatConfigs,
   gameScorers,
   gameEvents,
-  users,
   seasons,
   communities,
 } from '@/db/schema';

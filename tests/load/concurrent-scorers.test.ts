@@ -67,7 +67,7 @@ async function setupHook(version = 1) {
 /** CAS mock that serializes concurrent updates */
 function buildCasMock(initialVersion = 1) {
   let serverVersion = initialVersion;
-  let signalConflictCount = 0;
+  const signalConflictCount = 0;
 
   const mock = vi.fn(async (query: string, variables?: Record<string, unknown>) => {
     if (query.includes('UpdateGameStateVersioned')) {
