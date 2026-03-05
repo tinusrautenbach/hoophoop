@@ -279,16 +279,11 @@ export async function getAllScorerFocuses(
 ): Promise<Array<{ userId: string; displayName: string; statFocus: PrimaryStatType[]; showAllStats: boolean }>> {
   const scorers = await db.query.gameScorers.findMany({
     where: eq(gameScorers.gameId, gameId),
-    with: {
-      user: true,
-    },
   });
 
   return scorers.map((scorer) => ({
     userId: scorer.userId,
-    displayName: scorer.user?.firstName
-      ? `${scorer.user.firstName} ${scorer.user.lastName || ''}`.trim()
-      : 'Unknown',
+    displayName: 'Unknown', // User info should be fetched separately via Clerk or users table
     statFocus: (scorer.statFocus as PrimaryStatType[]) || [],
     showAllStats: scorer.showAllStats ?? false,
   }));
@@ -309,16 +304,15 @@ export async function recordStatEvent(
       period: event.period,
       clockAt: event.clockAt,
       team: event.team,
-      gameRosterId: event.playerId, // Using playerId as gameRosterId
+      gameRosterId: event.playerId,
       value: event.value,
       metadata: event.metadata || {},
       description: `${event.statType} recorded`,
       createdBy: event.createdBy,
-      stat_type: event.statType,
-      modified_by: event.createdBy,
-      modified_at: new Date(),
+      modifiedBy: event.createdBy,
+      modifiedAt: new Date(),
       version: 1,
-      previous_version: null,
+      previousVersion: null,
     })
     .returning();
 
@@ -328,17 +322,17 @@ export async function recordStatEvent(
     playerId: created.gameRosterId || '',
     team: created.team || 'home',
     type: 'stat',
-    statType: (created.statType || created.stat_type) as PrimaryStatType,
+    statType: created.statType as PrimaryStatType,
     value: created.value || 1,
     period: created.period,
     clockAt: created.clockAt,
     metadata: created.metadata as Record<string, unknown>,
-    createdBy: created.createdBy || created.created_by,
+    createdBy: created.createdBy,
     createdAt: created.createdAt,
-    modifiedBy: created.modifiedBy || created.modified_by,
-    modifiedAt: created.modifiedAt || created.modified_at,
+    modifiedBy: created.modifiedBy,
+    modifiedAt: created.modifiedAt,
     version: created.version || 1,
-    previousVersion: created.previousVersion || created.previous_version,
+    previousVersion: created.previousVersion,
   } as PlayerStatEvent;
 }
 
@@ -359,7 +353,7 @@ export async function updateStatEvent(
 
   // Store previous version
   const previousVersion = {
-    statType: current.statType || current.stat_type,
+    statType: current.statType,
     value: current.value,
     gameRosterId: current.gameRosterId,
   };
@@ -369,16 +363,12 @@ export async function updateStatEvent(
     .update(gameEvents)
     .set({
       statType: updates.statType || current.statType,
-      stat_type: updates.statType || current.stat_type,
       value: updates.value !== undefined ? updates.value : current.value,
       gameRosterId: updates.playerId || current.gameRosterId,
       modifiedBy: userId,
-      modified_by: userId,
       modifiedAt: new Date(),
-      modified_at: new Date(),
       version: (current.version || 1) + 1,
       previousVersion: previousVersion,
-      previous_version: previousVersion,
     })
     .where(eq(gameEvents.id, eventId))
     .returning();
@@ -389,16 +379,16 @@ export async function updateStatEvent(
     playerId: updated.gameRosterId || '',
     team: updated.team || 'home',
     type: 'stat',
-    statType: (updated.statType || updated.stat_type) as PrimaryStatType,
+    statType: updated.statType as PrimaryStatType,
     value: updated.value || 1,
     period: updated.period,
     clockAt: updated.clockAt,
     metadata: updated.metadata as Record<string, unknown>,
-    createdBy: updated.createdBy || updated.created_by,
+    createdBy: updated.createdBy,
     createdAt: updated.createdAt,
-    modifiedBy: updated.modifiedBy || updated.modified_by,
-    modifiedAt: updated.modifiedAt || updated.modified_at,
+    modifiedBy: updated.modifiedBy,
+    modifiedAt: updated.modifiedAt,
     version: updated.version || 1,
-    previousVersion: updated.previousVersion || updated.previous_version,
+    previousVersion: updated.previousVersion,
   } as PlayerStatEvent;
 }
