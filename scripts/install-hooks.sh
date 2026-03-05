@@ -11,48 +11,15 @@ echo "==========================="
 # Create hooks directory if it doesn't exist
 mkdir -p "$GIT_HOOKS_DIR"
 
-# Create pre-push hook that runs CI checks before pushing to main
-cat > "$GIT_HOOKS_DIR/pre-push" << 'HOOKEOF'
-#!/bin/sh
-# Pre-push hook to run CI checks before pushing to main
-# Only runs when the target branch is 'main'
-
-# Get the target branch name
-remote="$1"
-url="$2"
-
-# Read local and remote refs
-while read local_ref local_sha remote_ref remote_sha
-do
-    # Check if pushing to main branch
-    if [ "$remote_ref" = "refs/heads/main" ]; then
-        echo "🔍 Pushing to main branch - running CI checks..."
-        echo ""
-        
-        # Run the full CI check
-        npm run ci:check
-        
-        # Check the exit code
-        if [ $? -ne 0 ]; then
-            echo ""
-            echo "❌ CI checks failed!"
-            echo "Please fix the errors above before pushing to main."
-            echo ""
-            echo "Tip: You can run 'npm run ci:check' locally to verify fixes."
-            exit 1
-        fi
-        
-        echo ""
-        echo "✅ All CI checks passed! Proceeding with push to main."
-        echo ""
-    fi
-done
-
-exit 0
-HOOKEOF
-
-chmod +x "$GIT_HOOKS_DIR/pre-push"
-echo "✓ Installed pre-push hook"
+# Copy pre-push hook
+if [ -f "$SCRIPT_DIR/../githooks/pre-push" ]; then
+    cp "$SCRIPT_DIR/../githooks/pre-push" "$GIT_HOOKS_DIR/pre-push"
+    chmod +x "$GIT_HOOKS_DIR/pre-push"
+    echo "✓ Installed pre-push hook"
+else
+    echo "✗ Pre-push hook not found at: $SCRIPT_DIR/../githooks/pre-push"
+    exit 1
+fi
 
 echo ""
 echo "✅ Git hooks installed successfully!"
