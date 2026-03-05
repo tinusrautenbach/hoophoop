@@ -2,7 +2,7 @@
 
 **Feature Branch**: `078-configurable-player-stats`  
 **Source**: `.specify/memory/plan.md`, `.specify/memory/spec.md`, `data-model.md`, `contracts/`  
-**Status**: Ready for implementation
+**Status**: ✅ **COMPLETED** - All 58 tasks implemented
 
 **Tests**: Test tasks included for service-layer functions as required by constitution. UI tests optional.
 
@@ -24,9 +24,9 @@
 
 **Purpose**: Type definitions and base infrastructure
 
-- [ ] T001 [P] Create stat type definitions enum in `src/types/stats.ts`
-- [ ] T002 [P] Create TypeScript interfaces for GameStatConfig, ScorerStatFocus, PlayerGameStats in `src/types/stats.ts`
-- [ ] T003 Add stat types barrel export in `src/types/index.ts`
+- [x] T001 [P] Create stat type definitions enum in `src/types/stats.ts`
+- [x] T002 [P] Create TypeScript interfaces for GameStatConfig, ScorerStatFocus, PlayerGameStats in `src/types/stats.ts`
+- [x] T003 Add stat types barrel export in `src/types/index.ts`
 
 **Checkpoint**: All type definitions complete and exported
 
@@ -40,22 +40,22 @@
 
 ### Database Schema
 
-- [ ] T004 [P] Create `game_stat_configs` table migration in `drizzle/000X_add_game_stat_configs.sql`
-- [ ] T005 [P] Extend `game_events` table with audit fields (statType, modifiedBy, modifiedAt, version, previousVersion) in `drizzle/000X_extend_game_events.sql`
-- [ ] T006 [P] Extend `game_scorers` table with statFocus columns in `drizzle/000X_extend_game_scorers.sql`
-- [ ] T007 Update Drizzle schema definitions in `src/db/schema.ts` with new tables/columns
-- [ ] T008 Run migrations and verify schema in local database
+- [x] T004 [P] Create `game_stat_configs` table migration in `drizzle/000X_add_game_stat_configs.sql`
+- [x] T005 [P] Extend `game_events` table with audit fields (statType, modifiedBy, modifiedAt, version, previousVersion) in `drizzle/000X_extend_game_events.sql`
+- [x] T006 [P] Extend `game_scorers` table with statFocus columns in `drizzle/000X_extend_game_scorers.sql`
+- [x] T007 Update Drizzle schema definitions in `src/db/schema.ts` with new tables/columns
+- [x] T008 Run migrations and verify schema in local database
 
 ### Core Utilities
 
-- [ ] T009 [P] Create stat type validation utilities in `src/lib/stats/stat-types.ts`
-- [ ] T010 [P] Create derived stat calculator (points_total, rebound_total) in `src/lib/stats/stat-calculator.ts`
-- [ ] T011 Create stat aggregation logic in `src/lib/stats/stat-aggregator.ts`
+- [x] T009 [P] Create stat type validation utilities in `src/lib/stats/stat-types.ts`
+- [x] T010 [P] Create derived stat calculator (points_total, rebound_total) in `src/lib/stats/stat-calculator.ts`
+- [x] T011 Create stat aggregation logic in `src/lib/stats/stat-aggregator.ts`
 
 ### Service Layer
 
-- [ ] T012 Create stat configuration service in `src/services/stats.ts`
-- [ ] T013 [P] Create unit tests for stat service in `src/services/__tests__/stats.test.ts`
+- [x] T012 Create stat configuration service in `src/services/stats.ts`
+- [x] T013 [P] Create unit tests for stat service in `src/services/__tests__/stats.test.ts`
 
 **Checkpoint**: Database schema ready, migrations applied, core utilities tested
 
@@ -69,26 +69,26 @@
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Unit test for stat configuration validation in `src/services/__tests__/stats.test.ts`
-- [ ] T015 [P] [US1] Unit test for inheritance resolution (community → season → game) in `src/services/__tests__/stats.test.ts`
+- [x] T014 [P] [US1] Unit test for stat configuration validation in `src/services/__tests__/stats.test.ts`
+- [x] T015 [P] [US1] Unit test for inheritance resolution (community → season → game) in `src/services/__tests__/stats.test.ts`
 
 ### Implementation for User Story 1
 
 #### API Layer
 
-- [ ] T016 [P] [US1] Implement GET /api/games/[id]/stat-config endpoint in `src/app/api/games/[id]/stat-config/route.ts`
-- [ ] T017 [US1] Implement POST /api/games/[id]/stat-config endpoint in `src/app/api/games/[id]/stat-config/route.ts`
-- [ ] T018 [P] [US1] Implement GET /api/games/[id]/stat-config/inheritance endpoint in `src/app/api/games/[id]/stat-config/inheritance/route.ts`
+- [x] T016 [P] [US1] Implement GET /api/games/[id]/stat-config endpoint in `src/app/api/games/[id]/stat-config/route.ts`
+- [x] T017 [US1] Implement POST /api/games/[id]/stat-config endpoint in `src/app/api/games/[id]/stat-config/route.ts`
+- [x] T018 [P] [US1] Implement GET /api/games/[id]/stat-config/inheritance endpoint in `src/app/api/games/[id]/stat-config/inheritance/route.ts`
 
 #### UI Components
 
-- [ ] T019 [P] [US1] Create StatConfigPanel component in `src/app/game/[id]/scorer/stat-config-panel.tsx`
-- [ ] T020 [P] [US1] Create StatToggle component in `src/components/scorer/stat-toggle.tsx`
-- [ ] T021 [US1] Add stat configuration UI to game settings page
+- [x] T019 [P] [US1] Create StatConfigPanel component in `src/app/game/[id]/scorer/stat-config-panel.tsx`
+- [x] T020 [P] [US1] Create StatToggle component in `src/components/scorer/stat-toggle.tsx`
+- [x] T021 [US1] Add stat configuration UI to game settings page
 
 #### Hooks
 
-- [ ] T022 [US1] Create useStatConfig hook in `src/hooks/use-stat-config.ts`
+- [x] T022 [US1] Create useStatConfig hook in `src/hooks/use-stat-config.ts`
 
 **Checkpoint**: User Story 1 complete - can create game, configure stats, see only enabled stats in UI
 
@@ -102,35 +102,35 @@
 
 ### Tests for User Story 2
 
-- [ ] T023 [P] [US2] Unit test for scorer focus validation in `src/services/__tests__/stats.test.ts`
-- [ ] T024 [P] [US2] Unit test for stat event recording with audit trail in `src/services/__tests__/stats.test.ts`
+- [x] T023 [P] [US2] Unit test for scorer focus validation in `src/services/__tests__/stats.test.ts`
+- [x] T024 [P] [US2] Unit test for stat event recording with audit trail in `src/services/__tests__/stats.test.ts`
 
 ### Implementation for User Story 2
 
 #### API Layer
 
-- [ ] T025 [P] [US2] Implement GET /api/games/[id]/scorer-focus endpoint in `src/app/api/games/[id]/scorer-focus/route.ts`
-- [ ] T026 [US2] Implement POST /api/games/[id]/scorer-focus endpoint in `src/app/api/games/[id]/scorer-focus/route.ts`
-- [ ] T027 [P] [US2] Implement GET /api/games/[id]/scorer-focus/all endpoint in `src/app/api/games/[id]/scorer-focus/all/route.ts`
-- [ ] T028 [P] [US2] Implement global focus endpoints in `src/app/api/games/[id]/scorer-focus/global/route.ts`
+- [x] T025 [P] [US2] Implement GET /api/games/[id]/scorer-focus endpoint in `src/app/api/games/[id]/scorer-focus/route.ts`
+- [x] T026 [US2] Implement POST /api/games/[id]/scorer-focus endpoint in `src/app/api/games/[id]/scorer-focus/route.ts`
+- [x] T027 [P] [US2] Implement GET /api/games/[id]/scorer-focus/all endpoint in `src/app/api/games/[id]/scorer-focus/all/route.ts`
+- [x] T028 [P] [US2] Implement global focus endpoints in `src/app/api/games/[id]/scorer-focus/global/route.ts`
 
 #### UI Components
 
-- [ ] T029 [P] [US2] Create StatFocusSelector component in `src/app/game/[id]/scorer/stat-focus-selector.tsx`
-- [ ] T030 [P] [US2] Create StatButton component in `src/components/scorer/stat-button.tsx`
-- [ ] T031 [P] [US2] Create StatButtonGrid component in `src/components/scorer/stat-button-grid.tsx`
-- [ ] T032 [P] [US2] Create MoreStatsModal component in `src/app/game/[id]/scorer/more-stats-modal.tsx`
-- [ ] T033 [P] [US2] Create ScorerFocusIndicator component in `src/components/scorer/scorer-focus-indicator.tsx`
+- [x] T029 [P] [US2] Create StatFocusSelector component in `src/app/game/[id]/scorer/stat-focus-selector.tsx`
+- [x] T030 [P] [US2] Create StatButton component in `src/components/scorer/stat-button.tsx`
+- [x] T031 [P] [US2] Create StatButtonGrid component in `src/components/scorer/stat-button-grid.tsx`
+- [x] T032 [P] [US2] Create MoreStatsModal component in `src/app/game/[id]/scorer/more-stats-modal.tsx`
+- [x] T033 [P] [US2] Create ScorerFocusIndicator component in `src/components/scorer/scorer-focus-indicator.tsx`
 
 #### Hooks
 
-- [ ] T034 [US2] Create useScorerFocus hook in `src/hooks/use-scorer-focus.ts`
-- [ ] T035 [US2] Integrate stat focus into existing useHasuraGame hook
+- [x] T034 [US2] Create useScorerFocus hook in `src/hooks/use-scorer-focus.ts`
+- [x] T035 [US2] Integrate stat focus into existing useHasuraGame hook
 
 #### Event Recording
 
-- [ ] T036 [US2] Extend game event recording to support stat events with audit trail in `src/app/api/games/[id]/events/route.ts`
-- [ ] T037 [US2] Update Hasura game events subscription to include stat metadata in `src/hooks/use-hasura-game.ts`
+- [x] T036 [US2] Extend game event recording to support stat events with audit trail in `src/app/api/games/[id]/events/route.ts`
+- [x] T037 [US2] Update Hasura game events subscription to include stat metadata in `src/hooks/use-hasura-game.ts`
 
 **Checkpoint**: User Story 2 complete - multi-scorer setup works, stats aggregate correctly
 
@@ -144,31 +144,31 @@
 
 ### Tests for User Story 3
 
-- [ ] T038 [P] [US3] Unit test for player game stats aggregation in `src/services/__tests__/stats.test.ts`
-- [ ] T039 [P] [US3] Unit test for derived stat calculation in `src/lib/stats/__tests__/stat-calculator.test.ts`
+- [x] T038 [P] [US3] Unit test for player game stats aggregation in `src/services/__tests__/stats.test.ts`
+- [x] T039 [P] [US3] Unit test for derived stat calculation in `src/lib/stats/__tests__/stat-calculator.test.ts`
 
 ### Implementation for User Story 3
 
 #### Stats Aggregation
 
-- [ ] T040 [P] [US3] Create usePlayerStats hook in `src/hooks/use-player-stats.ts`
-- [ ] T041 [P] [US3] Create PlayerStats component in `src/components/scorer/player-stats.tsx`
+- [x] T040 [P] [US3] Create usePlayerStats hook in `src/hooks/use-player-stats.ts`
+- [x] T041 [P] [US3] Create PlayerStats component in `src/components/scorer/player-stats.tsx`
 
 #### Box Score
 
-- [ ] T042 [US3] Create BoxScore component with dynamic columns in `src/app/game/[id]/box-score/page.tsx`
-- [ ] T043 [US3] Add stat column visibility based on enabled stats
-- [ ] T044 [US3] Handle disabled stats (show N/A or hide column)
+- [x] T042 [US3] Create BoxScore component with dynamic columns in `src/app/game/[id]/box-score/page.tsx`
+- [x] T043 [US3] Add stat column visibility based on enabled stats
+- [x] T044 [US3] Handle disabled stats (show N/A or hide column)
 
 #### Game Log Updates
 
-- [ ] T045 [P] [US3] Update GameLog component to display stat events in `src/components/scorer/game-log.tsx`
-- [ ] T046 [P] [US3] Add audit trail indicator to game log entries
+- [x] T045 [P] [US3] Update GameLog component to display stat events in `src/components/scorer/game-log.tsx`
+- [x] T046 [P] [US3] Add audit trail indicator to game log entries
 
 #### Player Profiles
 
-- [ ] T047 [US3] Update player profile stats endpoint to filter by tracked stats in `src/app/api/players/[id]/stats/route.ts`
-- [ ] T048 [US3] Update player profile UI to show per-game stat breakdowns in `src/app/players/[id]/page.tsx`
+- [x] T047 [US3] Update player profile stats endpoint to filter by tracked stats in `src/app/api/players/[id]/stats/route.ts`
+- [x] T048 [US3] Update player profile UI to show per-game stat breakdowns in `src/app/players/[id]/page.tsx`
 
 **Checkpoint**: User Story 3 complete - box score and profiles show correct aggregated stats
 
@@ -180,28 +180,28 @@
 
 ### Performance & Optimization
 
-- [ ] T049 [P] Optimize stat aggregation with memoization in `src/lib/stats/stat-aggregator.ts`
-- [ ] T050 [P] Add React.memo to StatButton components for render optimization
+- [x] T049 [P] Optimize stat aggregation with memoization in `src/lib/stats/stat-aggregator.ts`
+- [x] T050 [P] Add React.memo to StatButton components for render optimization
 
 ### Mobile Responsiveness
 
-- [ ] T051 [P] Verify 320px minimum width support for stat button grid
-- [ ] T052 [P] Ensure 48×48px touch targets for all stat buttons
+- [x] T051 [P] Verify 320px minimum width support for stat button grid
+- [x] T052 [P] Ensure 48×48px touch targets for all stat buttons
 
 ### Error Handling
 
-- [ ] T053 Add error boundaries for stat configuration components
-- [ ] T054 Add graceful degradation when Hasura subscription fails
+- [x] T053 Add error boundaries for stat configuration components
+- [x] T054 Add graceful degradation when Hasura subscription fails
 
 ### Documentation
 
-- [ ] T055 Update API documentation with new endpoints
-- [ ] T056 Add JSDoc comments to all stat utility functions
+- [x] T055 Update API documentation with new endpoints
+- [x] T056 Add JSDoc comments to all stat utility functions
 
 ### Testing
 
-- [ ] T057 Run quickstart.md validation scenarios
-- [ ] T058 Verify constitution compliance (TypeScript strict, no escape hatches)
+- [x] T057 Run quickstart.md validation scenarios
+- [x] T058 Verify constitution compliance (TypeScript strict, no escape hatches)
 
 **Final Checkpoint**: All features complete, tested, and documented
 
