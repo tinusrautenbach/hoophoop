@@ -1,12 +1,44 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Users, ArrowRight, X } from 'lucide-react';
+import { Check, Users, ArrowRight, X, ClipboardPaste, Plus } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
+}
+
+/**
+ * Parse bulk roster input in formats like:
+ * - "23 Jordan, 33 Pippen"
+ * - "23 Jordan\n33 Pippen"
+ * - "#23 Jordan, #33 Pippen"
+ * Returns array of { number, name } objects
+ */
+function parseBulkRoster(input: string): Array<{ number: string; name: string }> {
+    if (!input.trim()) return [];
+
+    const players: Array<{ number: string; name: string }> = [];
+    
+    // Split by comma or newline
+    const entries = input.split(/[,\n]+/);
+    
+    for (const entry of entries) {
+        const trimmed = entry.trim();
+        if (!trimmed) continue;
+        
+        // Match patterns like "23 Jordan", "#23 Jordan", "23: Jordan"
+        const match = trimmed.match(/^#?(\d+)[:\-\s]+(.+)$/);
+        if (match) {
+            players.push({
+                number: match[1],
+                name: match[2].trim()
+            });
+        }
+    }
+    
+    return players;
 }
 
 type RosterEntry = {
@@ -38,9 +70,30 @@ export function BenchSelection({ game, onStartGame, onCancel }: BenchSelectionPr
     const [rosters, setRosters] = useState<RosterEntry[]>(
         game.rosters.map(r => ({ ...r, isActive: true }))
     );
+    const [bulkInput, setBulkInput] = useState('');
+    const [showBulkAdd, setShowBulkAdd] = useState(false);
 
     const homeRoster = rosters.filter(r => r.team === 'home');
     const guestRoster = rosters.filter(r => r.team === 'guest');
+
+    const handleBulkAdd = (team: 'home' | 'guest') => {
+        const players = parseBulkRoster(bulkInput);
+        if (players.length === 0) return;
+
+        const newEntries: RosterEntry[] = players.map((p, idx) => ({
+            id: `bulk-${team}-${Date.now()}-${idx}`,
+            name: p.name,
+            number: p.number,
+            team,
+            isActive: true,
+            points: 0,
+            fouls: 0,
+        }));
+
+        setRosters(prev => [...prev, ...newEntries]);
+        setBulkInput('');
+        setShowBulkAdd(false);
+    };
     
     // Roster Validation Logic
     const activeHomePlayers = homeRoster.filter(r => r.isActive).length;
@@ -77,7 +130,7 @@ export function BenchSelection({ game, onStartGame, onCancel }: BenchSelectionPr
                     </div>
                 </div>
                 {onCancel && (
-                    <button onClick={onCancel} className="p-2 text-slate-500 hover:text-white transition-colors">
+                    <button type="button" onClick={onCancel} className="p-2 text-slate-500 hover:text-white transition-colors">
                         <X size={24} />
                     </button>
                 )}
@@ -85,6 +138,51 @@ export function BenchSelection({ game, onStartGame, onCancel }: BenchSelectionPr
 
             {/* Main Content - Scrollable */}
             <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                <div className="max-w-4xl mx-auto space-y-4 mb-6">
+                    <button
+                        type="button"
+                        onClick={() => setShowBulkAdd(!showBulkAdd)}
+                        className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-input/50 hover:bg-input border border-border rounded-xl text-sm font-bold text-slate-400 hover:text-white transition-colors"
+                    >
+                        <ClipboardPaste size={16} />
+                        {showBulkAdd ? 'Hide Bulk Add' : 'Bulk Add Players'}
+                    </button>
+
+                    {showBulkAdd && (
+                        <div className="bg-input/50 border border-border rounded-xl p-4 space-y-3">
+                            <p className="text-xs text-slate-500">
+                                Paste roster in format: <code className="bg-black/30 px-1 rounded">23 Jordan, 33 Pippen</code> or <code className="bg-black/30 px-1 rounded">#23 Jordan</code> per line
+                            </p>
+                            <textarea
+                                value={bulkInput}
+                                onChange={(e) => setBulkInput(e.target.value)}
+                                placeholder="#23 Jordan&#10;#33 Pippen&#10;#91 Rodman"
+                                className="w-full h-24 bg-background border border-border rounded-lg p-3 text-sm font-mono resize-none focus:outline-none focus:border-orange-500"
+                            />
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleBulkAdd('home')}
+                                    disabled={!bulkInput.trim()}
+                                    className="flex-1 py-2 px-4 bg-orange-600/20 hover:bg-orange-600/30 disabled:opacity-50 disabled:cursor-not-allowed border border-orange-500/30 rounded-lg text-sm font-bold text-orange-400 transition-colors"
+                                >
+                                    <Plus size={14} className="inline mr-1" />
+                                    Add to {game.homeTeamName}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleBulkAdd('guest')}
+                                    disabled={!bulkInput.trim()}
+                                    className="flex-1 py-2 px-4 bg-slate-600/20 hover:bg-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed border border-slate-500/30 rounded-lg text-sm font-bold text-slate-400 transition-colors"
+                                >
+                                    <Plus size={14} className="inline mr-1" />
+                                    Add to {game.guestTeamName}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
                     {/* Home Team */}
                     <div className="space-y-4">
@@ -103,10 +201,11 @@ export function BenchSelection({ game, onStartGame, onCancel }: BenchSelectionPr
                             ) : (
                                 homeRoster.map(player => (
                                     <button
+                                        type="button"
                                         key={player.id}
                                         onClick={() => togglePlayer(player.id)}
                                         className={cn(
-                                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all active:scale-[0.99]",
+                                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all active:scale-[0.99] text-left",
                                             player.isActive 
                                                 ? "bg-orange-500/10 border-orange-500/50 hover:bg-orange-500/20" 
                                                 : "bg-input border-border opacity-60 hover:opacity-80"
@@ -152,10 +251,11 @@ export function BenchSelection({ game, onStartGame, onCancel }: BenchSelectionPr
                             ) : (
                                 guestRoster.map(player => (
                                     <button
+                                        type="button"
                                         key={player.id}
                                         onClick={() => togglePlayer(player.id)}
                                         className={cn(
-                                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all active:scale-[0.99]",
+                                            "flex items-center gap-4 p-4 rounded-xl border-2 transition-all active:scale-[0.99] text-left",
                                             player.isActive 
                                                 ? "bg-card border-white/20 hover:bg-muted" 
                                                 : "bg-input border-border opacity-60 hover:opacity-80"
@@ -196,6 +296,7 @@ export function BenchSelection({ game, onStartGame, onCancel }: BenchSelectionPr
                         </div>
                     )}
                     <button
+                        type="button"
                         onClick={handleStart}
                         disabled={!isValid}
                         className={cn(

@@ -1,0 +1,113 @@
+table:
+  name: tournament_standings
+  schema: public
+configuration:
+  column_config:
+    games_played:
+      custom_name: gamesPlayed
+    point_diff:
+      custom_name: pointDiff
+    points_against:
+      custom_name: pointsAgainst
+    points_for:
+      custom_name: pointsFor
+    pool_id:
+      custom_name: poolId
+    team_id:
+      custom_name: teamId
+    tournament_id:
+      custom_name: tournamentId
+  custom_column_names:
+    games_played: gamesPlayed
+    point_diff: pointDiff
+    points_against: pointsAgainst
+    points_for: pointsFor
+    pool_id: poolId
+    team_id: teamId
+    tournament_id: tournamentId
+  custom_name: tournamentStandings
+  identifier: tournamentStandings
+  custom_root_fields:
+    delete: deleteTournamentStandings
+    delete_by_pk: deleteTournamentStandingsByPk
+    insert: insertTournamentStandings
+    insert_one: insertTournamentStandingsOne
+    select: tournamentStandings
+    select_aggregate: tournamentStandingsAggregate
+    select_by_pk: tournamentStandingsByPk
+    update: updateTournamentStandings
+    update_by_pk: updateTournamentStandingsByPk
+object_relationships:
+  - name: tournament
+    using:
+      foreign_key_constraint_on: tournament_id
+  - name: team
+    using:
+      foreign_key_constraint_on: team_id
+  - name: pool
+    using:
+      foreign_key_constraint_on: pool_id
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - tournament_id
+        - team_id
+        - pool_id
+        - wins
+        - losses
+        - points_for
+        - points_against
+        - point_diff
+        - games_played
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - tournament_id
+        - team_id
+        - pool_id
+        - wins
+        - losses
+        - points_for
+        - points_against
+        - point_diff
+        - games_played
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - tournament_id
+        - team_id
+        - pool_id
+        - wins
+        - losses
+        - points_for
+        - points_against
+        - point_diff
+        - games_played
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - pool_id
+        - wins
+        - losses
+        - points_for
+        - points_against
+        - point_diff
+        - games_played
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

@@ -1,0 +1,91 @@
+table:
+  name: tournament_pools
+  schema: public
+configuration:
+  column_config:
+    teams_advancing:
+      custom_name: teamsAdvancing
+    tournament_id:
+      custom_name: tournamentId
+  custom_column_names:
+    teams_advancing: teamsAdvancing
+    tournament_id: tournamentId
+  custom_name: tournamentPools
+  identifier: tournamentPools
+  custom_root_fields:
+    delete: deleteTournamentPools
+    delete_by_pk: deleteTournamentPoolsByPk
+    insert: insertTournamentPools
+    insert_one: insertTournamentPoolsOne
+    select: tournamentPools
+    select_aggregate: tournamentPoolsAggregate
+    select_by_pk: tournamentPoolsByPk
+    update: updateTournamentPools
+    update_by_pk: updateTournamentPoolsByPk
+object_relationships:
+  - name: tournament
+    using:
+      foreign_key_constraint_on: tournament_id
+array_relationships:
+  - name: tournamentTeams
+    using:
+      foreign_key_constraint_on:
+        column: pool_id
+        table:
+          name: tournament_teams
+          schema: public
+  - name: tournamentGames
+    using:
+      foreign_key_constraint_on:
+        column: pool_id
+        table:
+          name: tournament_games
+          schema: public
+  - name: standings
+    using:
+      foreign_key_constraint_on:
+        column: pool_id
+        table:
+          name: tournament_standings
+          schema: public
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - tournament_id
+        - name
+        - teams_advancing
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - tournament_id
+        - name
+        - teams_advancing
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - tournament_id
+        - name
+        - teams_advancing
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - name
+        - teams_advancing
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

@@ -1,0 +1,80 @@
+table:
+  name: game_scorer_invites
+  schema: public
+configuration:
+  column_config:
+    accepted_by:
+      custom_name: acceptedBy
+    created_at:
+      custom_name: createdAt
+    created_by:
+      custom_name: createdBy
+    expires_at:
+      custom_name: expiresAt
+    game_id:
+      custom_name: gameId
+  custom_column_names:
+    accepted_by: acceptedBy
+    created_at: createdAt
+    created_by: createdBy
+    expires_at: expiresAt
+    game_id: gameId
+  custom_name: gameScorerInvites
+  identifier: gameScorerInvites
+  custom_root_fields:
+    delete: deleteGameScorerInvites
+    delete_by_pk: deleteGameScorerInvitesByPk
+    insert: insertGameScorerInvites
+    insert_one: insertGameScorerInvitesOne
+    select: gameScorerInvites
+    select_aggregate: gameScorerInvitesAggregate
+    select_by_pk: gameScorerInvitesByPk
+    update: updateGameScorerInvites
+    update_by_pk: updateGameScorerInvitesByPk
+object_relationships:
+  - name: game
+    using:
+      foreign_key_constraint_on: game_id
+select_permissions:
+  - role: user
+    permission:
+      columns:
+        - id
+        - game_id
+        - email
+        - token
+        - status
+        - role
+        - created_by
+        - accepted_by
+        - expires_at
+        - created_at
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - game_id
+        - email
+        - token
+        - status
+        - role
+        - created_by
+        - accepted_by
+        - expires_at
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - status
+        - accepted_by
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

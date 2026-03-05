@@ -1,0 +1,114 @@
+table:
+  name: teams
+  schema: public
+configuration:
+  column_config:
+    community_id:
+      custom_name: communityId
+    created_at:
+      custom_name: createdAt
+    owner_id:
+      custom_name: ownerId
+    short_code:
+      custom_name: shortCode
+  custom_column_names:
+    community_id: communityId
+    created_at: createdAt
+    owner_id: ownerId
+    short_code: shortCode
+  custom_name: teams
+  identifier: teams
+  custom_root_fields:
+    delete: deleteTeams
+    delete_by_pk: deleteTeamsByPk
+    insert: insertTeams
+    insert_one: insertTeamsOne
+    select: teams
+    select_aggregate: teamsAggregate
+    select_by_pk: teamsByPk
+    update: updateTeams
+    update_by_pk: updateTeamsByPk
+object_relationships:
+  - name: community
+    using:
+      foreign_key_constraint_on: community_id
+array_relationships:
+  - name: teamMemberships
+    using:
+      foreign_key_constraint_on:
+        column: team_id
+        table:
+          name: team_memberships
+          schema: public
+  - name: teamSeasons
+    using:
+      foreign_key_constraint_on:
+        column: team_id
+        table:
+          name: team_seasons
+          schema: public
+  - name: homeGames
+    using:
+      foreign_key_constraint_on:
+        column: home_team_id
+        table:
+          name: games
+          schema: public
+  - name: guestGames
+    using:
+      foreign_key_constraint_on:
+        column: guest_team_id
+        table:
+          name: games
+          schema: public
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - owner_id
+        - community_id
+        - name
+        - short_code
+        - color
+        - created_at
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - owner_id
+        - community_id
+        - name
+        - short_code
+        - color
+        - created_at
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - owner_id
+        - community_id
+        - name
+        - short_code
+        - color
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - community_id
+        - name
+        - short_code
+        - color
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

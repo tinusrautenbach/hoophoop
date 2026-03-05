@@ -1,0 +1,154 @@
+table:
+  name: tournament_games
+  schema: public
+configuration:
+  column_config:
+    bracket_position:
+      custom_name: bracketPosition
+    game_id:
+      custom_name: gameId
+    guest_3_pointers:
+      custom_name: guest3Pointers
+    guest_fouls:
+      custom_name: guestFouls
+    guest_free_throws:
+      custom_name: guestFreeThrows
+    home_3_pointers:
+      custom_name: home3Pointers
+    home_fouls:
+      custom_name: homeFouls
+    home_free_throws:
+      custom_name: homeFreeThrows
+    is_pool_game:
+      custom_name: isPoolGame
+    player_of_the_match_id:
+      custom_name: playerOfTheMatchId
+    player_of_the_match_name:
+      custom_name: playerOfTheMatchName
+    pool_id:
+      custom_name: poolId
+    tournament_id:
+      custom_name: tournamentId
+  custom_column_names:
+    bracket_position: bracketPosition
+    game_id: gameId
+    guest_3_pointers: guest3Pointers
+    guest_fouls: guestFouls
+    guest_free_throws: guestFreeThrows
+    home_3_pointers: home3Pointers
+    home_fouls: homeFouls
+    home_free_throws: homeFreeThrows
+    is_pool_game: isPoolGame
+    player_of_the_match_id: playerOfTheMatchId
+    player_of_the_match_name: playerOfTheMatchName
+    pool_id: poolId
+    tournament_id: tournamentId
+  custom_name: tournamentGames
+  identifier: tournamentGames
+  custom_root_fields:
+    delete: deleteTournamentGames
+    delete_by_pk: deleteTournamentGamesByPk
+    insert: insertTournamentGames
+    insert_one: insertTournamentGamesOne
+    select: tournamentGames
+    select_aggregate: tournamentGamesAggregate
+    select_by_pk: tournamentGamesByPk
+    update: updateTournamentGames
+    update_by_pk: updateTournamentGamesByPk
+object_relationships:
+  - name: tournament
+    using:
+      foreign_key_constraint_on: tournament_id
+  - name: game
+    using:
+      foreign_key_constraint_on: game_id
+  - name: pool
+    using:
+      foreign_key_constraint_on: pool_id
+  - name: playerOfTheMatch
+    using:
+      foreign_key_constraint_on: player_of_the_match_id
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - tournament_id
+        - game_id
+        - pool_id
+        - round
+        - bracket_position
+        - is_pool_game
+        - home_fouls
+        - guest_fouls
+        - player_of_the_match_id
+        - player_of_the_match_name
+        - home_3_pointers
+        - guest_3_pointers
+        - home_free_throws
+        - guest_free_throws
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - tournament_id
+        - game_id
+        - pool_id
+        - round
+        - bracket_position
+        - is_pool_game
+        - home_fouls
+        - guest_fouls
+        - player_of_the_match_id
+        - player_of_the_match_name
+        - home_3_pointers
+        - guest_3_pointers
+        - home_free_throws
+        - guest_free_throws
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - tournament_id
+        - game_id
+        - pool_id
+        - round
+        - bracket_position
+        - is_pool_game
+        - home_fouls
+        - guest_fouls
+        - player_of_the_match_id
+        - player_of_the_match_name
+        - home_3_pointers
+        - guest_3_pointers
+        - home_free_throws
+        - guest_free_throws
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - pool_id
+        - round
+        - bracket_position
+        - is_pool_game
+        - home_fouls
+        - guest_fouls
+        - player_of_the_match_id
+        - player_of_the_match_name
+        - home_3_pointers
+        - guest_3_pointers
+        - home_free_throws
+        - guest_free_throws
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

@@ -1,0 +1,109 @@
+table:
+  name: seasons
+  schema: public
+configuration:
+  column_config:
+    community_id:
+      custom_name: communityId
+    created_at:
+      custom_name: createdAt
+    end_date:
+      custom_name: endDate
+    start_date:
+      custom_name: startDate
+    updated_at:
+      custom_name: updatedAt
+  custom_column_names:
+    community_id: communityId
+    created_at: createdAt
+    end_date: endDate
+    start_date: startDate
+    updated_at: updatedAt
+  custom_name: seasons
+  identifier: seasons
+  custom_root_fields:
+    delete: deleteSeasons
+    delete_by_pk: deleteSeasonsByPk
+    insert: insertSeasons
+    insert_one: insertSeasonsOne
+    select: seasons
+    select_aggregate: seasonsAggregate
+    select_by_pk: seasonsByPk
+    update: updateSeasons
+    update_by_pk: updateSeasonsByPk
+object_relationships:
+  - name: community
+    using:
+      foreign_key_constraint_on: community_id
+array_relationships:
+  - name: teamSeasons
+    using:
+      foreign_key_constraint_on:
+        column: season_id
+        table:
+          name: team_seasons
+          schema: public
+  - name: games
+    using:
+      foreign_key_constraint_on:
+        column: season_id
+        table:
+          name: games
+          schema: public
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - community_id
+        - name
+        - start_date
+        - end_date
+        - status
+        - description
+        - created_at
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - community_id
+        - name
+        - start_date
+        - end_date
+        - status
+        - description
+        - created_at
+        - updated_at
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - community_id
+        - name
+        - start_date
+        - end_date
+        - status
+        - description
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - name
+        - start_date
+        - end_date
+        - status
+        - description
+        - updated_at
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

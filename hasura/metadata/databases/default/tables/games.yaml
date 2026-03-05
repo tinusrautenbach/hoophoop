@@ -1,0 +1,295 @@
+table:
+  name: games
+  schema: public
+configuration:
+  column_config:
+    clock_seconds:
+      custom_name: clockSeconds
+    community_id:
+      custom_name: communityId
+    created_at:
+      custom_name: createdAt
+    current_period:
+      custom_name: currentPeriod
+    deleted_at:
+      custom_name: deletedAt
+    guest_fouls:
+      custom_name: guestFouls
+    guest_score:
+      custom_name: guestScore
+    guest_team_id:
+      custom_name: guestTeamId
+    guest_team_name:
+      custom_name: guestTeamName
+    guest_timeouts:
+      custom_name: guestTimeouts
+    home_fouls:
+      custom_name: homeFouls
+    home_score:
+      custom_name: homeScore
+    home_team_id:
+      custom_name: homeTeamId
+    home_team_name:
+      custom_name: homeTeamName
+    home_timeouts:
+      custom_name: homeTimeouts
+    is_timer_running:
+      custom_name: isTimerRunning
+    owner_id:
+      custom_name: ownerId
+    period_seconds:
+      custom_name: periodSeconds
+    scheduled_date:
+      custom_name: scheduledDate
+    season_id:
+      custom_name: seasonId
+    timer_offset_seconds:
+      custom_name: timerOffsetSeconds
+    timer_started_at:
+      custom_name: timerStartedAt
+    total_periods:
+      custom_name: totalPeriods
+    total_timeouts:
+      custom_name: totalTimeouts
+    updated_at:
+      custom_name: updatedAt
+  custom_column_names:
+    clock_seconds: clockSeconds
+    community_id: communityId
+    created_at: createdAt
+    current_period: currentPeriod
+    deleted_at: deletedAt
+    guest_fouls: guestFouls
+    guest_score: guestScore
+    guest_team_id: guestTeamId
+    guest_team_name: guestTeamName
+    guest_timeouts: guestTimeouts
+    home_fouls: homeFouls
+    home_score: homeScore
+    home_team_id: homeTeamId
+    home_team_name: homeTeamName
+    home_timeouts: homeTimeouts
+    is_timer_running: isTimerRunning
+    owner_id: ownerId
+    period_seconds: periodSeconds
+    scheduled_date: scheduledDate
+    season_id: seasonId
+    timer_offset_seconds: timerOffsetSeconds
+    timer_started_at: timerStartedAt
+    total_periods: totalPeriods
+    total_timeouts: totalTimeouts
+    updated_at: updatedAt
+  custom_name: games
+  identifier: games
+  custom_root_fields:
+    delete: deleteGames
+    delete_by_pk: deleteGamesByPk
+    insert: insertGames
+    insert_one: insertGamesOne
+    select: games
+    select_aggregate: gamesAggregate
+    select_by_pk: gamesByPk
+    update: updateGames
+    update_by_pk: updateGamesByPk
+object_relationships:
+  - name: community
+    using:
+      foreign_key_constraint_on: community_id
+  - name: homeTeam
+    using:
+      foreign_key_constraint_on: home_team_id
+  - name: guestTeam
+    using:
+      foreign_key_constraint_on: guest_team_id
+  - name: season
+    using:
+      foreign_key_constraint_on: season_id
+array_relationships:
+  - name: gameEvents
+    using:
+      foreign_key_constraint_on:
+        column: game_id
+        table:
+          name: game_events
+          schema: public
+  - name: gameRosters
+    using:
+      foreign_key_constraint_on:
+        column: game_id
+        table:
+          name: game_rosters
+          schema: public
+  - name: gameStates
+    using:
+      foreign_key_constraint_on:
+        column: game_id
+        table:
+          name: game_states
+          schema: public
+  - name: timerSync
+    using:
+      foreign_key_constraint_on:
+        column: game_id
+        table:
+          name: timer_sync
+          schema: public
+  - name: gameScorers
+    using:
+      foreign_key_constraint_on:
+        column: game_id
+        table:
+          name: game_scorers
+          schema: public
+  - name: scorerInvites
+    using:
+      foreign_key_constraint_on:
+        column: game_id
+        table:
+          name: game_scorer_invites
+          schema: public
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - owner_id
+        - community_id
+        - season_id
+        - name
+        - scheduled_date
+        - visibility
+        - home_team_id
+        - guest_team_id
+        - home_team_name
+        - guest_team_name
+        - status
+        - current_period
+        - total_periods
+        - period_seconds
+        - clock_seconds
+        - home_score
+        - guest_score
+        - home_fouls
+        - guest_fouls
+        - home_timeouts
+        - guest_timeouts
+        - total_timeouts
+        - possession
+        - mode
+        - is_timer_running
+        - timer_started_at
+        - timer_offset_seconds
+        - created_at
+        - updated_at
+      filter:
+        visibility:
+          _eq: public_general
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - owner_id
+        - community_id
+        - season_id
+        - name
+        - scheduled_date
+        - visibility
+        - home_team_id
+        - guest_team_id
+        - home_team_name
+        - guest_team_name
+        - status
+        - current_period
+        - total_periods
+        - period_seconds
+        - clock_seconds
+        - home_score
+        - guest_score
+        - home_fouls
+        - guest_fouls
+        - home_timeouts
+        - guest_timeouts
+        - total_timeouts
+        - possession
+        - mode
+        - is_timer_running
+        - timer_started_at
+        - timer_offset_seconds
+        - created_at
+        - updated_at
+        - deleted_at
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - owner_id
+        - community_id
+        - season_id
+        - name
+        - scheduled_date
+        - visibility
+        - home_team_id
+        - guest_team_id
+        - home_team_name
+        - guest_team_name
+        - status
+        - current_period
+        - total_periods
+        - period_seconds
+        - clock_seconds
+        - home_score
+        - guest_score
+        - home_fouls
+        - guest_fouls
+        - home_timeouts
+        - guest_timeouts
+        - total_timeouts
+        - possession
+        - mode
+        - is_timer_running
+        - timer_started_at
+        - timer_offset_seconds
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - community_id
+        - season_id
+        - name
+        - scheduled_date
+        - visibility
+        - home_team_id
+        - guest_team_id
+        - home_team_name
+        - guest_team_name
+        - status
+        - current_period
+        - total_periods
+        - period_seconds
+        - clock_seconds
+        - home_score
+        - guest_score
+        - home_fouls
+        - guest_fouls
+        - home_timeouts
+        - guest_timeouts
+        - total_timeouts
+        - possession
+        - mode
+        - is_timer_running
+        - timer_started_at
+        - timer_offset_seconds
+        - updated_at
+        - deleted_at
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

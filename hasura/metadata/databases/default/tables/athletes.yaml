@@ -1,0 +1,156 @@
+table:
+  name: athletes
+  schema: public
+configuration:
+  column_config:
+    birth_date:
+      custom_name: birthDate
+    community_id:
+      custom_name: communityId
+    created_at:
+      custom_name: createdAt
+    first_name:
+      custom_name: firstName
+    invited_at:
+      custom_name: invitedAt
+    invited_by:
+      custom_name: invitedBy
+    is_world_available:
+      custom_name: isWorldAvailable
+    merged_into_id:
+      custom_name: mergedIntoId
+    owner_id:
+      custom_name: ownerId
+    user_id:
+      custom_name: userId
+  custom_column_names:
+    birth_date: birthDate
+    community_id: communityId
+    created_at: createdAt
+    first_name: firstName
+    invited_at: invitedAt
+    invited_by: invitedBy
+    is_world_available: isWorldAvailable
+    merged_into_id: mergedIntoId
+    owner_id: ownerId
+    user_id: userId
+  custom_name: athletes
+  identifier: athletes
+  custom_root_fields:
+    delete: deleteAthletes
+    delete_by_pk: deleteAthletesByPk
+    insert: insertAthletes
+    insert_one: insertAthletesOne
+    select: athletes
+    select_aggregate: athletesAggregate
+    select_by_pk: athletesByPk
+    update: updateAthletes
+    update_by_pk: updateAthletesByPk
+object_relationships:
+  - name: community
+    using:
+      foreign_key_constraint_on: community_id
+array_relationships:
+  - name: teamMemberships
+    using:
+      foreign_key_constraint_on:
+        column: athlete_id
+        table:
+          name: team_memberships
+          schema: public
+  - name: gameRosters
+    using:
+      foreign_key_constraint_on:
+        column: athlete_id
+        table:
+          name: game_rosters
+          schema: public
+  - name: claimRequests
+    using:
+      foreign_key_constraint_on:
+        column: athlete_id
+        table:
+          name: player_claim_requests
+          schema: public
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - name
+        - first_name
+        - surname
+        - status
+        - is_world_available
+        - community_id
+        - birth_date
+        - created_at
+      filter:
+        _or:
+          - is_world_available:
+              _eq: true
+          - status:
+              _eq: active
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - owner_id
+        - name
+        - first_name
+        - surname
+        - email
+        - birth_date
+        - status
+        - is_world_available
+        - community_id
+        - merged_into_id
+        - user_id
+        - invited_by
+        - invited_at
+        - created_at
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - owner_id
+        - name
+        - first_name
+        - surname
+        - email
+        - birth_date
+        - status
+        - is_world_available
+        - community_id
+        - merged_into_id
+        - user_id
+        - invited_by
+        - invited_at
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - name
+        - first_name
+        - surname
+        - email
+        - birth_date
+        - status
+        - is_world_available
+        - community_id
+        - merged_into_id
+        - user_id
+        - invited_by
+        - invited_at
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

@@ -1,0 +1,140 @@
+table:
+  name: tournaments
+  schema: public
+configuration:
+  column_config:
+    community_id:
+      custom_name: communityId
+    created_at:
+      custom_name: createdAt
+    end_date:
+      custom_name: endDate
+    owner_id:
+      custom_name: ownerId
+    start_date:
+      custom_name: startDate
+    updated_at:
+      custom_name: updatedAt
+  custom_column_names:
+    community_id: communityId
+    created_at: createdAt
+    end_date: endDate
+    owner_id: ownerId
+    start_date: startDate
+    updated_at: updatedAt
+  custom_name: tournaments
+  identifier: tournaments
+  custom_root_fields:
+    delete: deleteTournaments
+    delete_by_pk: deleteTournamentsByPk
+    insert: insertTournaments
+    insert_one: insertTournamentsOne
+    select: tournaments
+    select_aggregate: tournamentsAggregate
+    select_by_pk: tournamentsByPk
+    update: updateTournaments
+    update_by_pk: updateTournamentsByPk
+object_relationships:
+  - name: community
+    using:
+      foreign_key_constraint_on: community_id
+array_relationships:
+  - name: pools
+    using:
+      foreign_key_constraint_on:
+        column: tournament_id
+        table:
+          name: tournament_pools
+          schema: public
+  - name: tournamentTeams
+    using:
+      foreign_key_constraint_on:
+        column: tournament_id
+        table:
+          name: tournament_teams
+          schema: public
+  - name: tournamentGames
+    using:
+      foreign_key_constraint_on:
+        column: tournament_id
+        table:
+          name: tournament_games
+          schema: public
+  - name: standings
+    using:
+      foreign_key_constraint_on:
+        column: tournament_id
+        table:
+          name: tournament_standings
+          schema: public
+  - name: awards
+    using:
+      foreign_key_constraint_on:
+        column: tournament_id
+        table:
+          name: tournament_awards
+          schema: public
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - community_id
+        - owner_id
+        - name
+        - type
+        - status
+        - start_date
+        - end_date
+        - description
+        - created_at
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - community_id
+        - owner_id
+        - name
+        - type
+        - status
+        - start_date
+        - end_date
+        - description
+        - created_at
+        - updated_at
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - community_id
+        - owner_id
+        - name
+        - type
+        - status
+        - start_date
+        - end_date
+        - description
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - name
+        - type
+        - status
+        - start_date
+        - end_date
+        - description
+        - updated_at
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []

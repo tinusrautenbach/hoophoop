@@ -1,0 +1,81 @@
+table:
+  name: tournament_teams
+  schema: public
+configuration:
+  column_config:
+    pool_id:
+      custom_name: poolId
+    team_id:
+      custom_name: teamId
+    tournament_id:
+      custom_name: tournamentId
+  custom_column_names:
+    pool_id: poolId
+    team_id: teamId
+    tournament_id: tournamentId
+  custom_name: tournamentTeams
+  identifier: tournamentTeams
+  custom_root_fields:
+    delete: deleteTournamentTeams
+    delete_by_pk: deleteTournamentTeamsByPk
+    insert: insertTournamentTeams
+    insert_one: insertTournamentTeamsOne
+    select: tournamentTeams
+    select_aggregate: tournamentTeamsAggregate
+    select_by_pk: tournamentTeamsByPk
+    update: updateTournamentTeams
+    update_by_pk: updateTournamentTeamsByPk
+object_relationships:
+  - name: tournament
+    using:
+      foreign_key_constraint_on: tournament_id
+  - name: team
+    using:
+      foreign_key_constraint_on: team_id
+  - name: pool
+    using:
+      foreign_key_constraint_on: pool_id
+select_permissions:
+  - role: anonymous
+    permission:
+      columns:
+        - id
+        - tournament_id
+        - team_id
+        - pool_id
+        - seed
+      filter: {}
+      allow_aggregations: false
+  - role: user
+    permission:
+      columns:
+        - id
+        - tournament_id
+        - team_id
+        - pool_id
+        - seed
+      filter: {}
+      allow_aggregations: true
+insert_permissions:
+  - role: user
+    permission:
+      check: {}
+      columns:
+        - id
+        - tournament_id
+        - team_id
+        - pool_id
+        - seed
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - pool_id
+        - seed
+      filter: {}
+      check: {}
+delete_permissions:
+  - role: user
+    permission:
+      filter: {}
+event_triggers: []
