@@ -36,4 +36,19 @@ TypeScript 5.x (strict mode, no escape hatches per constitution): Follow standar
 
 
 <!-- MANUAL ADDITIONS START -->
+
+## Branch Management
+
+After merging a feature branch to main, **always delete the old feature branch**:
+
+```bash
+# After merging PR to main:
+git checkout main
+git pull origin main
+git branch -d <feature-branch>           # Delete local branch
+git push origin --delete <feature-branch>  # Delete remote branch (if exists)
+```
+
+**Rationale**: Prevents stale branch accumulation, reduces confusion about which branches contain unmerged work.
+
 <!-- MANUAL ADDITIONS END -->
