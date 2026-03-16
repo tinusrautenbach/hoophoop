@@ -86,6 +86,7 @@ export function ScoringModal({ game, scoringFor, onClose, onScore }: ScoringModa
                     <div className="grid grid-cols-1 gap-4 flex-1">
                         <button
                             onClick={() => handleTeamSelect('home')}
+                            data-testid="team-home-btn"
                             className="bg-orange-600/10 border-2 border-orange-500/50 hover:bg-orange-600/20 rounded-3xl p-8 flex flex-col items-center justify-center gap-4 transition-all active:scale-95"
                         >
                             <div className="text-4xl font-black text-orange-500">{game.homeTeamName}</div>
@@ -94,6 +95,7 @@ export function ScoringModal({ game, scoringFor, onClose, onScore }: ScoringModa
                         </button>
                         <button
                             onClick={() => handleTeamSelect('guest')}
+                            data-testid="team-guest-btn"
                             className="bg-card/50 border-2 border-border hover:bg-card rounded-3xl p-8 flex flex-col items-center justify-center gap-4 transition-all active:scale-95"
                         >
                             <div className="text-4xl font-black text-slate-300">{game.guestTeamName}</div>

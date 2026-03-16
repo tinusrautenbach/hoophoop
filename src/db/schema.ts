@@ -604,21 +604,7 @@ export const gameStates = pgTable('game_states', {
     version: integer('version').default(1).notNull(),
 });
 
-export const hasuraGameEvents = pgTable('hasura_game_events', {
-    id: uuid('id').defaultRandom().primaryKey(),
-    gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).notNull(),
-    eventId: text('event_id'), // Client-generated event ID for deduplication
-    type: text('type').notNull(),
-    period: integer('period').notNull(),
-    clockAt: integer('clock_at').notNull(),
-    team: text('team'), // 'home' or 'guest'
-    player: text('player'),
-    value: integer('value'),
-    metadata: jsonb('metadata'),
-    description: text('description').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    createdBy: text('created_by'),
-});
+// hasura_game_events table removed - consolidated into game_events
 
 export const timerSync = pgTable('timer_sync', {
     gameId: uuid('game_id').references(() => games.id, { onDelete: 'cascade' }).primaryKey().notNull(),
@@ -634,10 +620,6 @@ export const timerSync = pgTable('timer_sync', {
 
 export const gameStatesRelations = relations(gameStates, ({ one }) => ({
     game: one(games, { fields: [gameStates.gameId], references: [games.id] }),
-}));
-
-export const hasuraGameEventsRelations = relations(hasuraGameEvents, ({ one }) => ({
-    game: one(games, { fields: [hasuraGameEvents.gameId], references: [games.id] }),
 }));
 
 export const timerSyncRelations = relations(timerSync, ({ one }) => ({

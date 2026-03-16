@@ -1,95 +1,135 @@
 # Tasks: End-to-End Multi-Scorer Browser Testing
 
 **Input**: Design documents from `/specs/003-multi-scorer-e2e/`
-**Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, quickstart.md ✅
+**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, quickstart.md
+
+**Tests**: Tests are INCLUDED as E2E testing is the primary deliverable of this feature.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (US1, US2, US3)
-- Exact file paths included in all descriptions
+- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
+- Include exact file paths in descriptions
+
+## Path Conventions
+
+- **Single project**: `src/`, `tests/` at repository root
+- **Web app**: `backend/src/`, `frontend/src/`
+- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
+- Paths shown below assume single project - adjust based on plan.md structure
 
 ---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Install dependencies, configure Playwright, and establish the test directory structure
+**Purpose**: Project initialization and Playwright setup
 
-- [x] T001 Add `@playwright/test` and `@clerk/testing` to devDependencies in `package.json`
-- [x] T002 Add `test:e2e` script to `package.json` (`playwright test`) and `test:e2e:headed` (`playwright test --headed`)
-- [x] T003 [P] Create `playwright.config.ts` at repo root — configure baseURL `http://localhost:3000`, timeout 30s, retries 2, reporters `['list']`, reference `globalSetup` pointing to `scripts/cleanup-e2e.ts`
-- [x] T004 [P] Create `tests/e2e/` directory structure: `tests/e2e/helpers/` and `tests/e2e/__fixtures__/`
-
-**Checkpoint**: `npx playwright --version` works; `tests/e2e/` directory exists
+- [X] T001 Add `@playwright/test` and `@clerk/testing` to devDependencies in `package.json`
+- [X] T002 Add `test:e2e` and `test:e2e:headed` scripts to `package.json`
+- [X] T003 [P] Create `playwright.config.ts` at repo root with baseURL, timeout, retries, and globalSetup config
+- [X] T004 [P] Create `tests/e2e/` directory structure with `helpers/` and `__fixtures__/` subdirectories
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core infrastructure shared by all user stories — cleanup script, auth helper, game fixture factory
+**Purpose**: Core infrastructure that MUST be complete before ANY user story tests can run
 
-**⚠️ CRITICAL**: No user story implementation can begin until this phase is complete
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [x] T005 Create `scripts/cleanup-e2e.ts` — Drizzle script that hard-deletes all rows from `games` where `name LIKE '%[E2E-TEST]%'`; import `db` from `src/db` and `games` table from `src/db/schema`; export `cleanupE2EGames()` and call it when run directly via `tsx`
-- [x] T006 Create `tests/e2e/helpers/auth.ts` — export `injectClerkSession(context: BrowserContext, userId: string): Promise<void>` that calls Clerk backend API to generate a testing token and injects the `__session` cookie into the Playwright `BrowserContext`; export `createTestUser(email: string, role: 'owner' | 'co_scorer' | 'viewer'): Promise<{ userId: string; cleanup: () => Promise<void> }>` using `@clerk/testing`
-- [x] T007 Create `tests/e2e/helpers/game-factory.ts` — export `createE2EGame(ownerToken: string): Promise<{ gameId: string; cleanup: () => Promise<void> }>` that POSTs to `/api/games` with name prefixed `[E2E-TEST]` and returns gameId; export `inviteScorer(gameId: string, userId: string, role: 'co_scorer' | 'viewer', ownerToken: string): Promise<void>` that calls the existing scorer invite API
+- [X] T005 Create `scripts/cleanup-e2e.ts` Drizzle script to hard-delete games WHERE name LIKE '%[E2E-TEST]%'
+- [X] T006 [P] Create `tests/e2e/helpers/auth.ts` with `injectClerkSession()` and `createTestUser()` functions using `@clerk/testing`
+- [X] T007 [P] Create `tests/e2e/helpers/game-factory.ts` with `createE2EGame()` and `inviteScorer()` functions
+- [X] T008 Wire `globalSetup` in `playwright.config.ts` to execute cleanup script before test runs
 
-**Checkpoint**: `npx tsx scripts/cleanup-e2e.ts` runs without error; auth and game-factory helpers compile with `tsc --noEmit`
-
----
-
-## Phase 3: User Story 1 — Two Scorers Scoring Simultaneously (Priority: P1) 🎯 MVP
-
-**Goal**: Two isolated browser contexts score the same game simultaneously via WebSockets; both DOMs converge to the correct combined total within 2 seconds
-
-**Independent Test**: `npx playwright test tests/e2e/multi-scorer.spec.ts` — all scenarios pass 100% of the time over 3 consecutive runs
-
-- [x] T008 [US1] Create `tests/e2e/multi-scorer.spec.ts` — scaffold the file with `import { test, expect, chromium } from '@playwright/test'` and `import { createTestUser, injectClerkSession } from './helpers/auth'` and `import { createE2EGame } from './helpers/game-factory'`; add `test.beforeEach` / `test.afterEach` hooks to provision two test users (owner + co_scorer) and one E2E game, storing IDs in test-scoped state
-- [x] T009 [US1] Implement scenario: **Simultaneous score updates converge** — open `contextA` and `contextB` with `browser.newContext()`, inject sessions, navigate both to `/game/[gameId]`, call `Promise.all([pageA.click('+2 Home'), pageB.click('+3 Guest')])`, then `await expect(pageA.locator('.home-score')).toHaveText('2', { timeout: 5000 })` and same for `pageB`; assert both pages agree on guest score `3` in `tests/e2e/multi-scorer.spec.ts`
-- [x] T010 [US1] Implement scenario: **Foul recorded by Scorer A appears on Scorer B** — Scorer A records a foul for a home player, then assert `pageB.locator('[data-testid="home-fouls"]')` updates to reflect the new count within 5s in `tests/e2e/multi-scorer.spec.ts`
-- [x] T011 [US1] Implement scenario: **Event deletion propagates across browsers** — Scorer A records a `+2 Home` event, waits for both pages to show `2`, Scorer A deletes the event, asserts both `pageA` and `pageB` show `0` within 5s in `tests/e2e/multi-scorer.spec.ts`
-
-**Checkpoint**: All 3 scenarios in `multi-scorer.spec.ts` pass; concurrent score updates show correct arithmetic with no dropped events
+**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
 ---
 
-## Phase 4: User Story 2 — Viewer vs Scorer Role Enforcement (Priority: P1)
+## Phase 3: User Story 1 - Two Scorers Scoring Simultaneously in Real Browsers (Priority: P1) 🎯 MVP
 
-**Goal**: Viewer browser context cannot see scoring controls; forced API calls from viewer are rejected 403 with no data corruption
+**Goal**: Simulate two browser users scoring the same game simultaneously and verify WebSocket synchronization works end-to-end
 
-**Independent Test**: `npx playwright test tests/e2e/roles.spec.ts` — all scenarios pass
+**Independent Test**: Run `npx playwright test tests/e2e/multi-scorer.spec.ts` and verify all assertions pass including concurrent score updates
 
-- [x] T012 [US2] Create `tests/e2e/roles.spec.ts` — scaffold with imports and `test.beforeEach` / `test.afterEach` hooks that provision one owner user + one viewer user and one E2E game; invite viewer via `inviteScorer(gameId, viewerUserId, 'viewer', ownerToken)` in `beforeEach`
-- [x] T013 [US2] Implement scenario: **Viewer sees no scoring controls** — inject viewer session into `contextViewer`, navigate to `/game/[gameId]`, assert `page.locator('[data-testid="score-btn"]')` has count 0 (or `isHidden()`), assert `page.locator('[data-testid="foul-btn"]')` has count 0, assert `page.locator('[data-testid="timer-control"]')` has count 0 in `tests/e2e/roles.spec.ts`
-- [x] T014 [US2] Implement scenario: **Viewer API call is rejected while scorer scores** — open owner `contextOwner` and viewer `contextViewer` simultaneously; scorer records `+2 Home`; viewer's context performs `page.evaluate(() => fetch('/api/games/[gameId]/events', { method: 'POST', body: JSON.stringify({ type: 'SCORE', ... }) }))` and asserts the response status is `403`; assert owner's context still shows correct score (not corrupted) in `tests/e2e/roles.spec.ts`
+### Implementation for User Story 1
 
-**Checkpoint**: Role matrix (data-model.md) is fully exercised; viewer is blocked at both UI and API layer
+- [X] T009 [P] [US1] Create `tests/e2e/multi-scorer.spec.ts` with test fixture to launch two isolated browser contexts
+- [X] T010 [P] [US1] Implement `beforeEach` hook in `tests/e2e/multi-scorer.spec.ts` to provision two Clerk test users and create [E2E-TEST] game via API
+- [X] T011 [US1] Write test in `tests/e2e/multi-scorer.spec.ts`: "concurrent scoring updates both browsers" - Scorer A clicks +2 Home, Scorer B clicks +3 Guest, both see 2-3 within 2 seconds
+- [X] T012 [US1] Write test in `tests/e2e/multi-scorer.spec.ts`: "foul updates propagate via WebSocket" - Scorer A records player foul, Scorer B sees updated foul counts without refresh
+- [X] T013 [US1] Write test in `tests/e2e/multi-scorer.spec.ts`: "event deletion syncs across browsers" - Scorer A deletes event, Scorer B's game log removes it and score recalculates
+- [X] T014 [US1] Implement `afterEach` hook in `tests/e2e/multi-scorer.spec.ts` to cleanup test game data
+
+**Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
 ---
 
-## Phase 5: User Story 3 — Automated Setup and Teardown (Priority: P2)
+## Phase 4: User Story 2 - Viewer vs Scorer Role Enforcement (Priority: P1)
 
-**Goal**: `npx playwright test` on a fresh local environment runs end-to-end without manual intervention; database is clean after each run
+**Goal**: Verify that viewers cannot mutate game state through UI or API, and role restrictions are enforced end-to-end
 
-**Independent Test**: Run `npx playwright test` after manually leaving orphan `[E2E-TEST]` games in the DB — confirm pre-run sweep removes them and tests pass
+**Independent Test**: Run `npx playwright test tests/e2e/roles.spec.ts` and verify viewer cannot interact with scoring controls and API rejects unauthorized requests
 
-- [x] T015 [US3] Wire `globalSetup` in `playwright.config.ts` to call `cleanupE2EGames()` from `scripts/cleanup-e2e.ts` before any test runs; confirm orphaned games are deleted by logging the count of deleted rows
-- [x] T016 [US3] Add `test.afterEach` teardown in both `multi-scorer.spec.ts` and `roles.spec.ts` that calls each fixture's `cleanup()` function (game deletion + Clerk user deletion) to leave the DB clean after each scenario
-- [x] T017 [US3] Verify `playwright.config.ts` sets appropriate timeouts for full-stack local execution: `timeout: 30000` per test, `expect.timeout: 7000`, `actionTimeout: 10000`, `navigationTimeout: 15000` to account for Hasura/DB overhead
+### Implementation for User Story 2
 
-**Checkpoint**: After a full test run, zero `[E2E-TEST]` rows remain in `games`; a second `npx playwright test` run starts clean
+- [X] T015 [P] [US2] Create `tests/e2e/roles.spec.ts` with test fixture for owner/scorer and viewer user contexts
+- [X] T016 [P] [US2] Implement `beforeEach` hook in `tests/e2e/roles.spec.ts` to create game with owner and invite viewer role via API
+- [X] T017 [US2] Write test in `tests/e2e/roles.spec.ts`: "viewer sees read-only UI" - Navigate as viewer, assert score buttons and timer controls are disabled/hidden
+- [X] T018 [US2] Write test in `tests/e2e/roles.spec.ts`: "viewer API requests are rejected" - Owner scores points, viewer attempts forced API call, assert 403 response and only owner points displayed
+- [X] T019 [US2] Write test in `tests/e2e/roles.spec.ts`: "scorer can perform all mutations" - Owner context can add points, fouls, and delete events successfully
+- [X] T020 [US2] Implement `afterEach` hook in `tests/e2e/roles.spec.ts` to cleanup role test data
+
+**Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
+
+---
+
+## Phase 5: User Story 3 - Automated Setup and Teardown for Local Dev (Priority: P2)
+
+**Goal**: Provide seamless test execution with automatic provisioning, authentication, and cleanup for local development
+
+**Independent Test**: Run `npx playwright test` on fresh environment and observe automatic user provisioning, game creation, execution, and cleanup without manual intervention
+
+### Implementation for User Story 3
+
+- [X] T021 [US3] Extend `tests/e2e/helpers/auth.ts` with `provisionTestUsers(count, roles)` function for batch user creation
+- [X] T022 [US3] Extend `tests/e2e/helpers/game-factory.ts` with `createCompleteTestScenario()` that provisions users, creates game, and assigns roles
+- [X] T023 [US3] Configure `playwright.config.ts` with project dependencies ensuring cleanup runs before tests
+- [X] T024 [US3] Add `globalTeardown` to `playwright.config.ts` to cleanup any remaining [E2E-TEST] data after suite completion
+- [X] T025 [US3] Write integration test in `tests/e2e/setup.spec.ts` validating full lifecycle: provision → authenticate → cleanup (fallback mechanism implemented in auth.ts)
+- [X] T026 [US3] Add `test:e2e:ui` and `test:e2e:debug` scripts to `package.json` for headed mode and step-through execution
+
+**Checkpoint**: All user stories should now be independently functional with automated setup/teardown
 
 ---
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-**Purpose**: Documentation, environment validation, and developer ergonomics
+**Purpose**: Improvements that affect multiple user stories
 
-- [x] T018 [P] Update `TESTING.md` — add an "E2E Tests" section documenting: prerequisites (local dev stack running), install command (`npm install`), browser install (`npx playwright install chromium`), run command (`npm run test:e2e`), headed mode (`npm run test:e2e:headed`), and the `[E2E-TEST]` prefix convention
-- [x] T019 [P] Add a `playwright.config.ts` `webServer` config block (optional, commented out) that can launch `bun run dev` automatically via `start-server-and-test` for CI environments where the server isn't pre-started
-- [x] T020 Run `npx tsc --noEmit` across the new files and fix any TypeScript strict-mode errors in `tests/e2e/` and `scripts/cleanup-e2e.ts`
+**Note on Test Users**: Tests use Clerk's testing API to dynamically create mock users with `+clerk_test@example.com` emails. No pre-existing test users required - the `createTestUser()` helper in `tests/e2e/helpers/auth.ts` handles user creation and cleanup automatically.
+
+- [X] T027 [P] Update `TESTING.md` with E2E setup instructions, environment variables, and troubleshooting section
+- [X] T028 [P] Add `webServer` config block (optional, commented out) to `playwright.config.ts` for CI environments
+- [X] T029 [P] Add CI workflow configuration example in `.github/workflows/e2e.yml` for GitHub Actions
+- [X] T030 Run `npx tsc --noEmit` across `tests/e2e/` and `scripts/cleanup-e2e.ts` and fix TypeScript strict-mode errors
+- [X] T031 Add stress test script `test:e2e:stress` to run E2E suite 10 times (use `npm run test:e2e:stress` when dev server is running)
+- [X] T032 Create environment validation script `scripts/validate-e2e-env.ts` with `npm run test:e2e:setup` command
+- [X] T033 [P] Audit codebase for Convex and Socket.io remnants - search all files for `convex`, `socket.io`, `socketio`, `Socket.io` references and ensure only Hasura is used for realtime functionality
+- [X] T034 [US1] Consolidate to single `game_events` table - update `hasura/metadata/databases/default/tables/game_events.yaml` to expose as `gameEvents` (not `gameEventsFull`) with matching GraphQL field names, then delete `hasura/metadata/databases/default/tables/hasura_game_events.yaml`
+- [X] T035 [US1] Update `src/hooks/use-hasura-game.ts` to use consolidated `game_events` table - change subscription from `gameEvents` (hasura_game_events) to use `game_events` with correct column mappings (clock_at → clockAt, etc.)
+- [X] T036 [US1] Create database migration to drop `hasura_game_events` table and migrate existing data to `game_events` in `drizzle/migrations/0017_consolidate_game_events.sql`
+- [X] T037 [US1] Update REST API in `src/app/api/games/[id]/events/route.ts` to write to consolidated `game_events` table only (remove any dual writes)
+- [X] T038 [US1] Re-enable T011 event deletion E2E test in `tests/e2e/multi-scorer.spec.ts` after table consolidation - verify event deletion syncs across browsers via WebSocket subscription
+- [X] T039 [US1] Refactor game log page in `src/app/game/[id]/scorer/page.tsx` to use only Hasura subscription for events - remove initial REST API fetch, rely entirely on `gameEvents` from `useHasuraGame` hook
+- [X] T040 [US1] Refactor full log page in `src/app/game/[id]/scorer/log/page.tsx` to use only Hasura subscription - remove dual-source approach where it fetches from REST API then overlays Hasura data
+- [X] T041 [US1] Fix event deletion via GraphQL in `src/app/game/[id]/scorer/log/page.tsx` - currently uses `removeEvent` from `useHasuraGame` hook which calls Hasura mutation, verify it works with new schema
+- [X] T042 [US1] Re-enable T011 test after game log refactor - verify event deletion propagates to scorer page via WebSocket
+- [X] T043 [US1] Debug why game log doesn't load historical events on initial page load - check if REST API `/api/games/[id]` returns events and if they're properly mapped in `src/app/game/[id]/scorer/log/page.tsx`
+- [X] T044 [US1] Ensure event deletion via Hasura mutation properly triggers WebSocket subscription update - verify `deleteGameEventsByPk` returns correct data for subscription to broadcast
+- [X] T045 [US1] Add wait for events to load in T011 test - ensure game log page waits for events from either REST API or Hasura subscription before attempting deletion
 
 ---
 
@@ -97,43 +137,50 @@
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: No dependencies — can start immediately
-- **Foundational (Phase 2)**: Depends on Phase 1 completion — BLOCKS all user stories
-- **User Story 1 (Phase 3)**: Depends on Phase 2 — no dependency on US2 or US3
-- **User Story 2 (Phase 4)**: Depends on Phase 2 — no dependency on US1 or US3
-- **User Story 3 (Phase 5)**: Depends on Phase 2 — integrates wiring from US1 & US2 files
-- **Polish (Phase 6)**: Depends on all user story phases being complete
+- **Setup (Phase 1)**: No dependencies - can start immediately
+- **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
+  - T005 depends on T001 (Drizzle dependencies)
+  - T006, T007 depend on T001 (@clerk/testing, Playwright types)
+  - T008 depends on T005 (cleanup script must exist)
+- **User Stories (Phase 3-5)**: All depend on Foundational phase completion
+  - User stories can then proceed in parallel (if staffed)
+  - Or sequentially in priority order (P1 → P1 → P2)
+- **Polish (Final Phase)**: Depends on all desired user stories being complete
 
 ### User Story Dependencies
 
-- **User Story 1 (P1)**: Fully independent after Phase 2
-- **User Story 2 (P1)**: Fully independent after Phase 2 — shares auth/game-factory helpers only
-- **User Story 3 (P2)**: Builds on the `beforeEach`/`afterEach` hooks already present in US1 and US2 files; adds `globalSetup` wiring
+- **User Story 1 (P1)**: Can start after Foundational (Phase 2) - No dependencies on other stories
+- **User Story 2 (P1)**: Can start after Foundational (Phase 2) - May reuse auth helpers from US1 but independently testable
+- **User Story 3 (P2)**: Can start after Foundational (Phase 2) - Builds on helpers from US1/US2 to enhance automation
 
 ### Within Each User Story
 
-- Helpers (T006, T007) before spec files
-- Scaffold spec (T008, T012) before individual scenario tasks
-- All scenario tasks within a story are independent of each other [P]
+- Setup hooks (`beforeEach`) before any test cases
+- Test cases can run in parallel if marked [P]
+- Cleanup hooks (`afterEach`) after test cases complete
+- Story complete before moving to next priority
 
 ### Parallel Opportunities
 
-- T003 and T004 can run in parallel (different files)
-- T005, T006, T007 can run in parallel (different files, no shared deps)
-- T009, T010, T011 can run in parallel (same file but different `test()` blocks — implement independently then merge)
-- T013, T014 can run in parallel
-- T018, T019, T020 can run in parallel
+- All Setup tasks marked [P] can run in parallel
+- All Foundational tasks marked [P] can run in parallel (within Phase 2)
+- Once Foundational phase completes, US1 and US2 can start in parallel (both P1)
+- Different test cases within a story marked [P] can run in parallel
+- T027, T028, T029, T033 in Polish phase can run in parallel
 
 ---
 
 ## Parallel Example: User Story 1
 
 ```bash
-# After T008 scaffold is merged:
-Task T009: "Simultaneous score updates converge" scenario in multi-scorer.spec.ts
-Task T010: "Foul propagation" scenario in multi-scorer.spec.ts
-Task T011: "Event deletion propagation" scenario in multi-scorer.spec.ts
-# All three scenarios implemented independently, merged into the same file
+# Launch test fixture setup:
+Task: "Create tests/e2e/multi-scorer.spec.ts with test fixture to launch two isolated browser contexts"
+Task: "Implement beforeEach hook in tests/e2e/multi-scorer.spec.ts to provision two Clerk test users and create [E2E-TEST] game via API"
+
+# Once fixture ready, launch all tests for User Story 1 together:
+Task: "Write test: 'concurrent scoring updates both browsers'"
+Task: "Write test: 'foul updates propagate via WebSocket'"
+Task: "Write test: 'event deletion syncs across browsers'"
 ```
 
 ---
@@ -143,29 +190,42 @@ Task T011: "Event deletion propagation" scenario in multi-scorer.spec.ts
 ### MVP First (User Story 1 Only)
 
 1. Complete Phase 1: Setup
-2. Complete Phase 2: Foundational (cleanup script + auth helper + game factory)
-3. Complete Phase 3: User Story 1 (multi-scorer.spec.ts)
-4. **STOP and VALIDATE**: `npx playwright test tests/e2e/multi-scorer.spec.ts` passes
-5. Ship — concurrent WebSocket propagation is proven end-to-end
+2. Complete Phase 2: Foundational (CRITICAL - blocks all stories)
+3. Complete Phase 3: User Story 1
+4. **STOP and VALIDATE**: Run `npx playwright test tests/e2e/multi-scorer.spec.ts` - verify all tests pass
+5. Deploy/demo if ready
 
 ### Incremental Delivery
 
-1. Setup + Foundational → infrastructure ready
-2. User Story 1 → concurrent scoring proven (MVP!)
-3. User Story 2 → role enforcement proven
-4. User Story 3 → teardown is bulletproof + CI-ready
-5. Polish → docs + CI config
+1. Complete Setup + Foundational → Foundation ready
+2. Add User Story 1 → Test independently → MVP achieved
+3. Add User Story 2 → Test independently → Role security validated
+4. Add User Story 3 → Test independently → Developer experience improved
+5. Each story adds value without breaking previous stories
 
-### Summary
+### Parallel Team Strategy
+
+With multiple developers:
+
+1. Team completes Setup + Foundational together
+2. Once Foundational is done:
+   - Developer A: User Story 1 (concurrent scoring)
+   - Developer B: User Story 2 (role enforcement) - shares auth helpers
+   - Developer C: User Story 3 (automation) - builds on both
+3. Stories complete and integrate independently
+
+---
+
+## Summary
 
 | Metric | Value |
 |--------|-------|
-| Total tasks | 20 |
+| Total tasks | 42 |
 | Phase 1 (Setup) | 4 tasks |
-| Phase 2 (Foundational) | 3 tasks |
-| User Story 1 (P1) | 4 tasks |
-| User Story 2 (P1) | 3 tasks |
-| User Story 3 (P2) | 3 tasks |
-| Polish | 3 tasks |
-| Parallel opportunities | T003+T004, T005+T006+T007, T009+T010+T011, T013+T014, T018+T019+T020 |
-| MVP scope | Phases 1–3 (11 tasks) |
+| Phase 2 (Foundational) | 4 tasks |
+| User Story 1 (P1) | 11 tasks |
+| User Story 2 (P1) | 6 tasks |
+| User Story 3 (P2) | 6 tasks |
+| Polish | 7 tasks |
+| Parallel opportunities | T003+T004, T006+T007, T009+T010, T015+T016, T027+T028+T029, T033, T034+T035+T036+T037 |
+| MVP scope | Phases 1-3 (19 tasks) |

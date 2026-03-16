@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth } from '@/components/auth-provider';
 import { flushSync } from 'react-dom';
 import { getHasuraWsClient, graphqlRequest, closeHasuraConnection } from '@/lib/hasura/client';
 import type { Client, ExecutionResult } from 'graphql-ws';
@@ -220,22 +220,20 @@ const INIT_GAME_STATE_MUTATION = `
 const ADD_GAME_EVENT_MUTATION = `
   mutation AddGameEvent(
     $gameId: uuid!
-    $eventId: String
-    $type: String!
+    $type: event_type
     $period: Int!
     $clockAt: Int!
-    $team: String
+    $team: team_side
     $player: String
     $value: Int
     $metadata: jsonb
     $description: String!
-    $createdAt: timestamptz
+    $createdAt: timestamp
     $createdBy: String
   ) {
     insertGameEventsOne(
       object: {
         gameId: $gameId
-        eventId: $eventId
         type: $type
         period: $period
         clockAt: $clockAt
@@ -907,7 +905,6 @@ export function useHasuraGame(gameId: string) {
   const addEvent = useCallback(async (event: Omit<GameEvent, '_id' | 'gameId' | 'createdAt'>) => {
     await graphqlRequest(ADD_GAME_EVENT_MUTATION, {
       gameId,
-      eventId: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: event.type,
       period: event.period,
       clockAt: event.clockAt,

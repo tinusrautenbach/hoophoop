@@ -12,18 +12,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-import { AuthProvider, SignedIn, SignedOut, UserButton, SignInButton } from '@/components/auth-provider'
+import { AuthProvider as ClerkProvider, SignedIn, SignedOut, UserButton, SignInButton } from '@/components/auth-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeToggleIcon } from '@/components/theme-toggle'
 import HasuraProvider from '@/components/HasuraProvider'
 import Link from 'next/link'
-import { syncUser } from "@/lib/auth-server";
-import { auth } from "@/lib/auth-server";
+import { syncUser, auth } from "@/lib/auth-server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-
-export const dynamic = 'force-dynamic';
+import { headers } from 'next/headers';
 
 export const metadata: Metadata = {
   title: "HoopHoop",
@@ -52,12 +50,24 @@ async function getUserTheme(): Promise<'light' | 'dark' | null> {
   }
 }
 
+async function isNextInternalRequest(): Promise<boolean> {
+  try {
+    const h = await headers();
+    const url = h.get('x-invoke-path') || h.get('x-nextjs-page') || '';
+    return url.startsWith('/_next');
+  } catch {
+    return false;
+  }
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await syncUser();
+  if (!await isNextInternalRequest()) {
+    await syncUser();
+  }
   const userTheme = await getUserTheme();
 
   return (
@@ -66,7 +76,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
         suppressHydrationWarning
       >
-        <AuthProvider>
+        <ClerkProvider>
           <HasuraProvider>
             <ThemeProvider userTheme={userTheme}>
               <header className="border-b border-[var(--border)] p-4 flex justify-between items-center bg-[var(--card)]/50 backdrop-blur-md sticky top-0 z-50">
@@ -90,7 +100,7 @@ export default async function RootLayout({
                   <SignedOut>
                     <ThemeToggleIcon />
                     <SignInButton mode="modal">
-                      <button className="text-sm font-medium bg-orange-600 px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-white">Sign In</button>
+                      <button type="button" className="text-sm font-medium bg-orange-600 px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-white">Sign In</button>
                     </SignInButton>
                   </SignedOut>
                 </nav>
@@ -100,7 +110,7 @@ export default async function RootLayout({
               </main>
             </ThemeProvider>
           </HasuraProvider>
-        </AuthProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

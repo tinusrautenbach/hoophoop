@@ -19,15 +19,10 @@ type Game = {
     guestTeamName: string;
 };
 
-type GameEventRaw = {
-    createdAt?: string;
-    timestamp?: string;
-};
-
 export default function FullLogPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { gameEvents, removeEvent, isConnected } = useHasuraGame(id as string);
+    const { gameEvents, removeEvent, isConnected, forceRecalculate } = useHasuraGame(id as string);
 
     const [game, setGame] = useState<Game | null>(null);
     const [events, setEvents] = useState<GameEvent[]>([]);
@@ -41,19 +36,12 @@ export default function FullLogPage() {
             .then(res => res.json())
             .then(data => {
                 setGame(data);
-                if (data.events) {
-                    setEvents(data.events.map((e: GameEventRaw) => ({
-                        ...e,
-                        timestamp: new Date(e.createdAt || e.timestamp || Date.now())
-                    })) as GameEvent[]);
-                }
                 setLoading(false);
             });
     }, [id]);
 
     useEffect(() => {
-        if (!gameEvents) return;
-        const mappedEvents = gameEvents.map((e) => ({
+        const mappedEvents = (gameEvents ?? []).map((e) => ({
             ...e,
             id: e._id,
             timestamp: new Date(e.createdAt || Date.now()),
@@ -65,7 +53,10 @@ export default function FullLogPage() {
     const deleteEvent = async (eventId: string) => {
         try {
             await removeEvent(eventId as unknown as string);
+            // Optimistic local update - subscription will confirm
             setEvents(prev => prev.filter(e => e.id !== eventId));
+            // Recalculate scores to ensure game_states reflects the deletion
+            forceRecalculate().catch(err => console.error('Recalc failed (non-fatal):', err));
         } catch (error) {
             console.error('Failed to delete event:', error);
         }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { games, teamMemberships, gameRosters, communityMembers, users, teams } from '@/db/schema';
+import { games, teamMemberships, gameRosters, communityMembers, users, teams, gameStates } from '@/db/schema';
 import { auth } from '@/lib/auth-server';
 import { eq, desc, or, inArray, isNull, and } from 'drizzle-orm';
 import { logActivity } from '@/lib/activity-logger';

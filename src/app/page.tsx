@@ -112,12 +112,12 @@ export default function LandingPage() {
           console.error('Failed to fetch teams:', err);
         })
         .finally(() => {
-          setLoading(false);
+          setTimeout(() => setLoading(false), 0);
         });
     } else {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [userId]);
 
   const handleCreateGame = async (e: React.FormEvent) => {
