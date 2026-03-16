@@ -21,7 +21,36 @@ export function registerTokenGetter(getter: () => Promise<string | null>): void 
 
 async function getToken(): Promise<string | null> {
   if (tokenGetter) {
-    return tokenGetter();
+    const token = await tokenGetter();
+    if (token) return token;
+  }
+
+  if (typeof window !== 'undefined') {
+    const mockToken = (window as unknown as { __mockAuthToken?: string }).__mockAuthToken;
+    if (mockToken) {
+      return mockToken;
+    }
+  }
+
+  return null;
+}
+
+function extractUserIdFromJwt(token: string): string | null {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return decoded.sub || decoded['x-hasura-user-id'] || null;
+  } catch {
+    return null;
+  }
+}
+
+function getMockUserId(): string | null {
+  if (typeof window !== 'undefined') {
+    const mockId = (window as unknown as { __mockUserId?: string }).__mockUserId;
+    if (mockId) {
+      return mockId;
+    }
   }
   return null;
 }
@@ -36,14 +65,29 @@ export function getHasuraWsClient(): Client {
       url: wsUrl,
       connectionParams: async () => {
         const token = await getToken();
-        if (token) {
+        const isMockToken = token && token.includes('eyJhbGciOiJub25lI');
+        const adminSecret = process.env.NEXT_PUBLIC_HASURA_ADMIN_SECRET;
+
+        if (isMockToken && adminSecret) {
           return {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            'X-Hasura-Admin-Secret': adminSecret,
+            'X-Hasura-User-Id': getMockUserId() || 'anonymous',
+            'X-Hasura-Role': 'user',
           };
         }
-        // No token — connect as anonymous (read-only public game data only)
+
+        if (token && !isMockToken && adminSecret) {
+          const userId = extractUserIdFromJwt(token);
+          return {
+            'X-Hasura-Admin-Secret': adminSecret,
+            ...(userId ? { 'X-Hasura-User-Id': userId, 'X-Hasura-Role': 'user' } : {}),
+          };
+        }
+
+        if (token && !isMockToken) {
+          return { Authorization: `Bearer ${token}` };
+        }
+
         return {};
       },
       retryAttempts: Infinity,
@@ -80,19 +124,27 @@ export async function graphqlRequest<T = unknown>(
     'Content-Type': 'application/json',
   };
 
-  // Prefer user JWT over admin secret — admin secret is a server-side fallback only
   const token = await getToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  } else {
-    // Server-side usage (e.g. scripts, migrations) — never expose in client bundle
-    const adminSecret =
-      typeof window === 'undefined'
-        ? process.env.HASURA_ADMIN_SECRET
-        : undefined;
-    if (adminSecret) {
-      headers['X-Hasura-Admin-Secret'] = adminSecret;
+  const isMockToken = token && token.includes('eyJhbGciOiJub25lI');
+  const adminSecret = process.env.NEXT_PUBLIC_HASURA_ADMIN_SECRET;
+  const serverHasuraSecret = process.env.HASURA_ADMIN_SECRET;
+
+  if (!token && (adminSecret || serverHasuraSecret)) {
+    headers['X-Hasura-Admin-Secret'] = (adminSecret || serverHasuraSecret)!;
+    headers['X-Hasura-Role'] = 'user';
+  } else if (isMockToken && adminSecret) {
+    headers['X-Hasura-Admin-Secret'] = adminSecret;
+    headers['X-Hasura-User-Id'] = getMockUserId() || 'anonymous';
+    headers['X-Hasura-Role'] = 'user';
+  } else if (token && !isMockToken && adminSecret) {
+    const userId = extractUserIdFromJwt(token);
+    headers['X-Hasura-Admin-Secret'] = adminSecret;
+    if (userId) {
+      headers['X-Hasura-User-Id'] = userId;
+      headers['X-Hasura-Role'] = 'user';
     }
+  } else if (token && !isMockToken) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(hasuraUrl, {

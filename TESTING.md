@@ -1,19 +1,19 @@
-# Testing Guide for Convex Migration
+# Testing Guide
 
 ## Overview
 
-This guide covers testing strategies for the Convex migration from Socket.io.
+This guide covers testing strategies for the Hasura GraphQL realtime implementation.
 
 ## Test Structure
 
 ```
 src/
 ├── hooks/__tests__/          # Hook tests
-│   └── use-convex-game.test.ts
-├── lib/test/                 # Test utilities
-│   └── convex-test-utils.ts
+│   └── use-hasura-game.test.ts
+├── lib/hasura/               # Hasura client and utilities
+│   └── __tests__/client.test.ts
 ├── app/game/[id]/__tests__/  # Component tests (future)
-└── server/__tests__/         # Server tests (now using Convex)
+└── server/__tests__/         # Server tests
 ```
 
 ## Running Tests
@@ -26,55 +26,47 @@ npm test
 npm test -- --coverage
 
 # Run specific test file
-npm test -- src/hooks/__tests__/use-convex-game.test.ts
+npm test -- src/hooks/__tests__/use-hasura-game.test.ts
 
 # Run in watch mode
 npm test -- --watch
+
+# Run E2E tests
+npm run test:e2e
 ```
 
 ## Test Categories
 
 ### 1. Unit Tests - Hooks
 
-Test the `useConvexGame` hook:
+Test the `useHasuraGame` hook:
 
 ```typescript
 import { describe, it, expect } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useConvexGame } from "@/hooks/use-convex-game";
+import { useHasuraGame } from "@/hooks/use-hasura-game";
 
-describe("useConvexGame", () => {
+describe("useHasuraGame", () => {
   it("should return game state", () => {
-    const { result } = renderHook(() => useConvexGame("game-123"));
+    const { result } = renderHook(() => useHasuraGame("game-123"));
     expect(result.current.gameState).toBeDefined();
   });
 });
 ```
 
-### 2. Convex Function Tests
+### 2. Hasura GraphQL Tests
 
-Test Convex queries and mutations using the Convex testing framework:
+Test Hasura queries and subscriptions:
 
 ```typescript
-// convex/games.test.ts
-import { convexTest } from "convex-test";
-import { api } from "./_generated/api";
-import schema from "./schema";
+// src/lib/hasura/__tests__/client.test.ts
+import { describe, it, expect } from "vitest";
+import { createHasuraClient } from "@/lib/hasura/client";
 
-const test = convexTest(schema);
-
-describe("games", () => {
-  it("should create and retrieve game state", async () => {
-    const gameId = await test.mutation(api.games.updateGameState, {
-      gameId: "test-game",
-      updates: { homeScore: 10 },
-    });
-
-    const state = await test.query(api.games.getGameState, {
-      gameId: "test-game",
-    });
-
-    expect(state?.homeScore).toBe(10);
+describe("Hasura Client", () => {
+  it("should create client with proper headers", () => {
+    const client = createHasuraClient();
+    expect(client).toBeDefined();
   });
 });
 ```
@@ -87,88 +79,111 @@ Test full user flows:
 // tests/integration/game-flow.test.ts
 describe("Game Scoring Flow", () => {
   it("should allow scorer to update score and spectators to see it", async () => {
-    // Scorer updates score
-    // Spectator receives update via Convex subscription
+    // Scorer updates score via GraphQL mutation
+    // Spectator receives update via Hasura GraphQL subscription
   });
 });
 ```
 
-## Mocking Convex
+### 4. E2E Tests
 
-### Mock useQuery
+Run multi-scorer E2E tests with Playwright:
+
+```bash
+# Run all E2E tests
+npm run test:e2e
+
+# Run with visible browser
+npm run test:e2e:headed
+
+# Run with UI debugger
+npm run test:e2e:ui
+```
+
+## Hasura Testing
+
+### Mock Hasura Subscription
 
 ```typescript
-vi.mock("convex/react", async () => {
-  const actual = await vi.importActual("convex/react");
+vi.mock("@/lib/hasura/client", async () => {
+  const actual = await vi.importActual("@/lib/hasura/client");
   return {
     ...actual,
-    useQuery: vi.fn(),
-    useMutation: vi.fn(() => vi.fn()),
+    useHasuraSubscription: vi.fn(),
+    useHasuraMutation: vi.fn(() => vi.fn()),
   };
 });
 ```
 
-### Mock Convex Client
+### Mock Hasura Client
 
 ```typescript
-const mockClient = {
+const mockHasuraClient = {
   query: vi.fn(),
-  mutation: vi.fn(),
-  subscription: vi.fn(),
+  mutate: vi.fn(),
+  subscribe: vi.fn(),
 };
 ```
 
 ## Testing Checklist
 
-### Before Migration (Socket.io)
+### Hasura Implementation
 
-- [ ] Socket connection tests
-- [ ] Event broadcast tests
-- [ ] Room management tests
-- [ ] Timer synchronization tests
-
-### After Migration (Convex)
-
-- [ ] Query subscription tests
-- [ ] Mutation tests
+- [ ] GraphQL query tests
+- [ ] GraphQL subscription tests
 - [ ] Optimistic update tests
 - [ ] Timer state tests
 - [ ] Game state persistence tests
 - [ ] Event log tests
 
-## Key Differences
+## Key Technologies
 
-| Socket.io | Convex |
-|-----------|--------|
-| `socket.emit()` | `useMutation()` |
-| `socket.on()` | `useQuery()` (reactive) |
-| Manual room management | Automatic via query args |
-| Server-side timer intervals | Client-side timer calculation |
-| Mock socket server | Mock Convex client |
+| Technology | Purpose |
+|------------|---------|
+| Hasura GraphQL | Real-time subscriptions |
+| graphql-ws | WebSocket client for subscriptions |
+| Vitest | Unit testing framework |
+| Playwright | E2E browser testing |
+| @clerk/testing | Authentication testing |
 
 ## Debugging Tests
 
 ```bash
 # Debug specific test
-npm test -- --reporter=verbose src/hooks/__tests__/use-convex-game.test.ts
+npm test -- --reporter=verbose src/hooks/__tests__/use-hasura-game.test.ts
 
 # Debug with logs
-DEBUG=convex:* npm test
+DEBUG=hasura:* npm test
 ```
 
 ## CI/CD Integration
 
 ```yaml
-# .github/workflows/test.yml
+# .github/workflows/ci.yml
 - name: Run tests
   run: npm test
   env:
-    CONVEX_DEPLOYMENT: test-deployment
+    HASURA_GRAPHQL_URL: http://localhost:8080/v1/graphql
+    HASURA_ADMIN_SECRET: test-secret
 ```
 
-## Future Test Additions
+## E2E Test Setup
 
-1. E2E tests with Playwright
-2. Load tests for concurrent users
-3. Offline/online sync tests
-4. Performance benchmarks
+### Prerequisites
+
+- Local development stack running (Next.js + PostgreSQL + Hasura)
+- Clerk test users configured
+
+### Environment Variables
+
+```bash
+# .env.local
+CLERK_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+HASURA_GRAPHQL_URL=http://localhost:8080/v1/graphql
+HASURA_ADMIN_SECRET=your-admin-secret
+```
+
+### Running E2E Tests
+
+See [TESTING.md](./TESTING.md) for detailed E2E setup instructions.

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuth, SignInButton, SignUpButton } from '@clerk/nextjs';
+import { useAuth, useUser, SignInButton, SignUpButton } from '@/components/auth-provider';
 import { Check, X, Loader2, User, Trophy } from 'lucide-react';
 import Link from 'next/link';
 
@@ -26,7 +26,9 @@ type InvitationResponse = {
 export default function PlayerInvitationPage() {
   const params = useParams();
   const router = useRouter();
-  const { isSignedIn, isLoaded } = useAuth();
+  const { userId, isLoaded: authLoaded } = useAuth();
+  const { isSignedIn, isLoaded: userLoaded } = useUser();
+  const isLoaded = authLoaded && userLoaded;
   const token = params.token as string;
   
   const [loading, setLoading] = useState(true);

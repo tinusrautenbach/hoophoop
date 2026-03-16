@@ -4,10 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "nodemon server.ts",
+    "dev:e2e": "PORT=3002 NEXT_PUBLIC_USE_MOCK_AUTH=true npm run dev",
     "build": "next build",
     "start": "tsx server.ts",
     "lint": "eslint",
     "test": "vitest --config tests/vitest.config.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:stress": "bash -c 'for i in {1..10}; do echo \"=== Run $i/10 ===\"; npx playwright test || exit 1; done'",
+    "test:e2e:setup": "tsx scripts/validate-e2e-env.ts",
     "hasura:setup": "node scripts/migrate.mjs && node scripts/force-migrate-hasura.mjs",
     "typecheck": "tsc --noEmit",
     "ci:check": "npm run lint && npm run typecheck && npm audit --audit-level=moderate && npm run test -- --run --reporter=verbose",
@@ -39,6 +46,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@clerk/testing": "^1.14.3",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",

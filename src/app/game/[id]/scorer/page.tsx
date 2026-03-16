@@ -93,7 +93,7 @@ type Game = {
 export default function ScorerPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { userId } = useAuth();
+    const { userId, getToken } = useAuth();
     
     const {
         gameState: hasuraState,
@@ -148,12 +148,6 @@ export default function ScorerPage() {
             .then(res => res.json())
             .then(data => {
                 setGame(data);
-                if (data.events) {
-                    setEvents(data.events.map((e: GameEventRaw) => ({
-                        ...e,
-                        timestamp: new Date(e.createdAt || e.timestamp || Date.now())
-                    })) as GameEvent[]);
-                }
                 if (data.scorers) {
                     setScorers(data.scorers);
                 }
@@ -203,7 +197,7 @@ export default function ScorerPage() {
     }, [hasuraState, currentClock, isTimerRunning]);
 
     useEffect(() => {
-        if (!hasuraEvents || hasuraEvents.length === 0) return;
+        if (!hasuraEvents) return;
         
         setEvents(hasuraEvents.map((e) => ({
             id: e._id,
@@ -303,8 +297,10 @@ export default function ScorerPage() {
             // Recalculate scores so game_states reflects the deletion
             await forceRecalculate();
             
+            const token = await getToken();
             fetch(`/api/games/${id}/events?eventId=${eventId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             }).catch(err => console.error('Failed to sync event deletion:', err));
         } catch (error) {
             console.error('Failed to delete event:', error);

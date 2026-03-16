@@ -68,7 +68,7 @@ const UPSERT_GAME_STATE_MUTATION = `
     $guestFouls: Int!
     $updatedAt: timestamptz!
   ) {
-    update_game_states(
+    updateGameStates(
       where: { gameId: { _eq: $gameId } }
       _set: {
         homeScore: $homeScore

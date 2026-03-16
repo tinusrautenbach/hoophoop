@@ -13,24 +13,36 @@ configuration:
       custom_name: gameId
     game_roster_id:
       custom_name: gameRosterId
+    stat_type:
+      custom_name: statType
+    modified_by:
+      custom_name: modifiedBy
+    modified_at:
+      custom_name: modifiedAt
+    previous_version:
+      custom_name: previousVersion
   custom_column_names:
     clock_at: clockAt
     created_at: createdAt
     created_by: createdBy
     game_id: gameId
     game_roster_id: gameRosterId
-  custom_name: gameEventsFull
-  identifier: gameEventsFull
+    stat_type: statType
+    modified_by: modifiedBy
+    modified_at: modifiedAt
+    previous_version: previousVersion
+  custom_name: gameEvents
+  identifier: gameEvents
   custom_root_fields:
-    delete: deleteGameEventsFull
-    delete_by_pk: deleteGameEventsFullByPk
-    insert: insertGameEventsFull
-    insert_one: insertGameEventsFullOne
-    select: gameEventsFull
-    select_aggregate: gameEventsFullAggregate
-    select_by_pk: gameEventsFullByPk
-    update: updateGameEventsFull
-    update_by_pk: updateGameEventsFullByPk
+    delete: deleteGameEvents
+    delete_by_pk: deleteGameEventsByPk
+    insert: insertGameEvents
+    insert_one: insertGameEventsOne
+    select: gameEvents
+    select_aggregate: gameEventsAggregate
+    select_by_pk: gameEventsByPk
+    update: updateGameEvents
+    update_by_pk: updateGameEventsByPk
 object_relationships:
   - name: game
     using:
@@ -55,6 +67,11 @@ select_permissions:
         - description
         - created_at
         - created_by
+        - stat_type
+        - modified_by
+        - modified_at
+        - version
+        - previous_version
       filter: {}
       allow_aggregations: false
   - role: user
@@ -73,6 +90,11 @@ select_permissions:
         - description
         - created_at
         - created_by
+        - stat_type
+        - modified_by
+        - modified_at
+        - version
+        - previous_version
       filter: {}
       allow_aggregations: true
 insert_permissions:
@@ -93,6 +115,11 @@ insert_permissions:
         - description
         - created_at
         - created_by
+        - stat_type
+        - modified_by
+        - modified_at
+        - version
+        - previous_version
 update_permissions:
   - role: user
     permission:
@@ -107,6 +134,11 @@ update_permissions:
         - metadata
         - description
         - created_by
+        - stat_type
+        - modified_by
+        - modified_at
+        - version
+        - previous_version
       filter: {}
       check: {}
 delete_permissions:

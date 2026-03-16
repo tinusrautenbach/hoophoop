@@ -5,22 +5,19 @@ export interface E2EGame {
   cleanup: () => Promise<void>;
 }
 
-/**
- * Creates an [E2E-TEST] game via the REST API, owned by the given user.
- * The game name is prefixed with [E2E-TEST] so the globalSetup cleanup
- * script can identify and remove it before each test run.
- *
- * The game is immediately PATCHed to `live` status so the scoring UI renders.
- *
- * @param ownerCookieHeader - The Cookie header value (e.g. "__session=<token>")
- *   for the owner user.  The factory makes real HTTP calls to the app.
- */
-export async function createE2EGame(ownerCookieHeader: string): Promise<E2EGame> {
+interface MockAuthHeaders {
+  cookie: string;
+  userId: string;
+}
+
+export async function createE2EGame(mockAuth: MockAuthHeaders): Promise<E2EGame> {
   const createRes = await fetch(`${BASE_URL}/api/games`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Cookie: ownerCookieHeader,
+      'x-test-auth': 'true',
+      'x-test-user-id': mockAuth.userId,
+      Cookie: mockAuth.cookie,
     },
     body: JSON.stringify({
       name: `[E2E-TEST] Concurrent Scoring ${Date.now()}`,
@@ -39,12 +36,13 @@ export async function createE2EGame(ownerCookieHeader: string): Promise<E2EGame>
   const game = (await createRes.json()) as { id: string };
   const gameId = game.id;
 
-  // Transition game to `live` so the scorer UI shows buttons
   const patchRes = await fetch(`${BASE_URL}/api/games/${gameId}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      Cookie: ownerCookieHeader,
+      'x-test-auth': 'true',
+      'x-test-user-id': mockAuth.userId,
+      Cookie: mockAuth.cookie,
     },
     body: JSON.stringify({ status: 'live' }),
   });
@@ -60,7 +58,11 @@ export async function createE2EGame(ownerCookieHeader: string): Promise<E2EGame>
       try {
         const deleteRes = await fetch(`${BASE_URL}/api/games/${gameId}`, {
           method: 'DELETE',
-          headers: { Cookie: ownerCookieHeader },
+          headers: {
+            'x-test-auth': 'true',
+            'x-test-user-id': mockAuth.userId,
+            Cookie: mockAuth.cookie,
+          },
         });
         if (!deleteRes.ok) {
           console.warn(`[E2E GameFactory] Failed to delete game ${gameId}: ${deleteRes.status}`);
@@ -72,27 +74,19 @@ export async function createE2EGame(ownerCookieHeader: string): Promise<E2EGame>
   };
 }
 
-/**
- * Invites a user to a game as a scorer with the specified role.
- *
- * Uses `POST /api/games/[id]/scorers` to add the userId directly.
- *
- * @param gameId - The game to invite the user to.
- * @param userId - The Clerk userId to invite.
- * @param role - 'co_scorer' or 'viewer'.
- * @param ownerCookieHeader - Cookie header for the game owner.
- */
 export async function inviteScorer(
   gameId: string,
   userId: string,
   role: 'co_scorer' | 'viewer',
-  ownerCookieHeader: string
+  ownerAuth: MockAuthHeaders
 ): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/games/${gameId}/scorers`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Cookie: ownerCookieHeader,
+      'x-test-auth': 'true',
+      'x-test-user-id': ownerAuth.userId,
+      Cookie: ownerAuth.cookie,
     },
     body: JSON.stringify({ userId, role }),
   });
@@ -105,21 +99,16 @@ export async function inviteScorer(
   }
 }
 
-/**
- * Extracts all Clerk-related cookies from a Playwright BrowserContext's
- * cookie jar and returns them as a Cookie header string.
- * Clerk's server-side middleware requires both __session and __client_uat
- * (plus __clerk_db_jwt if present) to authenticate requests correctly.
- */
 export async function getCookieHeader(
-  cookieJar: Array<{ name: string; value: string }>
-): Promise<string> {
-  const clerkCookieNames = ['__session', '__client_uat', '__clerk_db_jwt'];
-  const relevantCookies = cookieJar.filter((c) =>
-    clerkCookieNames.some((name) => c.name === name || c.name.startsWith(name + '_'))
+  cookieJar: Array<{ name: string; value: string }>,
+  userId: string
+): Promise<MockAuthHeaders> {
+  const mockCookies = cookieJar.filter((c) =>
+    c.name.startsWith('__mock_')
   );
-  if (!relevantCookies.some((c) => c.name === '__session' || c.name.startsWith('__session_'))) {
-    throw new Error('[E2E GameFactory] No __session cookie found in context');
-  }
-  return relevantCookies.map((c) => `${c.name}=${c.value}`).join('; ');
+  const cookieString = mockCookies.map((c) => `${c.name}=${c.value}`).join('; ');
+  return {
+    cookie: cookieString,
+    userId,
+  };
 }

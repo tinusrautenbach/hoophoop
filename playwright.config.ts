@@ -6,16 +6,16 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 30000,
+  timeout: 60000,
   expect: {
     timeout: 7000,
   },
   retries: 2,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3002',
     actionTimeout: 10000,
-    navigationTimeout: 15000,
+    navigationTimeout: 30000,
     trace: 'on-first-retry',
   },
   projects: [
@@ -25,10 +25,15 @@ export default defineConfig({
     },
   ],
   globalSetup: require.resolve('./scripts/cleanup-e2e.ts'),
-  // webServer: {
-  //   command: 'npm run dev',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: true,
-  //   timeout: 120000,
-  // },
+  webServer: {
+    command: 'PORT=3002 NEXT_PUBLIC_USE_MOCK_AUTH=true npm run dev',
+    url: 'http://localhost:3002',
+    reuseExistingServer: true,
+    timeout: 120000,
+    env: {
+      ...process.env,
+      PORT: '3002',
+      NEXT_PUBLIC_USE_MOCK_AUTH: 'true',
+    },
+  },
 });

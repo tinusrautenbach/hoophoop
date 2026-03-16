@@ -2,96 +2,84 @@
 
 **Feature**: 003-multi-scorer-e2e  
 **Date**: 2026-03-02
+**Status**: Ready
 
 ## Prerequisites
 
 - Node.js 18+
-- Local development server running (`bun run dev`)
+- Local development server running (`bun run dev` or `npm run dev`)
 - Local PostgreSQL and Hasura running (typically via Docker/Colima)
-- Clerk Secret Key available in `.env.local` (required by `@clerk/testing`)
 
 ## Installation & Setup
 
 ```bash
-# Switch to feature branch
-git checkout 003-multi-scorer-e2e
+# Install dependencies
+npm install
 
-# Install Playwright and Clerk testing tools
-npm install -D @playwright/test @clerk/testing
-
-# Install Playwright browsers (if not already installed)
+# Install Playwright browsers
 npx playwright install chromium
 ```
 
 ## Running the E2E Suite
 
-The test suite assumes your Next.js application is running locally on port 3000.
+The test suite uses mock authentication (no Clerk required for tests).
 
 ```bash
-# Start the local application in one terminal
-bun run dev
+# Start the local application
+npm run dev
 
-# In a new terminal, run the pre-test cleanup (removes old [E2E-TEST] data)
-# (This will be integrated into the Playwright globalSetup, but can be run manually)
-npx tsx scripts/cleanup-e2e.ts
+# In a new terminal, run the E2E tests
+npm run test:e2e
 
-# Run the full Playwright suite (headless)
-npx playwright test
-
-# Run tests with UI visible (headed mode - great for debugging)
+# Run with UI visible (headed mode - great for debugging)
 npx playwright test --headed
 
-# Run only the concurrent scoring test
+# Run only specific test files
 npx playwright test tests/e2e/multi-scorer.spec.ts
-
-# Run only the role enforcement test
 npx playwright test tests/e2e/roles.spec.ts
+
+# Run stress test (10 consecutive runs)
+npm run test:e2e:stress
 ```
 
-## Writing Tests: Key Patterns
+## Test Overview
 
-### 1. Authenticating a Context
+### multi-scorer.spec.ts
+Tests concurrent scoring by multiple users:
+- T009: Simultaneous score updates converge on both pages
+- T010: Foul recorded by owner propagates to scorer page  
+- T011: Event deletion by owner propagates to scorer page
 
-Always use the auth helper to inject Clerk tokens, avoiding the UI login flow:
+### roles.spec.ts
+Tests role-based access control:
+- T013: Viewer can observe game but cannot add scorers
+- T014: Viewer API POST returns 403 while owner succeeds
 
-```typescript
-import { test, chromium } from '@playwright/test';
-import { clerkSetup } from '@clerk/testing';
+## How It Works
 
-test('auth example', async () => {
-  const { createUser, getToken } = await clerkSetup();
-  const user = await createUser({ email: 'test@example.com' });
-  const token = await getToken(user.id);
-  
-  const browser = await chromium.launch();
-  const context = await browser.newContext();
-  // Inject token
-  await context.addCookies([{ name: '__session', value: token, domain: 'localhost', path: '/' }]);
-  
-  const page = await context.newPage();
-  await page.goto('http://localhost:3000/game/123');
-});
+The tests use mock authentication that bypasses Clerk:
+1. Mock users are defined in `tests/e2e/helpers/auth.ts`
+2. Browser contexts set `x-test-auth` and `x-test-user-id` headers
+3. The app's `auth()` function in `src/lib/auth-server.ts` recognizes these headers and returns mock user data
+4. No Clerk interaction required - tests run completely independently
+
+## Troubleshooting
+
+### Tests Fail with "Game not found"
+Run the cleanup script:
+```bash
+npx tsx scripts/cleanup-e2e.ts
 ```
 
-### 2. Waiting for WebSocket Sync
+### Timeout Errors
+Ensure your dev server is running on http://localhost:3000
 
-Because Hasura subscriptions are asynchronous, do not assert immediately after clicking a button. Use Playwright's auto-retrying assertions or wait for specific network/UI states.
+## Test Results
 
-```typescript
-// BAD: Assumes instant sync
-await pageA.click('button:has-text("+2 Home")');
-expect(await pageB.locator('.home-score').innerText()).toBe('2');
+### T031: 10-Pass Stress Test
+Run: `npm run test:e2e:stress`
+Expected: 100% pass rate across 10 consecutive runs
 
-// GOOD: Playwright will retry this assertion until it passes or times out
-await pageA.click('button:has-text("+2 Home")');
-await expect(pageB.locator('.home-score')).toHaveText('2', { timeout: 5000 });
-```
-
-## Implementation Order
-
-1. Update `package.json` with dependencies and new `test:e2e` scripts.
-2. Create `playwright.config.ts` and set up the `[E2E-TEST]` prefix cleanup script.
-3. Build the `tests/e2e/helpers/auth.ts` utility to abstract the Clerk token injection.
-4. Implement `multi-scorer.spec.ts` (User Story 1 & 3).
-5. Implement `roles.spec.ts` (User Story 2).
-6. Update `TESTING.md` to document the new E2E workflow for the team.
+### T032: Quickstart Validation
+Run: `npm run test:e2e:setup`
+Validates all prerequisites are met
