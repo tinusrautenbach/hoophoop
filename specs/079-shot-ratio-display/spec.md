@@ -57,7 +57,7 @@ As events are added, edited, or deleted during a live game, the shot ratio for e
 
 ### Edge Cases
 
-- What happens when a player has events for the same shot type but for different teams (traded mid-game)? → Ratio is calculated per player per team; if team changes, ratios are separate for each team stint.
+- What happens when a player has events for the same shot type but for different teams (traded mid-game)? → Ratio accumulates across teams for same player (acceptable behavior — player switching teams mid-game is extremely rare).
 - What happens when an event's type is changed from 'score' to 'miss' or vice versa? → The ratio recalculates based on the new type; made count and attempts count update accordingly.
 - What happens when event chronology is ambiguous (events with same timestamp)? → Events are sorted by creation time as a secondary sort key.
 - What happens for players not in the roster (ad-hoc entries)? → Ratio is calculated the same way using player name matching.

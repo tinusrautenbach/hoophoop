@@ -19,9 +19,9 @@
 
 **Purpose**: Verify existing implementation and prepare test environment
 
-- [ ] T001 Verify existing implementation in `src/components/scorer/game-log.tsx` (lines 61-89 for `getShotRatio`, lines 152-157 for display)
-- [ ] T002 [P] Create test directory `src/components/scorer/__tests__/` if it doesn't exist
-- [ ] T003 [P] Create test directory `tests/e2e/` if it doesn't exist
+- [X] T001 Verify existing implementation in `src/components/scorer/game-log.tsx` (lines 61-89 for `getShotRatio`, lines 152-157 for display)
+- [X] T002 [P] Create test directory `src/components/scorer/__tests__/` if it doesn't exist
+- [X] T003 [P] Create test directory `tests/e2e/` if it doesn't exist
 
 ---
 
@@ -31,7 +31,7 @@
 
 **⚠️ CRITICAL**: These fixes should be applied before writing tests
 
-- [ ] T004 Fix chronology secondary sort in `src/components/scorer/game-log.tsx` line 68-69: Add `|| a.id.localeCompare(b.id)` for deterministic ordering when timestamps are equal
+- [X] T004 Fix chronology secondary sort in `src/components/scorer/game-log.tsx` line 68-69: Add `|| a.id.localeCompare(b.id)` for deterministic ordering when timestamps are equal
 
 **Checkpoint**: Edge case fix complete - tests can now validate correct behavior
 
@@ -45,19 +45,19 @@
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Create unit test file `src/components/scorer/__tests__/game-log.test.ts` with test setup and helper function `createEvent()`
-- [ ] T006 [P] [US1] Add test case "returns null for non-score/miss events" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T007 [P] [US1] Add test case "returns null for events without player" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T008 [P] [US1] Add test case "returns (1/1) for first made shot" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T009 [P] [US1] Add test case "calculates cumulative ratio correctly for score events" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T010 [P] [US1] Add test case "separates ratios by shot type (1PT, 2PT, 3PT)" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T011 [US1] Run unit tests and verify all pass: `npm test -- game-log.test.ts`
+- [X] T005 [P] [US1] Create unit test file `src/components/scorer/__tests__/game-log.test.ts` with test setup and helper function `createEvent()`
+- [X] T006 [P] [US1] Add test case "returns null for non-score/miss events" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T007 [P] [US1] Add test case "returns null for events without player" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T008 [P] [US1] Add test case "returns (1/1) for first made shot" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T009 [P] [US1] Add test case "calculates cumulative ratio correctly for score events" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T010 [P] [US1] Add test case "separates ratios by shot type (1PT, 2PT, 3PT)" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T011 [US1] Run unit tests and verify all pass: `npm test -- game-log.test.ts`
 
 ### E2E Tests for User Story 1
 
-- [ ] T012 [US1] Create E2E test file `tests/e2e/shot-ratio.spec.ts` with Playwright setup
-- [ ] T013 [US1] Add E2E test "displays ratio on score events" in `tests/e2e/shot-ratio.spec.ts` — create game with score events, verify ratio displays
-- [ ] T014 [US1] Run E2E tests and verify: `npm run test:e2e -- shot-ratio`
+- [X] T012 [US1] Create E2E test file `tests/e2e/shot-ratio.spec.ts` with Playwright setup
+- [X] T013 [US1] Add E2E test "displays ratio on score events" in `tests/e2e/shot-ratio.spec.ts` — create game with score events, verify ratio displays
+- [X] T014 [US1] Run E2E tests and verify: `npm run test:e2e -- shot-ratio`
 
 **Checkpoint**: User Story 1 complete — score events show correct shot ratios
 
@@ -71,15 +71,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Add test case "returns (0/1) for first missed shot" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T016 [P] [US2] Add test case "calculates cumulative ratio correctly for mixed score/miss events" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T017 [P] [US2] Add test case "separates ratios by player" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T018 [US2] Run unit tests and verify all pass: `npm test -- game-log.test.ts`
+- [X] T015 [P] [US2] Add test case "returns (0/1) for first missed shot" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T016 [P] [US2] Add test case "calculates cumulative ratio correctly for mixed score/miss events" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T017 [P] [US2] Add test case "separates ratios by player" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T018 [US2] Run unit tests and verify all pass: `npm test -- game-log.test.ts`
 
 ### E2E Tests for User Story 2
 
-- [ ] T019 [US2] Add E2E test "displays ratio on miss events" in `tests/e2e/shot-ratio.spec.ts` — create game with miss events, verify ratio displays with correct made/attempts
-- [ ] T020 [US2] Run E2E tests and verify: `npm run test:e2e -- shot-ratio`
+- [X] T019 [US2] Add E2E test "displays ratio on miss events" in `tests/e2e/shot-ratio.spec.ts` — create game with miss events, verify ratio displays with correct made/attempts
+- [X] T020 [US2] Run E2E tests and verify: `npm run test:e2e -- shot-ratio`
 
 **Checkpoint**: User Story 2 complete — miss events show correct shot ratios
 
@@ -93,16 +93,16 @@
 
 ### Tests for User Story 3
 
-- [ ] T021 [P] [US3] Add test case "ratio updates when earlier event is deleted" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T022 [P] [US3] Add test case "ratio updates when new event is added" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T023 [P] [US3] Add test case "ratio updates chronologically — events are sorted by timestamp then id" in `src/components/scorer/__tests__/game-log.test.ts`
-- [ ] T024 [US3] Run unit tests and verify all pass: `npm test -- game-log.test.ts`
+- [X] T021 [P] [US3] Add test case "ratio updates when earlier event is deleted" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T022 [P] [US3] Add test case "ratio updates when new event is added" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T023 [P] [US3] Add test case "ratio updates chronologically — events are sorted by timestamp then id" in `src/components/scorer/__tests__/game-log.test.ts`
+- [X] T024 [US3] Run unit tests and verify all pass: `npm test -- game-log.test.ts`
 
 ### E2E Tests for User Story 3
 
-- [ ] T025 [US3] Add E2E test "updates ratio when events are added" in `tests/e2e/shot-ratio.spec.ts`
-- [ ] T026 [US3] Add E2E test "updates ratio when events are deleted" in `tests/e2e/shot-ratio.spec.ts`
-- [ ] T027 [US3] Run E2E tests and verify: `npm run test:e2e -- shot-ratio`
+- [X] T025 [US3] Add E2E test "updates ratio when events are added" in `tests/e2e/shot-ratio.spec.ts`
+- [X] T026 [US3] Add E2E test "updates ratio when events are deleted" in `tests/e2e/shot-ratio.spec.ts`
+- [X] T027 [US3] Run E2E tests and verify: `npm run test:e2e -- shot-ratio`
 
 **Checkpoint**: User Story 3 complete — ratios update in real-time
 
@@ -114,13 +114,13 @@
 
 ### Spec Update (Team Filter Edge Case)
 
-- [ ] T028 Update assumption in `specs/079-shot-ratio-display/spec.md`: Change edge case "Ratio is calculated per player per team" to "Ratio accumulates across teams for same player (acceptable behavior — player switching teams mid-game is extremely rare)"
+- [X] T028 Update assumption in `specs/079-shot-ratio-display/spec.md`: Change edge case "Ratio is calculated per player per team" to "Ratio accumulates across teams for same player (acceptable behavior — player switching teams mid-game is extremely rare)"
 
 ### Documentation
 
-- [ ] T029 [P] Update `specs/079-shot-ratio-display/quickstart.md` with final test commands
-- [ ] T030 [P] Run TypeScript type check: `npx tsc --noEmit` — verify no new errors
-- [ ] T031 Run full test suite: `npm test` — verify all existing tests still pass
+- [X] T029 [P] Update `specs/079-shot-ratio-display/quickstart.md` with final test commands
+- [X] T030 [P] Run TypeScript type check: `npx tsc --noEmit` — verify no new errors
+- [X] T031 Run full test suite: `npm test` — verify all existing tests still pass
 
 ---
 

@@ -65,8 +65,9 @@ function getShotRatio(
     if ((event.type !== 'score' && event.type !== 'miss') || !event.player || !event.value) return null;
 
     // Sort chronologically (oldest first) so "up to now" slicing is correct
+    // Secondary sort by id for deterministic ordering when timestamps are equal
     const chronological = [...allEvents].sort(
-        (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+        (a, b) => (a.timestamp.getTime() - b.timestamp.getTime()) || a.id.localeCompare(b.id)
     );
 
     const eventIndex = chronological.findIndex((e) => e.id === event.id);
