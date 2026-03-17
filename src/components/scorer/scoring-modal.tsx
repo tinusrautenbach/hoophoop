@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Users, ArrowLeftRight, Shirt } from 'lucide-react';
+import { X, Users, ArrowLeftRight, Shirt, Check } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,7 +27,7 @@ type Game = {
 
 interface ScoringModalProps {
     game: Game;
-    scoringFor: { points: number; isMiss?: boolean; side?: 'home' | 'guest' };
+    scoringFor: { points: number; isMiss?: boolean; side?: 'home' | 'guest'; preSelectedPlayerId?: string };
     onClose: () => void;
     onScore: (playerId: string | null, team: 'home' | 'guest') => void;
 }
@@ -37,20 +37,19 @@ export function ScoringModal({ game, scoringFor, onClose, onScore }: ScoringModa
 
     const activePlayers = game.rosters.filter(
         r => r.team === selectedTeam && r.isActive
-    ).slice(0, 5); // Limit to 5
+    ).slice(0, 5);
 
-    // Fill remaining slots if less than 5 active players (shouldn't happen with proper bench selection)
     const slots = [...activePlayers];
 
-    // When guest team is selected, skip player selection and score for team only
-    // When home team has no active players, also skip player selection
+    const preSelectedPlayer = scoringFor.preSelectedPlayerId 
+        ? game.rosters.find(r => r.id === scoringFor.preSelectedPlayerId)
+        : null;
+
     const handleTeamSelect = (team: 'home' | 'guest') => {
         const activeHome = game.rosters.filter(r => r.team === 'home' && r.isActive);
         if (team === 'guest' || (team === 'home' && activeHome.length === 0)) {
-            // No players to pick — score directly for the team
             onScore(null, team);
         } else {
-            // For home team with active players, show player selection
             setSelectedTeam(team);
         }
     };
@@ -75,6 +74,11 @@ export function ScoringModal({ game, scoringFor, onClose, onScore }: ScoringModa
                                 ? (selectedTeam === 'home' ? game.homeTeamName : game.guestTeamName)
                                 : 'WHICH TEAM?'}
                         </span>
+                        {preSelectedPlayer && selectedTeam && (
+                            <span className="text-sm font-normal text-slate-400 ml-2">
+                                (#{preSelectedPlayer.number})
+                            </span>
+                        )}
                     </h3>
                     <button onClick={onClose} className="p-3 text-slate-400 hover:text-white bg-card rounded-full transition-all active:scale-95">
                         <X size={24} />
@@ -107,28 +111,38 @@ export function ScoringModal({ game, scoringFor, onClose, onScore }: ScoringModa
                     /* 6-Player Grid */
                     <div className="grid grid-cols-2 grid-rows-3 gap-3 flex-1 h-full">
                         {/* 5 Player Slots */}
-                        {slots.map((player) => (
-                            <button
-                                key={player.id}
-                                onClick={() => onScore(player.id, selectedTeam)}
-                                className={cn(
-                                    "relative rounded-2xl flex flex-col items-center justify-center p-4 transition-all active:scale-95 border-2",
-                                    selectedTeam === 'home' 
-                                        ? "bg-input border-border hover:border-orange-500" 
-                                        : "bg-input border-border hover:border-slate-400"
-                                )}
-                            >
-                                <span className={cn(
-                                    "text-5xl font-black mb-1",
-                                    selectedTeam === 'home' ? "text-orange-500" : "text-slate-300"
-                                )}>
-                                    {player.number}
-                                </span>
-                                <span className="text-xs font-bold uppercase truncate w-full text-center text-slate-500">
-                                    {player.name}
-                                </span>
-                            </button>
-                        ))}
+                        {slots.map((player) => {
+                            const isPreSelected = preSelectedPlayer?.id === player.id;
+                            return (
+                                <button
+                                    key={player.id}
+                                    onClick={() => onScore(player.id, selectedTeam)}
+                                    className={cn(
+                                        "relative rounded-2xl flex flex-col items-center justify-center p-4 transition-all active:scale-95 border-2",
+                                        isPreSelected 
+                                            ? "bg-orange-500/20 border-orange-500 ring-2 ring-orange-500/50"
+                                            : selectedTeam === 'home' 
+                                                ? "bg-input border-border hover:border-orange-500" 
+                                                : "bg-input border-border hover:border-slate-400"
+                                    )}
+                                >
+                                    {isPreSelected && (
+                                        <div className="absolute top-2 right-2 bg-orange-500 rounded-full p-1">
+                                            <Check size={12} className="text-white" />
+                                        </div>
+                                    )}
+                                    <span className={cn(
+                                        "text-5xl font-black mb-1",
+                                        selectedTeam === 'home' ? "text-orange-500" : "text-slate-300"
+                                    )}>
+                                        {player.number}
+                                    </span>
+                                    <span className="text-xs font-bold uppercase truncate w-full text-center text-slate-500">
+                                        {player.name}
+                                    </span>
+                                </button>
+                            );
+                        })}
 
                         {/* 6th Slot: Opponent (Switch to Guest and Score) */}
                         <button
