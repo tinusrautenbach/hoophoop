@@ -31,7 +31,7 @@
     "graphql": "^16.12.0",
     "graphql-ws": "^6.0.7",
     "lucide-react": "^0.563.0",
-    "next": "16.1.6",
+    "next": "^16.1.7",
     "nodemailer": "^8.0.1",
     "opencode-google-antigravity-auth": "^0.2.15",
     "postgres": "^3.4.8",
