@@ -136,7 +136,7 @@ export function SimpleScorer({ game, handleScore, handleFoul }: SimpleScorerProp
                 <div className="grid grid-cols-2 gap-4">
                     <button
                         onClick={() => handleFoul('home')}
-                        className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 active:scale-95 transition-all rounded-2xl p-4 font-black flex justify-between items-center text-red-500"
+                        className="bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 active:scale-95 transition-all rounded-2xl p-6 font-black flex justify-between items-center text-red-500"
                         data-testid="foul-btn-home"
                     >
                         <span className="text-[10px] uppercase tracking-widest">Foul</span>
@@ -144,7 +144,7 @@ export function SimpleScorer({ game, handleScore, handleFoul }: SimpleScorerProp
                     </button>
                     <button
                         onClick={() => handleFoul('guest')}
-                        className="bg-input border border-border hover:bg-card active:scale-95 transition-all rounded-2xl p-4 font-black flex justify-between items-center"
+                        className="bg-input border border-border hover:bg-card active:scale-95 transition-all rounded-2xl p-6 font-black flex justify-between items-center"
                         data-testid="foul-btn-guest"
                     >
                         <span className="text-[10px] uppercase tracking-widest text-slate-500">Foul</span>

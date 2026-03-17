@@ -177,9 +177,9 @@ export function GameLog({ events, onDelete, onEdit, limit, onHeaderClick, hideHe
                                             setPendingDeleteId(event.id);
                                             setExpandedId(event.id);
                                         }}
-                                        className="ml-1 p-1 text-slate-700 hover:text-red-500 transition-colors rounded flex-shrink-0"
+                                        className="ml-1 p-1 min-h-[32px] min-w-[32px] text-slate-700 hover:text-red-500 transition-colors rounded flex-shrink-0 flex items-center justify-center"
                                     >
-                                        <Trash2 size={12} />
+                                        <Trash2 size={20} />
                                     </button>
                                 )}
                             </div>

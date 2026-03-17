@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import { useHasuraGame } from '@/hooks/use-hasura-game';
@@ -23,6 +23,8 @@ import { GameLog, type GameEvent } from '@/components/scorer/game-log';
 import { ScorerManager } from '@/components/scorer/scorer-manager';
 import { GameSettingsModal } from '@/components/scorer/game-settings-modal';
 import { RecalcToast } from '@/components/scorer/recalc-toast';
+import { MutationFeedback } from '@/components/scorer/mutation-feedback';
+import { ANIMATION_DURATIONS } from '@/lib/constants/touch-targets';
 import QRCode from 'react-qr-code';
 
 function cn(...inputs: ClassValue[]) {
@@ -124,7 +126,7 @@ export default function ScorerPage() {
 
     const [game, setGame] = useState<Game | null>(null);
     const [loading, setLoading] = useState(true);
-    const [scoringFor, setScoringFor] = useState<{ points: number, side?: 'home' | 'guest', isMiss?: boolean } | null>(null);
+    const [scoringFor, setScoringFor] = useState<{ points: number, side?: 'home' | 'guest', isMiss?: boolean, preSelectedPlayerId?: string } | null>(null);
     const [isSubsOpen, setIsSubsOpen] = useState(false);
     const [isTimeEditing, setIsTimeEditing] = useState(false);
     const [tempTime, setTempTime] = useState<{ min: string, sec: string }>({ min: '10', sec: '00' });
@@ -142,6 +144,12 @@ export default function ScorerPage() {
     const [scorers, setScorers] = useState<Scorer[]>([]);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    
+    const [mutationPending, setMutationPending] = useState(false);
+    const [mutationSuccess, setMutationSuccess] = useState(false);
+    const [mutationError, setMutationError] = useState<string | null>(null);
+    
+    const lastScoreTimeRef = useRef<number>(0);
 
     useEffect(() => {
         fetch(`/api/games/${id}`)
@@ -161,6 +169,15 @@ export default function ScorerPage() {
         const interval = setInterval(updatePresence, 30_000);
         return () => clearInterval(interval);
     }, [updatePresence]);
+
+    useEffect(() => {
+        if (!mutationSuccess && !mutationError) return;
+        const timer = setTimeout(() => {
+            setMutationSuccess(false);
+            setMutationError(null);
+        }, 2000);
+        return () => clearTimeout(timer);
+    }, [mutationSuccess, mutationError]);
 
     // Sync Hasura subscription data into local game state
     useEffect(() => {
@@ -370,6 +387,14 @@ export default function ScorerPage() {
 
     const handlePlayerScore = (rosterEntryId: string) => {
         if (!scoringFor || !game) return;
+        
+        // Debounce: prevent rapid duplicate scoring
+        const now = Date.now();
+        if (now - lastScoreTimeRef.current < ANIMATION_DURATIONS.debounceWindow) {
+            setScoringFor(null);
+            return;
+        }
+        lastScoreTimeRef.current = now;
 
         const player = game.rosters.find(r => r.id === rosterEntryId);
         if (!player) return;
@@ -397,9 +422,17 @@ export default function ScorerPage() {
             ? { homeScore: game.homeScore + scoringFor.points }
             : { guestScore: game.guestScore + scoringFor.points };
 
+        setMutationPending(true);
+        
         updateGame({
             ...scoreUpdate,
             rosters: updatedRosters
+        }).then(() => {
+            setMutationPending(false);
+            setMutationSuccess(true);
+        }).catch((err) => {
+            setMutationPending(false);
+            setMutationError(err instanceof Error ? err.message : 'Failed to save score');
         });
 
         addEvent({
@@ -463,6 +496,7 @@ export default function ScorerPage() {
 
     const handleTimeout = (side?: 'home' | 'guest') => {
         if (!game) return;
+        
         if (!side) {
             setIsTimeoutOpen(true);
             return;
@@ -495,6 +529,7 @@ export default function ScorerPage() {
 
     const nextPeriod = async () => {
         if (!game) return;
+        
         const ok = await advancePeriod();
         if (!ok) return;
         addEvent({
@@ -716,6 +751,12 @@ export default function ScorerPage() {
             )}
             {/* Recalculation Toast */}
             <RecalcToast result={recalcToast} onDismiss={dismissRecalcToast} />
+            <MutationFeedback
+                isPending={mutationPending}
+                isSuccess={mutationSuccess}
+                isError={!!mutationError}
+                errorMessage={mutationError || undefined}
+            />
             {/* Top Header - THE DISPLAY */}
             <div className="bg-black/40 border-b border-border p-2 landscape:p-1 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-1">
@@ -734,7 +775,7 @@ export default function ScorerPage() {
                 <div className="flex items-center gap-4 landscape:gap-8">
                     {/* Home Score (Landscape only) */}
                     <div className="hidden landscape:flex flex-col items-center">
-                        <div className="text-[8px] font-black uppercase text-orange-500/60 leading-none mb-1">{game.homeTeamName}</div>
+                        <div className="text-[10px] font-black uppercase text-orange-500/80 leading-none mb-0.5">{game.homeTeamName}</div>
                         <div className="text-3xl font-black font-mono leading-none">{game.homeScore}</div>
                     </div>
 
@@ -743,9 +784,9 @@ export default function ScorerPage() {
                             <button
                                 data-testid="period-display"
                                 onClick={nextPeriod}
-                                className="text-[10px] landscape:text-[8px] uppercase tracking-widest text-slate-500 font-bold flex items-center gap-1 hover:text-white transition-colors"
+                                className="min-w-[44px] min-h-[44px] text-sm landscape:text-xs uppercase tracking-widest text-slate-500 font-bold flex items-center gap-1 hover:text-white transition-colors"
                             >
-                                <div className={cn("w-2 h-2 landscape:w-1.5 landscape:h-1.5 rounded-full", isConnected ? "bg-green-500" : "bg-red-500")} />
+                                <div className={cn("w-3 h-3 landscape:w-2 landscape:h-2 rounded-full", isConnected ? "bg-green-500" : "bg-red-500")} />
                                 P{game.currentPeriod}
                             </button>
                             {/* Visibility Badge */}
@@ -911,54 +952,54 @@ export default function ScorerPage() {
                 <div className="hidden landscape:grid grid-cols-[1fr_1.5fr_1fr] flex-1 overflow-hidden p-2 gap-2">
                     {/* LEFT THIRD: SCORING */}
                     <div className="grid grid-rows-3 gap-2 h-full">
-                        <div className="grid grid-cols-[1fr_0.6fr] gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={() => handleScore(3)}
-                                className="bg-orange-600/10 border border-orange-500/20 rounded-2xl flex flex-col items-center justify-center hover:bg-orange-600/20 active:scale-95 transition-all group"
+                                className="bg-orange-600/10 border border-orange-500/20 rounded-lg flex flex-col items-center justify-center hover:bg-orange-600/20 active:scale-95 transition-all group"
                             >
-                                <span className="text-4xl font-black text-orange-500 group-hover:scale-110 transition-transform">+3</span>
-                                <span className="text-[8px] uppercase font-black tracking-[0.2em] text-orange-500/50">Three Pointer</span>
+                                <span className="text-4xl landscape:lg:text-5xl font-black text-orange-500 group-hover:scale-110 transition-transform">+3</span>
+                                <span className="text-[10px] landscape:lg:text-sm uppercase font-bold tracking-wider text-orange-500/70">3PT</span>
                             </button>
                             <button
                                 onClick={() => handleScore(3, undefined, true)}
-                                className="bg-input border border-border rounded-2xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group opacity-60 hover:opacity-100"
+                                className="bg-input border border-border rounded-lg flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group opacity-80 hover:opacity-100"
                             >
-                                <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-3</span>
-                                <span className="text-[7px] uppercase font-black tracking-widest text-slate-600">Miss</span>
+                                <span className="text-2xl landscape:lg:text-3xl font-black text-slate-500 group-hover:scale-110 transition-transform">-3</span>
+                                <span className="text-[10px] landscape:lg:text-sm uppercase font-bold tracking-wider text-slate-500">MISS</span>
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-[1fr_0.6fr] gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={() => handleScore(2)}
-                                className="bg-input border border-border rounded-2xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group"
+                                className="bg-input border border-border rounded-lg flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group"
                             >
-                                <span className="text-4xl font-black text-slate-200 group-hover:scale-110 transition-transform">+2</span>
-                                <span className="text-[8px] uppercase font-black tracking-[0.2em] text-slate-500">Field Goal</span>
+                                <span className="text-4xl landscape:lg:text-5xl font-black text-slate-200 group-hover:scale-110 transition-transform">+2</span>
+                                <span className="text-[10px] landscape:lg:text-sm uppercase font-bold tracking-wider text-slate-400">FG</span>
                             </button>
                             <button
                                 onClick={() => handleScore(2, undefined, true)}
-                                className="bg-input border border-border rounded-2xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group opacity-60 hover:opacity-100"
+                                className="bg-input border border-border rounded-lg flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group opacity-80 hover:opacity-100"
                             >
-                                <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-2</span>
-                                <span className="text-[7px] uppercase font-black tracking-widest text-slate-600">Miss</span>
+                                <span className="text-2xl landscape:lg:text-3xl font-black text-slate-500 group-hover:scale-110 transition-transform">-2</span>
+                                <span className="text-[10px] landscape:lg:text-sm uppercase font-bold tracking-wider text-slate-500">MISS</span>
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-[1fr_0.6fr] gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             <button
                                 onClick={() => handleScore(1)}
-                                className="bg-input/50 border border-border rounded-2xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group"
+                                className="bg-input/50 border border-border rounded-lg flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group"
                             >
-                                <span className="text-3xl font-black text-slate-400 group-hover:scale-110 transition-transform">+1</span>
-                                <span className="text-[8px] uppercase font-black tracking-[0.2em] text-slate-600">Free Throw</span>
+                                <span className="text-3xl landscape:lg:text-4xl font-black text-slate-400 group-hover:scale-110 transition-transform">+1</span>
+                                <span className="text-[10px] landscape:lg:text-sm uppercase font-bold tracking-wider text-slate-500">FT</span>
                             </button>
                             <button
                                 onClick={() => handleScore(1, undefined, true)}
-                                className="bg-input border border-border rounded-2xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group opacity-60 hover:opacity-100"
+                                className="bg-input border border-border rounded-lg flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all group opacity-80 hover:opacity-100"
                             >
-                                <span className="text-2xl font-black text-slate-500 group-hover:scale-110 transition-transform">-1</span>
-                                <span className="text-[7px] uppercase font-black tracking-widest text-slate-600">Miss</span>
+                                <span className="text-2xl landscape:lg:text-3xl font-black text-slate-500 group-hover:scale-110 transition-transform">-1</span>
+                                <span className="text-[10px] landscape:lg:text-sm uppercase font-bold tracking-wider text-slate-500">MISS</span>
                             </button>
                         </div>
                     </div>
@@ -968,7 +1009,7 @@ export default function ScorerPage() {
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-1">
                             <GameLog
                                 events={events}
-                                limit={10}
+                                limit={12}
                                 onHeaderClick={() => router.push(`/game/${id}/scorer/log`)}
                                 onDelete={deleteEvent}
                                 onEdit={(id) => setEditingEvent(events.find(e => e.id === id) || null)}
@@ -982,17 +1023,17 @@ export default function ScorerPage() {
                         <div className="grid grid-cols-2 gap-2 flex-1">
                             <button
                                 onClick={() => handleFoul('home')}
-                                className="bg-red-950/20 border border-red-500/20 rounded-xl flex flex-col items-center justify-center hover:bg-red-900/40 active:scale-95 transition-all"
+                                className="bg-red-950/20 border border-red-500/20 rounded-lg flex flex-col items-center justify-center hover:bg-red-900/40 active:scale-95 transition-all"
                             >
-                                <span className="text-[9px] font-black uppercase text-red-500">Foul</span>
-                                <div className="text-xs font-mono font-black text-red-400">{game.homeFouls}</div>
+                                <span className="text-[10px] landscape:text-xs landscape:lg:text-base font-bold uppercase text-red-500">FOUL</span>
+                                <div className="text-lg landscape:lg:text-2xl font-mono font-black text-red-400">{game.homeFouls}</div>
                             </button>
                             <button
                                 onClick={() => handleFoul('guest')}
-                                className="bg-input border border-border rounded-xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all"
+                                className="bg-input border border-border rounded-lg flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all"
                             >
-                                <span className="text-[9px] font-black uppercase text-slate-500 text-center leading-tight px-1">Foul</span>
-                                <div className="text-xs font-mono font-black text-slate-300">{game.guestFouls}</div>
+                                <span className="text-[10px] landscape:text-xs landscape:lg:text-base font-bold uppercase text-slate-400">FOUL</span>
+                                <div className="text-lg landscape:lg:text-2xl font-mono font-black text-slate-300">{game.guestFouls}</div>
                             </button>
                         </div>
 
@@ -1000,21 +1041,21 @@ export default function ScorerPage() {
                         <div className="grid grid-cols-2 gap-2 flex-1">
                             <button
                                 onClick={handleSub}
-                                className="bg-input border border-border rounded-xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all"
+                                className="bg-input border border-border rounded-lg flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all"
                             >
-                                <Users size={14} className="text-slate-500 mb-0.5" />
-                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Subs</span>
+                                <Users size={16} className="landscape:lg:size-5 text-slate-400 mb-0.5" />
+                                <span className="text-[10px] landscape:text-xs landscape:lg:text-base font-bold uppercase tracking-wide text-slate-400">SUBS</span>
                             </button>
                             <button
                                 onClick={() => handleTimeout()}
-                                className="bg-input border border-border rounded-xl flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all"
+                                className="bg-input border border-border rounded-lg flex flex-col items-center justify-center hover:bg-card active:scale-95 transition-all"
                             >
                                 <div className="flex gap-0.5 mb-1">
                                     {Array.from({ length: game.totalTimeouts }).map((_, i) => (
                                         <div key={i} className={cn("w-2 h-0.5 rounded-full", i < game.homeTimeouts ? "bg-orange-500" : "bg-muted")} />
                                     ))}
                                 </div>
-                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">TO</span>
+                                <span className="text-[10px] landscape:text-xs landscape:lg:text-base font-bold uppercase tracking-wide text-slate-400">TIMEOUT</span>
                             </button>
                         </div>
 
@@ -1022,21 +1063,21 @@ export default function ScorerPage() {
                         <button
                             onClick={toggleTimer}
                             className={cn(
-                                "flex-1 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-95 shadow-xl",
+                                "flex-1 rounded-lg flex flex-col items-center justify-center transition-all active:scale-95 shadow-xl",
                                 isTimerRunning ? "bg-red-600 shadow-red-900/20" : "bg-emerald-600 shadow-emerald-900/20"
                             )}
                         >
-                            <Clock size={24} className={cn("text-white mb-1", isTimerRunning && "animate-pulse")} fill="currentColor" />
-                            <span className="text-[10px] font-black tracking-widest uppercase text-white">{isTimerRunning ? 'PAUSE' : 'RESUME'}</span>
+                            <Clock size={24} className={cn("text-white mb-1 landscape:lg:size-8", isTimerRunning && "animate-pulse")} fill="currentColor" />
+                            <span className="text-sm landscape:lg:text-base font-bold tracking-wide uppercase text-white">{isTimerRunning ? 'PAUSE' : 'RESUME'}</span>
                         </button>
 
                         {/* Box Score Button */}
                         <button
                             onClick={() => router.push(`/game/${id}/box-score`)}
-                            className="flex-1 rounded-xl flex flex-col items-center justify-center bg-input border border-border hover:bg-card transition-all active:scale-95"
+                            className="flex-1 rounded-lg flex-col items-center justify-center bg-input border border-border hover:bg-card transition-all active:scale-95 landscape:min-h-[500px]:flex hidden"
                         >
-                            <Table size={16} className="text-slate-400 mb-0.5" />
-                            <span className="text-[8px] font-black tracking-widest uppercase text-slate-500">Box Score</span>
+                            <Table size={16} className="landscape:lg:size-5 text-slate-400 mb-0.5" />
+                            <span className="text-[10px] landscape:text-xs landscape:lg:text-base font-bold uppercase tracking-wide text-slate-400">BOX SCORE</span>
                         </button>
                     </div>
                 </div>
@@ -1123,8 +1164,8 @@ export default function ScorerPage() {
                             }
                         }}
                     />
-                )}
-            </AnimatePresence>
+)}
+                </AnimatePresence>
 
             {/* Event Edit Modal */}
             <AnimatePresence>
